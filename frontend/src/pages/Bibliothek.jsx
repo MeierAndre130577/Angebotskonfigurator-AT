@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { options as optionsApi } from '../lib/api'
+import { options as optionsApi, uploadImage } from '../lib/api'
 
 const CLUSTERS = ['Farmer Shop', 'Wein Shop', 'Maxibar', 'Erweiterungen', 'Zahlungssysteme', 'Zubehör', 'Service', 'Sonstiges']
 
@@ -109,15 +109,8 @@ export default function Bibliothek() {
   async function uploadFile(file) {
     setUploading(true)
     try {
-      const formData = new FormData()
-      formData.append('file', file, file.name || 'paste.png')
-      const res = await fetch('/api/upload/image', {
-        method: 'POST',
-        body: formData,
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Upload fehlgeschlagen')
-      setForm(f => ({ ...f, image_path: data.url }))
+      const url = await uploadImage(file)
+      setForm(f => ({ ...f, image_path: url }))
       showToast('Bild hochgeladen ✓')
       setPasteHint(false)
     } catch(e) {
