@@ -6,11 +6,15 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // Alle /api Requests gehen ans FastAPI Backend
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
       }
     }
+  },
+  define: {
+    'import.meta.env.VITE_API_URL': JSON.stringify(
+      process.env.VITE_API_URL || 'http://localhost:8000'
+    )
   }
 })

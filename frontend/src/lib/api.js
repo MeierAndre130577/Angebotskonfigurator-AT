@@ -3,7 +3,7 @@
  * Alle Backend-Calls laufen hier durch – nie direkt fetch() im Component.
  */
 
-const BASE = '/api'
+const BASE = (import.meta.env.VITE_API_URL || '') + '/api'
 
 async function request(method, path, body) {
   const res = await fetch(`${BASE}${path}`, {
