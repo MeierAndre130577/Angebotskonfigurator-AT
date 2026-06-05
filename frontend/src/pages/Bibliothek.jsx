@@ -2,8 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { options as optionsApi } from '../lib/api'
 
 const CLUSTERS = ['Farmer Shop', 'Wein Shop', 'Maxibar', 'Erweiterungen', 'Zahlungssysteme', 'Zubehör', 'Service', 'Sonstiges']
-const STORAGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/images/options/`
-const UPLOAD_URL  = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/images/options/`
 
 function money(n) {
   return new Intl.NumberFormat('de-AT', { style: 'currency', currency: 'EUR' }).format(n || 0)
@@ -111,18 +109,15 @@ export default function Bibliothek() {
   async function uploadFile(file) {
     setUploading(true)
     try {
-      const ext = file.name?.split('.').pop() || 'png'
-      const filename = `${crypto.randomUUID()}.${ext}`
-      const res = await fetch(UPLOAD_URL + filename, {
+      const formData = new FormData()
+      formData.append('file', file, file.name || 'paste.png')
+      const res = await fetch('/api/upload/image', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': file.type,
-        },
-        body: file,
+        body: formData,
       })
-      if (!res.ok) throw new Error('Upload fehlgeschlagen')
-      setForm(f => ({ ...f, image_path: STORAGE_URL + filename }))
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Upload fehlgeschlagen')
+      setForm(f => ({ ...f, image_path: data.url }))
       showToast('Bild hochgeladen ✓')
       setPasteHint(false)
     } catch(e) {

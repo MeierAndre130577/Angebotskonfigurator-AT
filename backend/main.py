@@ -3,16 +3,17 @@ Angebotskonfigurator – FastAPI Backend
 Sielaff Austria GmbH
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from typing import Optional, Any
+from typing import Optional
+import os, uuid, httpx
 import db
 import pdf
 
 app = FastAPI(title="Angebotskonfigurator API", version="3.0.0")
 
-# CORS – erlaubt lokales React-Frontend (localhost:5173)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -30,6 +31,39 @@ app.add_middleware(
 @app.get("/api/health")
 def health():
     return {"ok": True, "version": "3.0.0"}
+
+# ── Bild Upload ───────────────────────────────────────────────────────────────
+
+@app.post("/api/upload/image")
+async def upload_image(file: UploadFile = File(...)):
+    supabase_url = os.environ.get("SUPABASE_URL")
+    service_key  = os.environ.get("SUPABASE_SERVICE_KEY")
+
+    ext      = (file.filename or "image.png").split(".")[-1].lower()
+    filename = f"{uuid.uuid4()}.{ext}"
+    content  = await file.read()
+
+    if not supabase_url or not service_key:
+        # Lokal speichern (Entwicklung)
+        local_dir = os.path.join(os.path.dirname(__file__), "uploads", "images")
+        os.makedirs(local_dir, exist_ok=True)
+        with open(os.path.join(local_dir, filename), "wb") as f:
+            f.write(content)
+        return {"url": f"/uploads/images/{filename}"}
+
+    # Supabase Storage
+    upload_url = f"{supabase_url}/storage/v1/object/images/options/{filename}"
+    headers = {
+        "Authorization": f"Bearer {service_key}",
+        "Content-Type": file.content_type or "image/jpeg",
+    }
+    async with httpx.AsyncClient() as client:
+        res = await client.post(upload_url, content=content, headers=headers)
+
+    if res.status_code not in (200, 201):
+        return JSONResponse(status_code=500, content={"error": f"Upload fehlgeschlagen: {res.text}"})
+
+    return {"url": f"{supabase_url}/storage/v1/object/public/images/options/{filename}"}
 
 # ── Kunden ────────────────────────────────────────────────────────────────────
 
@@ -121,8 +155,7 @@ class OfferIn(BaseModel):
 
 @app.post("/api/offers/number")
 def generate_offer_number():
-    offer_no = db.generate_offer_number()
-    return {"offer_no": offer_no}
+    return {"offer_no": db.generate_offer_number()}
 
 @app.post("/api/offers")
 def upsert_offer(data: OfferIn):
@@ -149,5 +182,4 @@ class PdfIn(BaseModel):
 
 @app.post("/api/pdf/design")
 def generate_pdf(data: PdfIn):
-    result = pdf.generate_design_pdf(data.model_dump())
-    return result
+    return pdf.generate_design_pdf(data.model_dump())
