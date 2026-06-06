@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { options as optionsApi, uploadImage } from '../lib/api'
+import {
+  DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors
+} from '@dnd-kit/core'
+import {
+  SortableContext, verticalListSortingStrategy, useSortable, arrayMove
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 const CLUSTERS = ['Farmer Shop', 'Wein Shop', 'Maxibar', 'Erweiterungen', 'Zahlungssysteme', 'Zubehör', 'Service', 'Sonstiges']
 
@@ -13,45 +20,63 @@ const EMPTY = {
   image_path: '', sort_order: 0, documents: []
 }
 
-// ── Dokument Upload ───────────────────────────────────────────────────────────
 async function uploadDocument(file) {
   const formData = new FormData()
   formData.append('file', file, file.name)
   const BASE = (import.meta.env.VITE_API_URL || '') + '/api'
-  const res = await fetch(`${BASE}/upload/document`, {
-    method: 'POST',
-    body: formData,
-  })
+  const res = await fetch(`${BASE}/upload/document`, { method: 'POST', body: formData })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error || 'Upload fehlgeschlagen')
   return data
 }
 
-// ── Sortable Row ──────────────────────────────────────────────────────────────
-function OptionRow({ o, onEdit, onDelete, onMoveUp, onMoveDown, isFirst, isLast }) {
-  const [dragging, setDragging] = useState(false)
+// ── Sortierbare Tabellenzeile ─────────────────────────────────────────────────
+function SortableRow({ o, onEdit, onDelete }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: o.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    background: isDragging ? 'var(--red-light)' : 'white',
+    borderBottom: '1px solid var(--line)',
+  }
 
   return (
-    <tr style={{ borderBottom: '1px solid var(--line)', background: dragging ? 'var(--red-light)' : 'white' }}>
-      {/* Reihenfolge */}
-      <td style={{ padding: '10px 8px', width: 40 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <button onClick={onMoveUp} disabled={isFirst}
-            style={{ border: 'none', background: 'none', cursor: isFirst ? 'default' : 'pointer',
-              fontSize: 14, color: isFirst ? 'var(--line)' : 'var(--muted)', padding: '1px 4px' }}>▲</button>
-          <button onClick={onMoveDown} disabled={isLast}
-            style={{ border: 'none', background: 'none', cursor: isLast ? 'default' : 'pointer',
-              fontSize: 14, color: isLast ? 'var(--line)' : 'var(--muted)', padding: '1px 4px' }}>▼</button>
+    <tr ref={setNodeRef} style={style}
+      onMouseEnter={e => { if (!isDragging) e.currentTarget.style.background = 'var(--bg)' }}
+      onMouseLeave={e => { if (!isDragging) e.currentTarget.style.background = 'white' }}>
+
+      {/* Drag Handle – 3 waagrechte Striche */}
+      <td style={{ padding: '10px 8px', width: 36 }}>
+        <div
+          {...attributes}
+          {...listeners}
+          title="Halten und ziehen zum Sortieren"
+          style={{
+            cursor: 'grab',
+            display: 'flex', flexDirection: 'column', gap: 3,
+            alignItems: 'center', justifyContent: 'center',
+            width: 28, height: 28, borderRadius: 6,
+            padding: '4px 6px',
+            touchAction: 'none', userSelect: 'none',
+            color: 'var(--muted)',
+          }}
+        >
+          {/* 3 echte waagrechte Striche */}
+          {[0,1,2].map(i => (
+            <div key={i} style={{ width: 16, height: 2, background: 'currentColor', borderRadius: 1 }} />
+          ))}
         </div>
       </td>
-      {/* Bild */}
+
       <td style={{ padding: '10px 8px', width: 60 }}>
         {o.image_path
           ? <img src={o.image_path} alt="" style={{ width: 48, height: 36, objectFit: 'cover', borderRadius: 6 }} />
-          : <div style={{ width: 48, height: 36, background: 'var(--bg)', borderRadius: 6, border: '1px dashed var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>📷</div>
+          : <div style={{ width: 48, height: 36, background: 'var(--bg)', borderRadius: 6, border: '1px dashed var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--muted)' }}>📷</div>
         }
       </td>
-      {/* Name */}
+
       <td style={{ padding: '10px 8px' }}>
         <b style={{ fontSize: 13 }}>{o.name}</b>
         {(o.documents || []).length > 0 && (
@@ -60,15 +85,17 @@ function OptionRow({ o, onEdit, onDelete, onMoveUp, onMoveDown, isFirst, isLast 
           </span>
         )}
       </td>
-      {/* Cluster */}
-      <td style={{ padding: '10px 8px' }}><span className="pill">{o.cluster || '—'}</span></td>
-      {/* Beschreibung */}
-      <td style={{ padding: '10px 8px', color: 'var(--muted)', maxWidth: 200, fontSize: 12 }}>
+
+      <td style={{ padding: '10px 8px' }}>
+        <span className="pill">{o.cluster || '—'}</span>
+      </td>
+
+      <td style={{ padding: '10px 8px', color: 'var(--muted)', maxWidth: 220, fontSize: 12 }}>
         <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
           {o.short_text || '—'}
         </span>
       </td>
-      {/* Preis */}
+
       <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>
         {o.price === 0
           ? <span style={{ color: 'var(--muted)' }}>inkl.</span>
@@ -76,7 +103,7 @@ function OptionRow({ o, onEdit, onDelete, onMoveUp, onMoveDown, isFirst, isLast 
             ? <span style={{ color: 'var(--red)' }}>{money(o.price)}/Mo.</span>
             : money(o.price)}
       </td>
-      {/* Aktionen */}
+
       <td style={{ padding: '10px 8px', textAlign: 'right' }}>
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button className="btn" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => onEdit(o)}>✏️</button>
@@ -87,33 +114,37 @@ function OptionRow({ o, onEdit, onDelete, onMoveUp, onMoveDown, isFirst, isLast 
   )
 }
 
-// ── Dokument Item ─────────────────────────────────────────────────────────────
-function DocItem({ doc, onRemove }) {
+// ── Dokument-Item ─────────────────────────────────────────────────────────────
+function DocItem({ doc, onRemove, onTitleChange }) {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '8px 12px', background: 'var(--bg)', borderRadius: 10,
-      border: '1px solid var(--line)', marginBottom: 6
-    }}>
-      <span style={{ fontSize: 18 }}>📄</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 700 }}>{doc.title}</div>
-        <div style={{ fontSize: 11, color: 'var(--muted)' }}>{doc.file_name}</div>
+    <div style={{ marginBottom: 8 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '8px 12px', background: 'var(--bg)', borderRadius: 10,
+        border: '1px solid var(--line)', marginBottom: 4
+      }}>
+        <span style={{ fontSize: 18 }}>📄</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.file_name}</div>
+        </div>
+        {doc.file_url && (
+          <a href={doc.file_url} target="_blank" rel="noopener noreferrer"
+            className="btn" style={{ padding: '3px 8px', fontSize: 11, textDecoration: 'none', flex: 'none' }}>👁️</a>
+        )}
+        <button onClick={onRemove}
+          style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--red)', fontSize: 16, flex: 'none' }}>✕</button>
       </div>
-      {doc.file_url && (
-        <a href={doc.file_url} target="_blank" rel="noopener noreferrer"
-          className="btn" style={{ padding: '4px 10px', fontSize: 11, textDecoration: 'none' }}>
-          👁️
-        </a>
-      )}
-      <button onClick={onRemove}
-        style={{ border: 'none', background: 'none', cursor: 'pointer',
-          color: 'var(--red)', fontSize: 16, padding: '4px' }}>✕</button>
+      <input
+        value={doc.title}
+        onChange={e => onTitleChange(doc.id, e.target.value)}
+        placeholder="Titel (erscheint in Anlagen)"
+        style={{ width: '100%', border: '1px solid var(--line)', borderRadius: 8, padding: '6px 12px', fontSize: 12 }}
+      />
     </div>
   )
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── Hauptkomponente ───────────────────────────────────────────────────────────
 export default function Bibliothek() {
   const [items, setItems]           = useState([])
   const [loading, setLoading]       = useState(true)
@@ -128,9 +159,13 @@ export default function Bibliothek() {
   const fileRef                     = useRef()
   const docRef                      = useRef()
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 5 } })
+  )
+
   useEffect(() => { load() }, [])
 
-  // Strg+V für Bilder
   useEffect(() => {
     if (!editing) return
     const handler = (e) => {
@@ -155,21 +190,9 @@ export default function Bibliothek() {
     finally { setLoading(false) }
   }
 
-  function showToast(msg) {
-    setToast(msg)
-    setTimeout(() => setToast(''), 2500)
-  }
-
-  function startNew() {
-    setForm({ ...EMPTY, sort_order: items.length + 1, documents: [] })
-    setEditing('new')
-  }
-
-  function startEdit(item) {
-    setForm({ ...item, documents: item.documents || [] })
-    setEditing(item)
-  }
-
+  function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 2500) }
+  function startNew()  { setForm({ ...EMPTY, sort_order: items.length + 1, documents: [] }); setEditing('new') }
+  function startEdit(item) { setForm({ ...item, documents: item.documents || [] }); setEditing(item) }
   function cancelEdit() { setEditing(null); setForm(EMPTY) }
 
   async function handleSave() {
@@ -183,8 +206,7 @@ export default function Bibliothek() {
         sort_order: Number(form.sort_order) || 0,
         documents: form.documents || [],
       })
-      await load()
-      cancelEdit()
+      await load(); cancelEdit()
       showToast(editing === 'new' ? 'Option angelegt ✓' : 'Gespeichert ✓')
     } catch(e) { showToast('Fehler: ' + e.message) }
     finally { setSaving(false) }
@@ -203,7 +225,7 @@ export default function Bibliothek() {
       const url = await uploadImage(file)
       setForm(f => ({ ...f, image_path: url }))
       showToast('Bild hochgeladen ✓')
-    } catch(e) { showToast('Bild-Upload fehlgeschlagen: ' + e.message) }
+    } catch(e) { showToast('Fehler: ' + e.message) }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = '' }
   }
 
@@ -213,15 +235,14 @@ export default function Bibliothek() {
     setUploadingDoc(true)
     try {
       const result = await uploadDocument(file)
-      const newDoc = {
+      setForm(f => ({ ...f, documents: [...(f.documents || []), {
         id: crypto.randomUUID(),
-        title: file.name.replace(/\.[^.]+$/, ''), // Dateiname ohne Extension als Titel
+        title: file.name.replace(/\.[^.]+$/, ''),
         file_name: file.name,
         file_url: result.url || '',
-      }
-      setForm(f => ({ ...f, documents: [...(f.documents || []), newDoc] }))
+      }]}))
       showToast('Dokument hochgeladen ✓')
-    } catch(e) { showToast('Dokument-Upload fehlgeschlagen: ' + e.message) }
+    } catch(e) { showToast('Fehler: ' + e.message) }
     finally { setUploadingDoc(false); if (docRef.current) docRef.current.value = '' }
   }
 
@@ -230,29 +251,32 @@ export default function Bibliothek() {
   }
 
   function updateDocTitle(docId, title) {
-    setForm(f => ({
-      ...f,
-      documents: (f.documents || []).map(d => d.id === docId ? { ...d, title } : d)
-    }))
+    setForm(f => ({ ...f, documents: (f.documents || []).map(d => d.id === docId ? { ...d, title } : d) }))
   }
 
-  async function moveItem(index, dir) {
-    const targetIndex = index + dir
-    if (targetIndex < 0 || targetIndex >= filtered.length) return
-    const a = { ...filtered[index],       sort_order: filtered[targetIndex].sort_order }
-    const b = { ...filtered[targetIndex], sort_order: filtered[index].sort_order }
+  async function handleDragEnd(event) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = filtered.findIndex(o => o.id === active.id)
+    const newIndex = filtered.findIndex(o => o.id === over.id)
+    const reordered = arrayMove(filtered, oldIndex, newIndex)
+    // Optimistisch updaten
+    const updated = items.map(item => {
+      const newPos = reordered.findIndex(r => r.id === item.id)
+      return newPos >= 0 ? { ...item, sort_order: newPos } : item
+    })
+    setItems(updated)
     try {
-      await Promise.all([optionsApi.upsert(a), optionsApi.upsert(b)])
-      await load()
-    } catch(e) { showToast('Fehler beim Verschieben') }
+      await Promise.all(reordered.map((o, idx) => optionsApi.upsert({ ...o, sort_order: idx })))
+      showToast('Reihenfolge gespeichert ✓')
+    } catch { showToast('Fehler beim Speichern'); await load() }
   }
 
   const filtered = items
     .filter(o => {
       const ms = o.name.toLowerCase().includes(search.toLowerCase()) ||
         (o.short_text || '').toLowerCase().includes(search.toLowerCase())
-      const mc = !filterCluster || o.cluster === filterCluster
-      return ms && mc
+      return ms && (!filterCluster || o.cluster === filterCluster)
     })
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
@@ -271,12 +295,11 @@ export default function Bibliothek() {
       <div className="page-header">
         <div>
           <h1>📚 Optionsbibliothek</h1>
-          <p className="subtitle">{items.length} Optionen · ▲▼ zum Sortieren</p>
+          <p className="subtitle">{items.length} Optionen · ☰ Halten und ziehen zum Sortieren</p>
         </div>
         <button className="btn btn-red" onClick={startNew}>＋ Neue Option</button>
       </div>
 
-      {/* Filter */}
       <div className="row" style={{ marginBottom: 20, gap: 12 }}>
         <input placeholder="🔍 Suchen …" value={search} onChange={e => setSearch(e.target.value)}
           style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '9px 14px', fontSize: 13, flex: 1 }} />
@@ -289,19 +312,10 @@ export default function Bibliothek() {
 
       {/* ── Edit Modal ──────────────────────────────────────────────────────── */}
       {editing && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
-          zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
-        }}>
-          <div style={{
-            background: 'white', borderRadius: 20, padding: 28,
-            width: '100%', maxWidth: 700, maxHeight: '92vh', overflowY: 'auto',
-            boxShadow: '0 24px 60px rgba(0,0,0,.2)'
-          }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: 'white', borderRadius: 20, padding: 28, width: '100%', maxWidth: 700, maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,.2)' }}>
             <div className="between" style={{ marginBottom: 20 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 800 }}>
-                {editing === 'new' ? '＋ Neue Option' : `✏️ ${editing.name}`}
-              </h2>
+              <h2 style={{ fontSize: 20, fontWeight: 800 }}>{editing === 'new' ? '＋ Neue Option' : `✏️ ${editing.name}`}</h2>
               <button className="btn" onClick={cancelEdit}>✕</button>
             </div>
 
@@ -319,17 +333,12 @@ export default function Bibliothek() {
                 <div onClick={() => fileRef.current?.click()}
                   onDrop={e => { e.preventDefault(); handleUploadImage(e.dataTransfer.files[0]) }}
                   onDragOver={e => e.preventDefault()}
-                  style={{ flex: 1, minHeight: 90, border: '2px dashed var(--line)', borderRadius: 12,
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', background: 'var(--bg)', gap: 4, padding: 12 }}
+                  style={{ flex: 1, minHeight: 90, border: '2px dashed var(--line)', borderRadius: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: 'var(--bg)', gap: 4, padding: 12 }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--red)'}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--line)'}
-                >
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--line)'}>
                   {uploading
                     ? <p style={{ fontSize: 12, color: 'var(--muted)' }}>⏳ Lädt …</p>
-                    : <><span style={{ fontSize: 22 }}>📷</span>
-                       <p style={{ fontSize: 12, fontWeight: 700 }}>Klicken, Drag & Drop oder Strg+V</p></>
-                  }
+                    : <><span style={{ fontSize: 22 }}>📷</span><p style={{ fontSize: 12, fontWeight: 700 }}>Klicken, Drag & Drop oder Strg+V</p></>}
                 </div>
               </div>
               <input ref={fileRef} type="file" accept="image/*" onChange={e => handleUploadImage(e.target.files[0])} style={{ display: 'none' }} />
@@ -337,29 +346,20 @@ export default function Bibliothek() {
 
             {/* Felder */}
             <div className="grid2">
-              <div className="field">
-                <label>Name *</label>
-                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
-              </div>
-              <div className="field">
-                <label>Cluster</label>
+              <div className="field"><label>Name *</label><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus /></div>
+              <div className="field"><label>Cluster</label>
                 <select value={form.cluster} onChange={e => setForm(f => ({ ...f, cluster: e.target.value }))}>
                   {CLUSTERS.map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>
-              <div className="field">
-                <label>Preis (€)</label>
-                <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} />
-              </div>
-              <div className="field">
-                <label>Preisart</label>
+              <div className="field"><label>Preis (€)</label><input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} /></div>
+              <div className="field"><label>Preisart</label>
                 <select value={form.recurring ? 'monthly' : 'once'} onChange={e => setForm(f => ({ ...f, recurring: e.target.value === 'monthly' }))}>
                   <option value="once">Einmalig</option>
                   <option value="monthly">Monatlich</option>
                 </select>
               </div>
-              <div className="field">
-                <label>Darstellung</label>
+              <div className="field"><label>Darstellung</label>
                 <select value={form.display_type} onChange={e => setForm(f => ({ ...f, display_type: e.target.value }))}>
                   <option>Großes Bild + Beschreibung</option>
                   <option>Kleines Bild + Langtext</option>
@@ -368,48 +368,23 @@ export default function Bibliothek() {
                 </select>
               </div>
             </div>
+            <div className="field"><label>Kurzbeschreibung</label><textarea value={form.short_text || ''} onChange={e => setForm(f => ({ ...f, short_text: e.target.value }))} style={{ minHeight: 60 }} /></div>
+            <div className="field"><label>Langtext</label><textarea value={form.long_text || ''} onChange={e => setForm(f => ({ ...f, long_text: e.target.value }))} style={{ minHeight: 90 }} /></div>
 
-            <div className="field">
-              <label>Kurzbeschreibung</label>
-              <textarea value={form.short_text || ''} onChange={e => setForm(f => ({ ...f, short_text: e.target.value }))} style={{ minHeight: 60 }} />
-            </div>
-            <div className="field">
-              <label>Langtext</label>
-              <textarea value={form.long_text || ''} onChange={e => setForm(f => ({ ...f, long_text: e.target.value }))} style={{ minHeight: 90 }} />
-            </div>
-
-            {/* ── Dokumente ──────────────────────────────────────────────── */}
-            <div style={{ marginTop: 4, marginBottom: 16 }}>
+            {/* Dokumente */}
+            <div style={{ marginBottom: 16 }}>
               <div className="between" style={{ marginBottom: 10 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-                  Dokumente (Anlagen)
-                </label>
-                <button className="btn" style={{ padding: '5px 12px', fontSize: 12 }}
-                  onClick={() => docRef.current?.click()} disabled={uploadingDoc}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Dokumente (Anlagen)</label>
+                <button className="btn" style={{ padding: '5px 12px', fontSize: 12 }} onClick={() => docRef.current?.click()} disabled={uploadingDoc}>
                   {uploadingDoc ? '⏳ Lädt …' : '📎 PDF hinzufügen'}
                 </button>
               </div>
-              <input ref={docRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx"
-                onChange={handleDocumentUpload} style={{ display: 'none' }} />
-
+              <input ref={docRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={handleDocumentUpload} style={{ display: 'none' }} />
               {(form.documents || []).length === 0 && (
-                <p style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic' }}>
-                  Noch keine Dokumente – PDFs hier hochladen, sie werden automatisch als Anlagen ins Angebot aufgenommen.
-                </p>
+                <p style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic' }}>Noch keine Dokumente – PDFs werden automatisch als Anlagen ins Angebot aufgenommen.</p>
               )}
-
               {(form.documents || []).map(doc => (
-                <div key={doc.id}>
-                  <DocItem doc={doc} onRemove={() => removeDocument(doc.id)} />
-                  {/* Titel editierbar */}
-                  <input
-                    value={doc.title}
-                    onChange={e => updateDocTitle(doc.id, e.target.value)}
-                    placeholder="Dokumenttitel (erscheint in Anlagen)"
-                    style={{ width: '100%', border: '1px solid var(--line)', borderRadius: 8,
-                      padding: '6px 12px', fontSize: 12, marginBottom: 8, marginTop: -2 }}
-                  />
-                </div>
+                <DocItem key={doc.id} doc={doc} onRemove={() => removeDocument(doc.id)} onTitleChange={updateDocTitle} />
               ))}
             </div>
 
@@ -423,13 +398,13 @@ export default function Bibliothek() {
         </div>
       )}
 
-      {/* ── Tabelle ─────────────────────────────────────────────────────────── */}
+      {/* ── Tabelle mit Drag & Drop ─────────────────────────────────────────── */}
       {loading ? <p className="muted">Lädt …</p> : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--line)', background: 'var(--bg)' }}>
-                <th style={{ padding: '12px 8px', width: 40 }}></th>
+                <th style={{ width: 36, padding: '12px 8px' }}></th>
                 <th style={{ padding: '12px 8px', width: 60, textAlign: 'left', fontWeight: 700, color: 'var(--muted)' }}>Bild</th>
                 <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 700, color: 'var(--muted)' }}>Option</th>
                 <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 700, color: 'var(--muted)' }}>Cluster</th>
@@ -438,16 +413,15 @@ export default function Bibliothek() {
                 <th style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 700, color: 'var(--muted)' }}></th>
               </tr>
             </thead>
-            <tbody>
-              {filtered.map((o, index) => (
-                <OptionRow key={o.id} o={o} index={index}
-                  isFirst={index === 0} isLast={index === filtered.length - 1}
-                  onEdit={startEdit} onDelete={handleDelete}
-                  onMoveUp={() => moveItem(index, -1)}
-                  onMoveDown={() => moveItem(index, 1)}
-                />
-              ))}
-            </tbody>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={filtered.map(o => o.id)} strategy={verticalListSortingStrategy}>
+                <tbody>
+                  {filtered.map(o => (
+                    <SortableRow key={o.id} o={o} onEdit={startEdit} onDelete={handleDelete} />
+                  ))}
+                </tbody>
+              </SortableContext>
+            </DndContext>
           </table>
           {filtered.length === 0 && <p className="muted small" style={{ padding: 24 }}>Keine Optionen gefunden.</p>}
         </div>

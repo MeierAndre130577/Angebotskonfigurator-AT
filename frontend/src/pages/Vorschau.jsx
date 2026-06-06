@@ -22,14 +22,15 @@ export default function Vorschau() {
   const [pdfUrl, setPdfUrl]         = useState('')
   const [toast, setToast]           = useState('')
   const [error, setError]           = useState('')
-  // Angebotsnummer aus URL laden – einmalig beim Mount und bei URL-Änderung
+  // Dank key={location.search} in App.jsx wird die Komponente neu gemountet
+  // wenn sich die URL ändert – dieser useEffect läuft also genau einmal
   useEffect(() => {
     const no = (searchParams.get('no') || '').trim()
     if (no) {
       setOfferNo(no)
       doLoad(no)
     }
-  }, [searchParams.toString()])
+  }, [])
 
   function showToast(msg) {
     setToast(msg)

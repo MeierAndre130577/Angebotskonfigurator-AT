@@ -110,7 +110,7 @@ export default function App() {
           <Route path="/projekt"       element={<Projekt />} />
           <Route path="/konfiguration" element={<Konfiguration />} />
           <Route path="/bibliothek"    element={<Bibliothek />} />
-          <Route path="/vorschau"      element={<Vorschau />} />
+          <Route path="/vorschau"      element={<Vorschau key={location.search} />} />
         </Routes>
       </main>
     </div>
