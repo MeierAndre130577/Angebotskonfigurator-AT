@@ -184,7 +184,11 @@ def draw_cover(c: canvas.Canvas, data: dict):
 
 # ── Kopf- und Fußzeile Canvas ─────────────────────────────────────────────────
 
-def make_canvas_class(project, provider):
+def make_canvas_class(project, provider, HEADER_H=None, MARGIN_L=None, MARGIN_R=None, f_d=None):
+    if HEADER_H is None: HEADER_H = 26*mm
+    if MARGIN_L is None: MARGIN_L = 20*mm
+    if MARGIN_R is None: MARGIN_R = 12*mm
+    if f_d     is None: f_d      = 14*mm
     class MyCanvas(canvas.Canvas):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
