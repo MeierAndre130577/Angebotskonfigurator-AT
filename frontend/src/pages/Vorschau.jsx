@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { offers, pdf } from '../lib/api'
 
+const BASE = (import.meta.env.VITE_API_URL || '') + '/api'
+
 function money(n) {
   return new Intl.NumberFormat('de-AT', { style: 'currency', currency: 'EUR' }).format(n || 0)
 }
@@ -22,6 +24,7 @@ export default function Vorschau() {
   const [pdfUrl, setPdfUrl]         = useState('')
   const [toast, setToast]           = useState('')
   const [error, setError]           = useState('')
+  const [loadingLatest, setLoadingLatest] = useState(false)
   // Dank key={location.search} in App.jsx wird die Komponente neu gemountet
   // wenn sich die URL ändert – dieser useEffect läuft also genau einmal
   useEffect(() => {
@@ -35,6 +38,27 @@ export default function Vorschau() {
   function showToast(msg) {
     setToast(msg)
     setTimeout(() => setToast(''), 3000)
+  }
+
+  async function loadLatest() {
+    setLoadingLatest(true); setError('')
+    try {
+      const res  = await fetch(`${BASE}/offers`)
+      const data = await res.json()
+      if (!Array.isArray(data) || data.length === 0) {
+        setError('Keine Angebote vorhanden')
+        return
+      }
+      // Neuestes anhand created_at
+      const latest = data.sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0]
+      const no = latest.offer_no
+      setOfferNo(no)
+      await doLoad(no)
+    } catch(e) {
+      setError('Fehler: ' + e.message)
+    } finally {
+      setLoadingLatest(false)
+    }
   }
 
   async function doLoad(no) {
@@ -108,6 +132,10 @@ export default function Vorschau() {
           />
           <button className="btn btn-red" onClick={() => doLoad()} disabled={loading}>
             {loading ? '⏳ Lädt …' : '🔍 Laden'}
+          </button>
+          <button className="btn" onClick={loadLatest} disabled={loadingLatest || loading}
+            title="Lädt das zuletzt erstellte Angebot">
+            {loadingLatest ? '⏳' : '⭐ Neuestes'}
           </button>
         </div>
         {loading && <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8 }}>⏳ Wird geladen …</p>}
