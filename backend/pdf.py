@@ -27,7 +27,7 @@ W, H       = A4
 HEADER_H   = 18*mm   # Höhe der Kopfzeile
 MARGIN_L   = 20*mm
 MARGIN_R   = 12*mm
-MARGIN_T   = HEADER_H + 8*mm   # Inhalt startet UNTER der Kopfzeile
+MARGIN_T   = HEADER_H + 13*mm  # Inhalt startet UNTER der Kopfzeile + 0.5cm extra
 MARGIN_B   = 22*mm
 
 EXPORT_DIR = os.path.join(os.path.dirname(__file__), 'exports')
@@ -61,31 +61,34 @@ def draw_cover(c: canvas.Canvas, data: dict):
     c.setFillColor(WHITE)
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
-    # Roter Balken oben (volle Breite)
+    # Roter Streifen links (schmal, 5mm)
     c.setFillColor(RED)
-    c.rect(0, H - 28*mm, W, 28*mm, fill=1, stroke=0)
+    c.rect(0, 0, 5*mm, H, fill=1, stroke=0)
 
-    # Logo im roten Balken
+    # ── Logo + Firmenname oben ────────────────────────────────────────────────
+    logo_x = 18*mm
+    logo_y = H - 30*mm
     if os.path.exists(LOGO_PATH):
         try:
-            c.drawImage(LOGO_PATH, MARGIN_L, H - 24*mm,
-                       width=18*mm, height=18*mm,
+            c.drawImage(LOGO_PATH, logo_x, logo_y,
+                       width=22*mm, height=22*mm,
                        preserveAspectRatio=True, mask='auto')
         except Exception:
             pass
 
-    # Firmenname im roten Balken
-    c.setFillColor(WHITE)
-    c.setFont('Helvetica-Bold', 12)
-    c.drawString(MARGIN_L + 22*mm, H - 12*mm,
-                 provider.get('company', 'Sielaff Austria GmbH'))
+    c.setFillColor(DARK)
+    c.setFont('Helvetica-Bold', 11)
+    c.drawString(logo_x + 26*mm, logo_y + 12*mm, provider.get('company', 'Sielaff Austria GmbH'))
     c.setFont('Helvetica', 8)
-    c.setFillColor(colors.HexColor('#ffcccc'))
-    c.drawString(MARGIN_L + 22*mm, H - 20*mm,
-                 f"{provider.get('address','')}  ·  {provider.get('email','')}  ·  {provider.get('phone','')}")
+    c.setFillColor(MUTED)
+    c.drawString(logo_x + 26*mm, logo_y + 5*mm, provider.get('address', ''))
 
-    # Rechte Hälfte: Foto
-    half = W / 2
+    # Trennlinie unter Header
+    c.setStrokeColor(LINE)
+    c.setLineWidth(0.5)
+    c.line(18*mm, H - 36*mm, W - 15*mm, H - 36*mm)
+
+    # ── Foto rechts ───────────────────────────────────────────────────────────
     cover_url = project.get('coverImage', '')
     if not cover_url:
         for item in offer:
@@ -93,80 +96,78 @@ def draw_cover(c: canvas.Canvas, data: dict):
                 cover_url = item['image_path']
                 break
 
+    img_x = W / 2
+    img_y = H / 2 - 5*mm
+    img_w = W / 2 - 15*mm
+    img_h = H / 2 - 35*mm
+
     cover_img = fetch_image(cover_url)
     if cover_img:
         try:
-            img_y = H - 28*mm - 100*mm
-            c.drawImage(cover_img, half, img_y,
-                       width=half - 0, height=100*mm,
+            c.drawImage(cover_img, img_x, img_y, width=img_w, height=img_h,
                        preserveAspectRatio=False)
-            # Dezenter Rahmen
             c.setStrokeColor(LINE)
             c.setLineWidth(0.5)
-            c.rect(half, img_y, half - 0, 100*mm, fill=0, stroke=1)
+            c.rect(img_x, img_y, img_w, img_h, fill=0, stroke=1)
         except Exception:
-            pass
+            c.setFillColor(BG)
+            c.rect(img_x, img_y, img_w, img_h, fill=1, stroke=0)
     else:
-        # Fallback: roter Platzhalter
-        img_y = H - 28*mm - 100*mm
-        c.setFillColor(colors.HexColor('#fff1f2'))
-        c.rect(half, img_y, half, 100*mm, fill=1, stroke=0)
+        c.setFillColor(BG)
+        c.rect(img_x, img_y, img_w, img_h, fill=1, stroke=0)
         c.setFillColor(MUTED)
         c.setFont('Helvetica', 9)
-        c.drawCentredString(half + half/2, img_y + 48*mm, 'Deckblatt-Foto wird in der')
-        c.drawCentredString(half + half/2, img_y + 40*mm, 'Konfiguration festgelegt')
+        c.drawCentredString(img_x + img_w/2, img_y + img_h/2, 'Produktfoto wird in der Konfiguration festgelegt')
 
-    # Linke Seite: Angebotsinfos
-    content_x = MARGIN_L
-    text_top  = H - 28*mm - 15*mm
+    # ── Hauptinhalt links ─────────────────────────────────────────────────────
+    cx = 18*mm
+    cy = H / 2 + 28*mm
 
-    # "ANGEBOT" Badge
+    # "ANGEBOT" Label
     c.setFillColor(RED)
     c.setFont('Helvetica-Bold', 7)
-    badge_w = 22*mm
-    c.rect(content_x, text_top - 5*mm, badge_w, 6*mm, fill=1, stroke=0)
-    c.setFillColor(WHITE)
-    c.drawCentredString(content_x + badge_w/2, text_top - 2*mm, 'ANGEBOT')
+    c.drawString(cx, cy, 'ANGEBOT')
+    c.rect(cx, cy - 2*mm, 16*mm, 0.8*mm, fill=1, stroke=0)
 
     # Kundenname
     c.setFillColor(DARK)
-    c.setFont('Helvetica-Bold', 22)
-    customer = project.get('customer', '')
-    if len(customer) > 18:
-        c.setFont('Helvetica-Bold', 16)
-    c.drawString(content_x, text_top - 20*mm, customer)
+    font_size = 24 if len(project.get('customer','')) <= 22 else 18
+    c.setFont('Helvetica-Bold', font_size)
+    c.drawString(cx, cy - 13*mm, project.get('customer', ''))
 
     # Projektname
-    c.setFont('Helvetica', 13)
     c.setFillColor(MUTED)
-    c.drawString(content_x, text_top - 30*mm, project.get('project', ''))
+    c.setFont('Helvetica', 12)
+    c.drawString(cx, cy - 21*mm, project.get('project', ''))
 
     # Trennlinie
     c.setStrokeColor(LINE)
-    c.setLineWidth(0.8)
-    c.line(content_x, text_top - 36*mm, half - 10*mm, text_top - 36*mm)
+    c.setLineWidth(0.5)
+    c.line(cx, cy - 27*mm, W/2 - 10*mm, cy - 27*mm)
 
-    # Details
-    def detail_row(label, value, y):
+    # Detail-Felder
+    def detail(label, value, y):
         c.setFillColor(MUTED)
-        c.setFont('Helvetica', 7.5)
-        c.drawString(content_x, y + 4*mm, label)
+        c.setFont('Helvetica', 7)
+        c.drawString(cx, y + 4*mm, label.upper())
         c.setFillColor(DARK)
         c.setFont('Helvetica-Bold', 9)
-        c.drawString(content_x, y, value)
+        c.drawString(cx, y, value or '—')
 
-    detail_row('Angebotsnummer', project.get('offerNo','—'), text_top - 46*mm)
-    detail_row('Datum',          project.get('date','—'),    text_top - 58*mm)
-    detail_row('Gültig bis',     project.get('valid','—'),   text_top - 70*mm)
-    detail_row('Ansprechpartner',project.get('contact','—'), text_top - 82*mm)
+    detail('Angebotsnummer', project.get('offerNo',''),      cy - 37*mm)
+    detail('Datum',          project.get('date',''),          cy - 49*mm)
+    detail('Gültig bis',     project.get('valid',''),         cy - 61*mm)
+    detail('Ansprechpartner',project.get('contact',''),       cy - 73*mm)
+    detail('E-Mail',         project.get('customerEmail',''), cy - 85*mm)
 
-    # Roter Balken unten
-    c.setFillColor(RED)
-    c.rect(0, 0, W, 12*mm, fill=1, stroke=0)
-
-    # Roter Seitenstreifen links
-    c.setFillColor(RED)
-    c.rect(0, 12*mm, 5*mm, H - 28*mm - 12*mm, fill=1, stroke=0)
+    # ── Footer ────────────────────────────────────────────────────────────────
+    c.setStrokeColor(LINE)
+    c.setLineWidth(0.5)
+    c.line(18*mm, 28*mm, W - 15*mm, 28*mm)
+    c.setFillColor(MUTED)
+    c.setFont('Helvetica', 7.5)
+    footer = f"{provider.get('company','')}  ·  {provider.get('address','')}  ·  {provider.get('email','')}  ·  {provider.get('phone','')}"
+    c.drawString(18*mm, 20*mm, footer)
 
     c.showPage()
 

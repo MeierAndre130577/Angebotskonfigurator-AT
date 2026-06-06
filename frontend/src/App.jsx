@@ -12,12 +12,12 @@ const NAV = [
     { to: '/messe',    icon: '🎯', label: 'Schnellerfassung' },
   ]},
   { group: 'Angebot', items: [
-    { to: '/angebote', icon: '📋', label: 'Angebote' },
-    { to: '/projekt',  icon: '👤', label: 'Kundendaten' },
+    { to: '/projekt',       icon: '👤', label: 'Kundendaten' },
     { to: '/konfiguration', icon: '🛠️', label: 'Konfiguration' },
-    { to: '/vorschau', icon: '👁️', label: 'PDF-Vorschau' },
+    { to: '/vorschau',      icon: '👁️', label: 'PDF-Vorschau' },
   ]},
   { group: 'Stammdaten', items: [
+    { to: '/angebote',   icon: '📋', label: 'Angebote' },
     { to: '/bibliothek', icon: '📚', label: 'Optionsbibliothek' },
   ]},
 ]
