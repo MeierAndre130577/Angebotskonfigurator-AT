@@ -68,7 +68,19 @@ export default function Messe() {
       await offersApi.upsert({
         offer_no,
         project: { ...contact, project: projectName || 'Messegespräch', offerNo: offer_no },
-        offer_items: items.map(o => ({ option_id: o.id, name: o.name, price: o.price, recurring: o.recurring, qty: 1 })),
+        offer_items: items.map(o => ({
+          option_id:    o.id,
+          name:         o.name,
+          cluster:      o.cluster      || '',
+          short_text:   o.short_text   || '',
+          long_text:    o.long_text    || '',
+          price:        o.price        || 0,
+          recurring:    o.recurring    || false,
+          image_path:   o.image_path   || '',
+          display_type: o.display_type || '',
+          documents:    o.documents    || [],
+          qty:          1,
+        })),
         status: 'draft',
       })
       setDone(true)

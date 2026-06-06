@@ -79,10 +79,26 @@ export default function Vorschau() {
     if (!offerData) return
     setGenerating(true); setPdfUrl('')
     try {
+      // Aktuelle Optionen laden um Dokumente zu ergänzen
+      let offerItems = offerData.offer_items || []
+      try {
+        const optRes  = await fetch(`${BASE}/options`)
+        const optData = await optRes.json()
+        // Dokumente aus aktueller Bibliothek in offer_items ergänzen
+        offerItems = offerItems.map(item => {
+          const currentOpt = optData.find(o => o.id === item.option_id || o.name === item.name)
+          return currentOpt
+            ? { ...item, documents: currentOpt.documents || item.documents || [] }
+            : item
+        })
+      } catch(e) {
+        console.warn('Optionen nicht ladbar:', e)
+      }
+
       const result = await pdf.generate({
-        project:      offerData.project     || {},
+        project:      offerData.project || {},
         provider:     DEFAULT_PROVIDER,
-        offer:        offerData.offer_items || [],
+        offer:        offerItems,
         attachments:  [],
         legal_notice: '',
         pages: [], clusters: [],
