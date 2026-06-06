@@ -265,3 +265,26 @@ def get_offer_by_number(offer_no: str):
             except Exception:
                 d[key] = {} if key in ("project", "purchase") else []
     return d
+
+def list_offers():
+    if USE_SUPABASE:
+        return _sb.table("offers").select("*").order("created_at", desc=True).execute().data
+    conn = _get_conn()
+    rows = conn.execute("SELECT * FROM offers ORDER BY created_at DESC").fetchall()
+    conn.close()
+    result = []
+    for row in rows:
+        d = dict(row)
+        for key in ("project", "purchase", "pages", "offer_items"):
+            if isinstance(d.get(key), str):
+                try: d[key] = json.loads(d[key])
+                except: d[key] = {} if key in ("project", "purchase") else []
+        result.append(d)
+    return result
+
+def delete_offer(offer_id: str):
+    if USE_SUPABASE:
+        return _sb.table("offers").delete().eq("id", offer_id).execute()
+    conn = _get_conn()
+    conn.execute("DELETE FROM offers WHERE id=?", (offer_id,))
+    conn.commit(); conn.close()
