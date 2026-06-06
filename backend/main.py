@@ -153,6 +153,12 @@ class OfferIn(BaseModel):
     pages: Optional[list] = []
     offer_items: Optional[list] = []
     status: Optional[str] = "draft"
+    zip_url: Optional[str] = ""
+    zip_filename: Optional[str] = ""
+    zip_downloads: Optional[int] = 0
+    zip_expires_at: Optional[str] = None
+    pdf_url: Optional[str] = ""
+    qr_url: Optional[str] = ""
 
 
 @app.get("/api/offers")
@@ -162,6 +168,33 @@ def list_offers():
 @app.delete("/api/offers/{offer_id}")
 def delete_offer(offer_id: str):
     db.delete_offer(offer_id)
+    return {"ok": True}
+
+@app.post("/api/offers/{offer_id}/download")
+def track_download(offer_id: str):
+    """Erhöht Download-Zähler und gibt ZIP-URL zurück."""
+    db.increment_zip_downloads(offer_id)
+    rows = db.list_offers()
+    offer = next((o for o in rows if o["id"] == offer_id), None)
+    if not offer:
+        raise HTTPException(status_code=404, detail="Angebot nicht gefunden")
+    return {"zip_url": offer.get("zip_url", ""), "zip_downloads": offer.get("zip_downloads", 0)}
+
+@app.delete("/api/offers/{offer_id}/zip")
+async def delete_offer_zip(offer_id: str):
+    """Löscht das ZIP eines Angebots aus Supabase Storage."""
+    import downloads as _dl
+    rows = db.list_offers()
+    offer = next((o for o in rows if o["id"] == offer_id), None)
+    if offer and offer.get("zip_filename"):
+        _dl.delete_zip(offer["zip_filename"])
+        db.upsert_offer({**offer, "zip_url": "", "zip_filename": "", "status": "archived"})
+    return {"ok": True}
+
+@app.post("/api/offers/archive-expired")
+def archive_expired():
+    """Archiviert Angebote mit abgelaufenem ZIP."""
+    db.archive_expired_offers()
     return {"ok": True}
 
 @app.post("/api/offers/number")
@@ -177,6 +210,118 @@ def get_offer(offer_no: str):
     result = db.get_offer_by_number(offer_no)
     if not result:
         raise HTTPException(status_code=404, detail="Angebot nicht gefunden")
+    return result
+
+@app.post("/api/offers/generate")
+async def generate_full_offer(data: dict):
+    """
+    Vollständiger Angebots-Workflow:
+    1. Angebotsnummer generieren
+    2. PDF erstellen (mit QR-Code)
+    3. ZIP mit Anhängen erstellen
+    4. Angebot in DB speichern
+    """
+    import downloads as _dl
+
+    project     = data.get("project", {})
+    provider    = data.get("provider", {})
+    offer_items = data.get("offer_items", [])
+    attachments = data.get("attachments", [])
+
+    # 1. Angebotsnummer
+    offer_no = db.generate_offer_number()
+    project["offerNo"] = offer_no
+
+    # 2. Anlagen sammeln
+    s = db.get_settings()
+    all_attachments = []
+    seen_titles = set()
+    for doc in (s.get("mandatory_documents") or []):
+        title = doc.get("title","").strip()
+        if title and title not in seen_titles:
+            seen_titles.add(title); all_attachments.append({**doc, "_mandatory": True})
+    for item in offer_items:
+        for doc in (item.get("documents") or []):
+            title = doc.get("title","").strip()
+            if title and title not in seen_titles:
+                seen_titles.add(title); all_attachments.append({**doc, "_from_option": item.get("name","")})
+
+    # 3. PDF generieren
+    pdf_result = pdf.generate_design_pdf({
+        "project": project, "provider": provider,
+        "offer": offer_items, "attachments": attachments,
+        "legal_notice": "", "pages": [], "clusters": [],
+    })
+
+    pdf_download_url = pdf_result.get("download_url", "")
+    pdf_filename     = pdf_download_url.split("/")[-1] if pdf_download_url else ""
+
+    # PDF Bytes lesen für ZIP
+    pdf_bytes = None
+    if pdf_filename:
+        pdf_path = pdf.get_pdf_path(pdf_filename)
+        if pdf_path:
+            with open(pdf_path, "rb") as f:
+                pdf_bytes = f.read()
+
+    # 4. ZIP erstellen
+    pkg = {}
+    if all_attachments or pdf_bytes:
+        pkg = _dl.create_download_package(
+            offer_no        = offer_no,
+            all_attachments = all_attachments,
+            pdf_bytes       = pdf_bytes,
+            pdf_filename    = f"Angebot_{offer_no}.pdf",
+        )
+
+    # QR-Code URL speichern (als Data-URL für direkten Zugriff)
+    qr_url = pkg.get("zip_url", "")
+
+    # 5. Angebot speichern
+    import uuid as _uuid
+    offer_data = {
+        "id":            str(_uuid.uuid4()),
+        "offer_no":      offer_no,
+        "project":       project,
+        "offer_items":   offer_items,
+        "status":        "active",
+        "zip_url":       pkg.get("zip_url", ""),
+        "zip_filename":  pkg.get("zip_filename", ""),
+        "zip_downloads": 0,
+        "zip_expires_at":pkg.get("expires_at"),
+        "pdf_url":       pdf_download_url,
+        "qr_url":        qr_url,
+    }
+    db.upsert_offer(offer_data)
+
+    # Kunde speichern
+    cust = {
+        "id":      str(_uuid.uuid4()),
+        "company": project.get("customer",""),
+        "contact": project.get("contact",""),
+        "email":   project.get("customerEmail",""),
+        "billing": "", "delivery": "",
+    }
+    if cust["company"]:
+        db.upsert_customer(cust)
+
+    return {
+        "ok":          True,
+        "offer_no":    offer_no,
+        "pdf_url":     pdf_download_url,
+        "zip_url":     pkg.get("zip_url",""),
+        "zip_filename":pkg.get("zip_filename",""),
+        "expires_at":  pkg.get("expires_at",""),
+        "qr_url":      qr_url,
+    }
+
+@app.post("/api/pdf/preview")
+async def preview_pdf(data: dict):
+    """Vorschau-PDF ohne Angebotsnummer – nichts wird gespeichert."""
+    data_copy = dict(data)
+    if "project" in data_copy:
+        data_copy["project"] = {**data_copy["project"], "offerNo": "VORSCHAU"}
+    result = pdf.generate_design_pdf(data_copy)
     return result
 
 # ── PDF ───────────────────────────────────────────────────────────────────────

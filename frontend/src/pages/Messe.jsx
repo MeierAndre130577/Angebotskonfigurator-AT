@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+
+const BASE = (import.meta.env.VITE_API_URL || '') + '/api'
 import { customers as customersApi, options as optionsApi, offers as offersApi } from '../lib/api'
 
 const STEPS = ['Kontakt', 'Optionen', 'Fertigstellen']
@@ -18,7 +20,9 @@ export default function Messe() {
   const [offerNo, setOfferNo]         = useState('')
   const [busy, setBusy]               = useState(false)
   const [done, setDone]               = useState(false)
-  const navigate                        = useNavigate()
+  const [result, setResult]           = useState(null)  // Angebotsergebnis
+  const [previewing, setPreviewing]   = useState(false)
+  const navigate                      = useNavigate()
   const [error, setError]             = useState('')
   const [allCustomers, setAllCustomers] = useState([])
 
@@ -58,34 +62,51 @@ export default function Messe() {
     setError(''); return true
   }
 
+  async function previewPdf() {
+    setPreviewing(true)
+    try {
+      const proj    = { customer: contact.company, contact: contact.contactName,
+                        customerEmail: contact.email, project: projectName || 'Vorschau', date: '' }
+      const items   = allOptions.filter(o => selectedIds.has(o.id))
+      const res     = await fetch(`${BASE}/pdf/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project: proj, offer: items, provider: {}, attachments: [] })
+      })
+      const data = await res.json()
+      if (data.download_url) {
+        window.open((import.meta.env.VITE_API_URL || '') + data.download_url, '_blank')
+      }
+    } catch(e) {
+      console.warn('Vorschau fehlgeschlagen:', e)
+    } finally {
+      setPreviewing(false)
+    }
+  }
+
   async function finalize() {
     if (busy) return
     setBusy(true); setError('')
     try {
-      const { offer_no } = await offersApi.generateNumber()
-      setOfferNo(offer_no)
+      import.meta.env.VITE_API_URL  // ensure BASE is defined
       const items = allOptions.filter(o => selectedIds.has(o.id))
-      await offersApi.upsert({
-        offer_no,
-        project: { ...contact, project: projectName || 'Messegespräch', offerNo: offer_no },
-        offer_items: items.map(o => ({
-          option_id:    o.id,
-          name:         o.name,
-          cluster:      o.cluster      || '',
-          short_text:   o.short_text   || '',
-          long_text:    o.long_text    || '',
-          price:        o.price        || 0,
-          recurring:    o.recurring    || false,
-          image_path:   o.image_path   || '',
-          display_type: o.display_type || '',
-          documents:    o.documents    || [],
-          qty:          1,
-        })),
-        status: 'draft',
+      const proj  = {
+        customer:      contact.company,
+        contact:       contact.contactName,
+        customerEmail: contact.email,
+        project:       projectName || 'Messegespräch',
+        date:          new Date().toLocaleDateString('de-AT'),
+        valid:         new Date(Date.now() + 28*864e5).toLocaleDateString('de-AT'),
+      }
+      const res  = await fetch(`${BASE}/offers/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project: proj, offer_items: items, provider: {}, attachments: [] })
       })
+      const data = await res.json()
+      if (!data.ok) throw new Error('Generierung fehlgeschlagen')
+      setResult(data)
       setDone(true)
-      // Direkt zur PDF-Vorschau
-      setTimeout(() => navigate(`/vorschau?no=${encodeURIComponent(offerNo)}`), 800)
     } catch (e) {
       setError('Fehler: ' + e.message)
     } finally {
@@ -113,13 +134,39 @@ export default function Messe() {
 
   // ── Done Screen ───────────────────────────────────────────────────────────
   if (done) return (
-    <div style={{ maxWidth: 560, margin: '60px auto', textAlign: 'center' }}>
-      <div style={{ fontSize: 64, marginBottom: 16 }}>✅</div>
-      <h1 style={{ fontSize: 28, fontWeight: 850, marginBottom: 8 }}>Angebot erstellt!</h1>
-      <p className="muted" style={{ marginBottom: 8 }}><b>{contact.company}</b> · {contact.email}</p>
-      <p style={{ marginBottom: 32 }}>
-        Angebotsnummer: <b style={{ color: 'var(--red)', fontFamily: 'var(--font-mono)' }}>{offerNo}</b>
-      </p>
+    <div style={{ maxWidth: 600, margin: '40px auto' }}>
+      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <div style={{ fontSize: 64, marginBottom: 12 }}>✅</div>
+        <h1 style={{ fontSize: 26, fontWeight: 850, marginBottom: 6 }}>Angebot generiert!</h1>
+        <p className="muted"><b>{contact.company}</b> · {contact.email}</p>
+        <p style={{ marginTop: 6 }}>
+          <b style={{ color: 'var(--red)', fontFamily: 'var(--font-mono)', fontSize: 14 }}>{result?.offer_no}</b>
+        </p>
+      </div>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-title">Aktionen</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {result?.pdf_url && (
+            <a href={(import.meta.env.VITE_API_URL || '') + result.pdf_url}
+              target="_blank" rel="noopener noreferrer"
+              className="btn btn-red btn-lg" style={{ textDecoration: 'none', justifyContent: 'center' }}>
+              📄 PDF öffnen
+            </a>
+          )}
+          {result?.zip_url && (
+            <button className="btn btn-lg" style={{ justifyContent: 'center' }}
+              onClick={() => { navigator.clipboard.writeText(result.zip_url); alert('Link kopiert!') }}>
+              📋 Download-Link kopieren
+            </button>
+          )}
+          {result?.zip_url && (
+            <a href={result.zip_url} target="_blank" rel="noopener noreferrer"
+              className="btn btn-lg" style={{ textDecoration: 'none', justifyContent: 'center' }}>
+              📦 ZIP herunterladen
+            </a>
+          )}
+        </div>
+      </div>
       <button className="btn btn-red btn-lg" style={{ marginBottom: 12 }} onClick={reset}>
         ＋ Neues Messegespräch
       </button>

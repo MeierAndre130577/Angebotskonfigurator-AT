@@ -219,14 +219,20 @@ def upsert_offer(data: dict):
     data["updated_at"] = datetime.datetime.utcnow().isoformat()
     if USE_SUPABASE:
         payload = {
-            "id": data["id"],
-            "offer_no": data.get("offer_no"),
-            "project": data.get("project"),
-            "purchase": data.get("purchase"),
-            "pages": data.get("pages"),
-            "offer_items": data.get("offer_items"),
-            "status": data.get("status", "draft"),
-            "updated_at": data["updated_at"],
+            "id":            data["id"],
+            "offer_no":      data.get("offer_no"),
+            "project":       data.get("project"),
+            "purchase":      data.get("purchase"),
+            "pages":         data.get("pages"),
+            "offer_items":   data.get("offer_items"),
+            "status":        data.get("status", "draft"),
+            "zip_url":       data.get("zip_url", ""),
+            "zip_filename":  data.get("zip_filename", ""),
+            "zip_downloads": data.get("zip_downloads", 0),
+            "zip_expires_at":data.get("zip_expires_at"),
+            "pdf_url":       data.get("pdf_url", ""),
+            "qr_url":        data.get("qr_url", ""),
+            "updated_at":    data["updated_at"],
         }
         return _sb.table("offers").upsert(payload).execute().data
     conn = _get_conn()
@@ -265,6 +271,37 @@ def get_offer_by_number(offer_no: str):
             except Exception:
                 d[key] = {} if key in ("project", "purchase") else []
     return d
+
+def increment_zip_downloads(offer_id: str):
+    """Erhöht den Download-Zähler um 1."""
+    if USE_SUPABASE:
+        # Aktuellen Wert lesen und erhöhen
+        rows = _sb.table("offers").select("zip_downloads").eq("id", offer_id).execute().data
+        current = rows[0]["zip_downloads"] if rows else 0
+        _sb.table("offers").update({"zip_downloads": current + 1}).eq("id", offer_id).execute()
+    else:
+        conn = _get_conn()
+        conn.execute("UPDATE offers SET zip_downloads = zip_downloads + 1 WHERE id=?", (offer_id,))
+        conn.commit(); conn.close()
+
+def archive_expired_offers():
+    """Setzt Angebote mit abgelaufenem ZIP auf status='archived'."""
+    now = datetime.datetime.utcnow().isoformat()
+    if USE_SUPABASE:
+        # Alle aktiven Angebote mit abgelaufenem ZIP
+        rows = _sb.table("offers").select("id,zip_expires_at").eq("status", "active").execute().data
+        for row in rows:
+            exp = row.get("zip_expires_at")
+            if exp and exp < now:
+                _sb.table("offers").update({
+                    "status": "archived", "zip_url": "", "zip_filename": ""
+                }).eq("id", row["id"]).execute()
+    else:
+        conn = _get_conn()
+        conn.execute(
+            """UPDATE offers SET status='archived', zip_url='', zip_filename=''
+               WHERE status='active' AND zip_expires_at < ?""", (now,))
+        conn.commit(); conn.close()
 
 def list_offers():
     if USE_SUPABASE:
