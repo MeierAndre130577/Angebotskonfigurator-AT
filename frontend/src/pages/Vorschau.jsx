@@ -320,14 +320,12 @@ Mit freundlichen Grüßen, {{anbieter}}`
                   </button>
                 )}
 
-                {/* E-Mail – direkter mailto Link funktioniert auf allen Geräten */}
-                <a
-                  href={buildMailtoLink(pdfUrl)}
-                  className="btn btn-lg"
-                  style={{ justifyContent: 'center', background: 'var(--dark)', color: 'white',
-                    border: 'none', textDecoration: 'none' }}>
+                {/* E-Mail */}
+                <button className="btn btn-lg"
+                  style={{ justifyContent: 'center', background: 'var(--dark)', color: 'white', border: 'none' }}
+                  onClick={() => { window.location.href = buildMailtoLink(pdfUrl) }}>
                   ✉️ E-Mail schreiben
-                </a>
+                </button>
 
               </div>
             )}
