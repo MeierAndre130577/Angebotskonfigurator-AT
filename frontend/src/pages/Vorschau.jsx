@@ -77,46 +77,25 @@ export default function Vorschau() {
     if (!offerData) return
     setTranslating(true); setPdfUrl(''); setError('')
     try {
-      // KI-Übersetzung via Anthropic API
       const items = offerData.offer_items || []
-      const textsToTranslate = items.map(i => ({
-        name: i.name || '',
-        short_text: i.short_text || '',
-        long_text: i.long_text || '',
-      }))
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      // Übersetzung über Backend-Proxy (vermeidet CORS)
+      const BASE = (import.meta.env.VITE_API_URL || '') + '/api'
+      const transRes = await fetch(`${BASE}/translate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4000,
-          messages: [{
-            role: 'user',
-            content: `Translate the following JSON array from German to English. 
-Translate only the values of "name", "short_text", and "long_text" fields.
-Keep all other fields exactly as they are.
-Return ONLY valid JSON, no markdown, no explanation.
-
-${JSON.stringify(textsToTranslate)}`
-          }]
-        })
+        body: JSON.stringify({ items, target_language: 'English' })
       })
-      const aiData = await response.json()
-      const translated = JSON.parse(aiData.content[0].text)
+      const transData = await transRes.json()
+      if (!transRes.ok) throw new Error(transData.detail || 'Übersetzung fehlgeschlagen')
 
-      const translatedItems = items.map((item, i) => ({
-        ...item,
-        name:       translated[i]?.name       || item.name,
-        short_text: translated[i]?.short_text || item.short_text,
-        long_text:  translated[i]?.long_text  || item.long_text,
-      }))
+      const translatedItems = transData.items
 
       // Englisches PDF generieren
       const payload = {
         project: {
           ...(offerData.project || DEFAULT_PROJECT),
-          project: offerData.project?.project + ' (EN)' || 'Offer',
+          project: (offerData.project?.project || 'Offer') + ' (EN)',
         },
         provider: DEFAULT_PROVIDER,
         offer: translatedItems,

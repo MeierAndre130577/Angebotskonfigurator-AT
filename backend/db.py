@@ -192,17 +192,12 @@ def delete_attachment(attachment_id: str):
 # ── Angebote ──────────────────────────────────────────────────────────────────
 
 def generate_offer_number():
-    year = _today_year()
-    if USE_SUPABASE:
-        # Supabase: atomarer Zähler via RPC (SQL-Funktion, siehe Schema)
-        result = _sb.rpc("increment_offer_counter").execute()
-        n = result.data
-        return f"ANG-{year}-{n:04d}"
-    conn = _get_conn()
-    conn.execute("UPDATE offer_counter SET value = value + 1 WHERE id = 1")
-    n = conn.execute("SELECT value FROM offer_counter WHERE id=1").fetchone()[0]
-    conn.commit(); conn.close()
-    return f"ANG-{year}-{n:04d}"
+    import random, string, datetime
+    now   = datetime.datetime.now()
+    year  = now.strftime('%Y')
+    month = now.strftime('%m')
+    rnd   = ''.join(random.choices(string.digits, k=6))
+    return f"ANG-{year}-{month}-{rnd}"
 
 def upsert_offer(data: dict):
     if not data.get("id"):

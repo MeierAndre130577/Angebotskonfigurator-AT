@@ -184,6 +184,73 @@ class PdfIn(BaseModel):
 def generate_pdf(data: PdfIn):
     return pdf.generate_design_pdf(data.model_dump())
 
+
+# ── KI-Übersetzung Endpoint ───────────────────────────────────────────────────
+
+class TranslateIn(BaseModel):
+    items: list
+    target_language: Optional[str] = "English"
+
+@app.post("/api/translate")
+async def translate_offer(data: TranslateIn):
+    """Übersetzt Angebots-Texte via Claude API"""
+    import json as _json
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY nicht konfiguriert")
+
+    texts = [{"name": i.get("name",""), "short_text": i.get("short_text",""), "long_text": i.get("long_text","")}
+             for i in data.items]
+
+    prompt = f"""Translate the following JSON array from German to {data.target_language}.
+Translate only the values of "name", "short_text", and "long_text" fields.
+Keep all other fields exactly as they are.
+Return ONLY valid JSON array, no markdown, no explanation.
+
+{_json.dumps(texts, ensure_ascii=False)}"""
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        res = await client.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model": "claude-sonnet-4-20250514",
+                "max_tokens": 4000,
+                "messages": [{"role": "user", "content": prompt}]
+            }
+        )
+
+    if res.status_code != 200:
+        raise HTTPException(status_code=500, detail=f"Claude API Fehler: {res.text}")
+
+    result = res.json()
+    text   = result["content"][0]["text"]
+
+    # JSON aus Antwort extrahieren
+    import re
+    match = re.search(r'\[.*\]', text, re.DOTALL)
+    if not match:
+        raise HTTPException(status_code=500, detail="Ungültige Antwort von Claude")
+
+    translated = _json.loads(match.group())
+
+    # Mit Originalitems zusammenführen
+    merged = []
+    for i, item in enumerate(data.items):
+        merged.append({
+            **item,
+            "name":       translated[i].get("name",       item.get("name","")),
+            "short_text": translated[i].get("short_text", item.get("short_text","")),
+            "long_text":  translated[i].get("long_text",  item.get("long_text","")),
+        })
+
+    return {"ok": True, "items": merged}
+
 from fastapi.responses import FileResponse
 
 @app.get("/api/pdf/download/{filename}")

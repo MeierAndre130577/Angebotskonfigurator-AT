@@ -1,9 +1,9 @@
 """
-PDF-Generierung – Angebotskonfigurator Sielaff Austria v3
-Deckblatt: Geteiltes Layout – linke Hälfte rot mit Logo, rechte Hälfte Foto
+PDF-Generierung – Angebotskonfigurator Sielaff Austria v4
+Deckblatt: Links weiß mit Logo + Infos, rechts Foto (konfigurierbar)
 """
 
-import os, uuid, io, base64, httpx
+import os, uuid, io, httpx
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import mm
@@ -22,15 +22,13 @@ WHITE = colors.white
 BG    = colors.HexColor('#f8f8f8')
 
 W, H  = A4
-MARGIN_L = 14*mm
-MARGIN_R = 10*mm
-MARGIN_T = 22*mm
+MARGIN_L = 20*mm
+MARGIN_R = 12*mm
+MARGIN_T = 24*mm
 MARGIN_B = 20*mm
 
 EXPORT_DIR = os.path.join(os.path.dirname(__file__), 'exports')
 os.makedirs(EXPORT_DIR, exist_ok=True)
-
-# Logo-Pfad (wird beim Upload ins Backend-Verzeichnis gelegt)
 LOGO_PATH = os.path.join(os.path.dirname(__file__), 'Logo_Sielaff.png')
 
 def money(n):
@@ -50,131 +48,154 @@ def fetch_image(url: str) -> io.BytesIO | None:
         pass
     return None
 
-# ── Deckblatt – Geteiltes Layout ──────────────────────────────────────────────
+# ── Deckblatt ─────────────────────────────────────────────────────────────────
 
 def draw_cover(c: canvas.Canvas, data: dict):
-    project  = data.get('project') or {}
+    project  = data.get('project')  or {}
     provider = data.get('provider') or {}
-    offer    = data.get('offer') or []
+    offer    = data.get('offer')    or []
 
     half = W / 2
 
-    # ── Linke Hälfte: Rot ────────────────────────────────────────────────────
-    c.setFillColor(RED)
-    c.rect(0, 0, half, H, fill=1, stroke=0)
-
-    # Logo oben links
-    if os.path.exists(LOGO_PATH):
-        try:
-            # Logo freistellen: weißes Rechteck hinter Logo (da Logo roten BG hat)
-            logo_size = 38*mm
-            logo_x = half/2 - logo_size/2
-            logo_y = H - 55*mm
-            c.drawImage(LOGO_PATH, logo_x, logo_y, width=logo_size, height=logo_size,
-                       preserveAspectRatio=True, mask='auto')
-        except Exception:
-            # Fallback: Text
-            c.setFillColor(WHITE)
-            c.setFont('Helvetica-Bold', 22)
-            c.drawCentredString(half/2, H - 40*mm, 'Sielaff')
-
-    # Weißer Trennstrich zwischen Logo und Text
-    c.setFillColor(WHITE)
-    c.setFillAlpha(0.3)
-    c.rect(half/2 - 20*mm, H - 62*mm, 40*mm, 0.5*mm, fill=1, stroke=0)
-    c.setFillAlpha(1.0)
-
-    # Firmenname unter Logo
-    c.setFillColor(WHITE)
-    c.setFont('Helvetica-Bold', 11)
-    c.drawCentredString(half/2, H - 72*mm, provider.get('company', 'Sielaff Austria GmbH'))
-
-    # Angebotstitel groß in der Mitte links
-    c.setFont('Helvetica-Bold', 9)
-    c.setFillColor(colors.HexColor('#ffcccc'))
-    c.drawCentredString(half/2, H/2 + 30*mm, 'ANGEBOT')
-
-    # Kundenname groß
-    c.setFillColor(WHITE)
-    c.setFont('Helvetica-Bold', 18)
-    customer = project.get('customer', '')
-    # Langer Name umbrechen
-    if len(customer) > 18:
-        c.setFont('Helvetica-Bold', 14)
-    c.drawCentredString(half/2, H/2 + 14*mm, customer)
-
-    # Projektname
-    c.setFont('Helvetica', 11)
-    c.setFillColor(colors.HexColor('#ffcccc'))
-    proj_name = project.get('project', '')
-    c.drawCentredString(half/2, H/2, proj_name)
-
-    # Trennlinie
-    c.setFillColor(WHITE)
-    c.setFillAlpha(0.3)
-    c.rect(half/2 - 25*mm, H/2 - 8*mm, 50*mm, 0.5*mm, fill=1, stroke=0)
-    c.setFillAlpha(1.0)
-
-    # Angebotsnummer + Datum unten links
-    c.setFillColor(WHITE)
-    c.setFont('Helvetica-Bold', 8)
-    c.drawCentredString(half/2, 40*mm, f"Angebot {project.get('offerNo','')}")
-    c.setFont('Helvetica', 8)
-    c.setFillColor(colors.HexColor('#ffcccc'))
-    c.drawCentredString(half/2, 33*mm, f"Datum: {project.get('date','')}  ·  Gültig bis: {project.get('valid','')}")
-
-    # Kontakt ganz unten
-    c.setFont('Helvetica', 7)
-    c.drawCentredString(half/2, 20*mm, provider.get('address',''))
-    c.drawCentredString(half/2, 14*mm, f"{provider.get('email','')}  ·  {provider.get('phone','')}")
-
     # ── Rechte Hälfte: Foto ───────────────────────────────────────────────────
-    # Foto des ersten Automaten mit Bild
-    cover_img = None
-    for item in offer:
-        img_data = fetch_image(item.get('image_path',''))
-        if img_data:
-            cover_img = img_data
-            break
+    # cover_image_url kann in project['coverImage'] gesetzt werden
+    cover_url = project.get('coverImage', '')
+
+    # Fallback: erstes Optionsbild
+    if not cover_url:
+        for item in offer:
+            if item.get('image_path'):
+                cover_url = item['image_path']
+                break
+
+    cover_img = fetch_image(cover_url)
 
     if cover_img:
         try:
             c.drawImage(cover_img, half, 0, width=half, height=H,
                        preserveAspectRatio=False)
-            # Leichter dunkler Overlay für Eleganz
-            c.setFillColor(DARK)
-            c.setFillAlpha(0.15)
-            c.rect(half, 0, half, H, fill=1, stroke=0)
-            c.setFillAlpha(1.0)
         except Exception:
             cover_img = None
 
     if not cover_img:
-        # Fallback: dunkelgrauer Hintergrund mit Muster
-        c.setFillColor(colors.HexColor('#2d2d2d'))
+        # Fallback: Roter Hintergrund rechts
+        c.setFillColor(RED)
         c.rect(half, 0, half, H, fill=1, stroke=0)
-        # Dezentes Muster
-        c.setFillColor(colors.HexColor('#3a3a3a'))
-        for y in range(0, int(H), 40):
-            c.rect(half, y, half, 20, fill=1, stroke=0)
-        # Hinweistext
-        c.setFillColor(MUTED)
-        c.setFont('Helvetica', 9)
-        c.drawCentredString(half + half/2, H/2, 'Produktfoto')
+        c.setFillColor(WHITE)
+        c.setFont('Helvetica', 10)
+        c.drawCentredString(half + half/2, H/2, 'Deckblatt-Foto wird')
+        c.drawCentredString(half + half/2, H/2 - 12, 'in der Konfiguration festgelegt')
 
-    # ── Vertikale Trennlinie ──────────────────────────────────────────────────
-    c.setStrokeColor(WHITE)
-    c.setLineWidth(2)
-    c.setStrokeAlpha(0.3)
-    c.line(half, 0, half, H)
-    c.setStrokeAlpha(1.0)
+    # Dünner roter Streifen als Trenner
+    c.setFillColor(RED)
+    c.rect(half - 3, 0, 6, H, fill=1, stroke=0)
+
+    # ── Linke Hälfte: Weiß ────────────────────────────────────────────────────
+    c.setFillColor(WHITE)
+    c.rect(0, 0, half - 3, H, fill=1, stroke=0)
+
+    # Roter Balken oben links
+    c.setFillColor(RED)
+    c.rect(0, H - 18*mm, half - 3, 18*mm, fill=1, stroke=0)
+
+    # Logo im roten Balken oben
+    if os.path.exists(LOGO_PATH):
+        try:
+            logo_h = 12*mm
+            logo_w = 12*mm
+            c.drawImage(LOGO_PATH, 8*mm, H - 16*mm,
+                       width=logo_w, height=logo_h,
+                       preserveAspectRatio=True, mask='auto')
+        except Exception:
+            pass
+
+    # Firmenname im roten Balken
+    c.setFillColor(WHITE)
+    c.setFont('Helvetica-Bold', 9)
+    c.drawString(24*mm, H - 10*mm, provider.get('company', 'Sielaff Austria GmbH'))
+
+    # Roter vertikaler Akzentstreifen links
+    c.setFillColor(RED)
+    c.rect(0, 0, 5*mm, H - 18*mm, fill=1, stroke=0)
+
+    # ── Hauptinhalt links ─────────────────────────────────────────────────────
+    content_x = 12*mm
+    content_w = half - 20*mm
+
+    # "ANGEBOT" Label
+    c.setFillColor(RED)
+    c.setFont('Helvetica-Bold', 8)
+    c.drawString(content_x, H/2 + 40*mm, 'ANGEBOT')
+
+    # Roter Unterstrich
+    c.rect(content_x, H/2 + 37*mm, 20*mm, 1*mm, fill=1, stroke=0)
+
+    # Kundenname groß
+    c.setFillColor(DARK)
+    c.setFont('Helvetica-Bold', 20)
+    customer = project.get('customer', '')
+    if len(customer) > 20:
+        c.setFont('Helvetica-Bold', 15)
+    c.drawString(content_x, H/2 + 24*mm, customer)
+
+    # Projektname
+    c.setFont('Helvetica', 13)
+    c.setFillColor(MUTED)
+    c.drawString(content_x, H/2 + 12*mm, project.get('project', ''))
+
+    # Trennlinie
+    c.setStrokeColor(LINE)
+    c.setLineWidth(0.5)
+    c.line(content_x, H/2 + 7*mm, half - 10*mm, H/2 + 7*mm)
+
+    # Angebotsdaten
+    c.setFillColor(DARK)
+    c.setFont('Helvetica-Bold', 8)
+    c.drawString(content_x, H/2 - 2*mm, 'Angebotsnummer')
+    c.setFont('Helvetica', 8)
+    c.setFillColor(MUTED)
+    c.drawString(content_x, H/2 - 9*mm, project.get('offerNo', ''))
+
+    c.setFillColor(DARK)
+    c.setFont('Helvetica-Bold', 8)
+    c.drawString(content_x, H/2 - 20*mm, 'Datum')
+    c.setFont('Helvetica', 8)
+    c.setFillColor(MUTED)
+    c.drawString(content_x, H/2 - 27*mm, project.get('date', ''))
+
+    c.setFillColor(DARK)
+    c.setFont('Helvetica-Bold', 8)
+    c.drawString(content_x, H/2 - 38*mm, 'Gültig bis')
+    c.setFont('Helvetica', 8)
+    c.setFillColor(MUTED)
+    c.drawString(content_x, H/2 - 45*mm, project.get('valid', ''))
+
+    # Kontaktdaten unten
+    c.setStrokeColor(LINE)
+    c.line(content_x, 35*mm, half - 10*mm, 35*mm)
+
+    c.setFillColor(DARK)
+    c.setFont('Helvetica-Bold', 8)
+    c.drawString(content_x, 30*mm, project.get('contact', ''))
+    c.setFont('Helvetica', 7.5)
+    c.setFillColor(MUTED)
+    c.drawString(content_x, 23*mm, project.get('customerEmail', ''))
+
+    # Adresse Anbieter ganz unten
+    c.setFont('Helvetica', 7)
+    c.drawString(content_x, 12*mm, provider.get('address', ''))
+    c.drawString(content_x, 7*mm, f"{provider.get('email','')}  ·  {provider.get('phone','')}")
 
     c.showPage()
 
 
-# ── Kopf- und Fußzeile Canvas ─────────────────────────────────────────────────
+# ── Kopf- und Fußzeile ────────────────────────────────────────────────────────
 
 def make_canvas_class(project, provider):
+    # Kopfzeile bündig mit rotem Streifen + 1cm tiefer
+    HEADER_X = MARGIN_L          # bündig mit Überschriften (roter Strich)
+    HEADER_Y = H - MARGIN_T - 5*mm  # 1cm tiefer
+
     class MyCanvas(canvas.Canvas):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
@@ -191,43 +212,52 @@ def make_canvas_class(project, provider):
 
         def _draw_hf(self):
             c = self
+
             # Roter Seitenstreifen links
             c.setFillColor(RED)
             c.rect(0, 0, 5*mm, H, fill=1, stroke=0)
 
-            # Kopfzeile
+            # Kopfzeile – weißer Hintergrund
+            header_h = 16*mm
             c.setFillColor(WHITE)
-            c.rect(5*mm, H-17*mm, W-5*mm, 17*mm, fill=1, stroke=0)
+            c.rect(5*mm, H - header_h, W - 5*mm, header_h, fill=1, stroke=0)
             c.setStrokeColor(LINE)
             c.setLineWidth(0.5)
-            c.line(5*mm, H-17*mm, W, H-17*mm)
+            c.line(HEADER_X, H - header_h, W - MARGIN_R, H - header_h)
 
-            # Logo klein in Kopfzeile
+            # Logo in Kopfzeile
             if os.path.exists(LOGO_PATH):
                 try:
-                    c.drawImage(LOGO_PATH, 7*mm, H-14*mm, width=10*mm, height=10*mm,
+                    c.drawImage(LOGO_PATH, HEADER_X, H - header_h + 2*mm,
+                               width=10*mm, height=10*mm,
                                preserveAspectRatio=True, mask='auto')
                 except Exception:
                     pass
 
+            # Firmenname
             c.setFillColor(DARK)
             c.setFont('Helvetica-Bold', 8)
-            c.drawString(20*mm, H-10*mm, provider.get('company','Sielaff Austria GmbH'))
+            c.drawString(HEADER_X + 12*mm, HEADER_Y, provider.get('company', 'Sielaff Austria GmbH'))
 
-            c.setFont('Helvetica', 7)
+            # Angebotsnummer Mitte
+            c.setFont('Helvetica', 7.5)
             c.setFillColor(MUTED)
-            offer_no = project.get('offerNo','')
-            c.drawCentredString(W/2, H-10*mm, f'Angebot {offer_no}' if offer_no else '')
-            c.drawRightString(W-8*mm, H-10*mm, project.get('date',''))
+            offer_no = project.get('offerNo', '')
+            c.drawCentredString(W/2, HEADER_Y, f'Angebot {offer_no}' if offer_no else '')
+
+            # Datum rechts
+            c.drawRightString(W - MARGIN_R, HEADER_Y, project.get('date', ''))
 
             # Fußzeile
             c.setStrokeColor(LINE)
-            c.line(14*mm, 14*mm, W-8*mm, 14*mm)
-            addr = f"{provider.get('company','')}  ·  {provider.get('address','')}  ·  {provider.get('email','')}  ·  {provider.get('phone','')}"
+            c.setLineWidth(0.5)
+            c.line(MARGIN_L, 14*mm, W - MARGIN_R, 14*mm)
+            addr = (f"{provider.get('company','')}  ·  {provider.get('address','')}  ·  "
+                    f"{provider.get('email','')}  ·  {provider.get('phone','')}")
             c.setFont('Helvetica', 6.5)
             c.setFillColor(MUTED)
-            c.drawString(14*mm, 8*mm, addr)
-            c.drawRightString(W-8*mm, 8*mm, f'Seite {self._page_num + 1}')
+            c.drawString(MARGIN_L, 8*mm, addr)
+            c.drawRightString(W - MARGIN_R, 8*mm, f'Seite {self._page_num + 1}')
 
     return MyCanvas
 
@@ -246,10 +276,10 @@ def get_styles():
         'tocn': ParagraphStyle('tocn', fontName='Helvetica-Bold', fontSize=10, textColor=RED,  spaceAfter=5),
     }
 
-def section_title(story, text, S):
+def section_title(story, text, S, CW):
     story.append(Spacer(1, 3*mm))
     story.append(Paragraph(text, S['h1']))
-    story.append(Table([['']], colWidths=[W - MARGIN_L - MARGIN_R],
+    story.append(Table([['']], colWidths=[CW],
         style=[('LINEBELOW',(0,0),(-1,-1),1.5,RED),
                ('TOPPADDING',(0,0),(-1,-1),0),
                ('BOTTOMPADDING',(0,0),(-1,-1),2)]))
@@ -259,27 +289,23 @@ def section_title(story, text, S):
 # ── Haupt-Generator ───────────────────────────────────────────────────────────
 
 def generate_design_pdf(data: dict) -> dict:
-    project     = data.get('project')     or {}
-    provider    = data.get('provider')    or {}
-    offer       = data.get('offer')       or []
-    attachments = data.get('attachments') or []
+    project     = data.get('project')      or {}
+    provider    = data.get('provider')     or {}
+    offer       = data.get('offer')        or []
+    attachments = data.get('attachments')  or []
     legal       = data.get('legal_notice') or ''
-
-    # Deckblatt-Titel: "Angebot – Kundenname & Projektname"
-    customer  = project.get('customer', '')
-    proj_name = project.get('project', '')
 
     filename = f"Angebot_{project.get('offerNo','ENTWURF')}_{uuid.uuid4().hex[:6]}.pdf"
     filepath = os.path.join(EXPORT_DIR, filename)
 
-    # ── 1. Deckblatt ─────────────────────────────────────────────────────────
+    # ── Deckblatt ─────────────────────────────────────────────────────────────
     cover_buf = io.BytesIO()
     c_cover   = canvas.Canvas(cover_buf, pagesize=A4)
     draw_cover(c_cover, data)
     c_cover.save()
     cover_buf.seek(0)
 
-    # ── 2. Inhalt ─────────────────────────────────────────────────────────────
+    # ── Inhalt ────────────────────────────────────────────────────────────────
     content_buf = io.BytesIO()
     MyCanvas    = make_canvas_class(project, provider)
 
@@ -289,15 +315,14 @@ def generate_design_pdf(data: dict) -> dict:
         topMargin=MARGIN_T,  bottomMargin=MARGIN_B,
     )
 
-    S     = get_styles()
+    S   = get_styles()
+    CW  = W - MARGIN_L - MARGIN_R
     story = []
-    CW    = W - MARGIN_L - MARGIN_R  # Content Width
 
-    # ── Inhaltsverzeichnis ────────────────────────────────────────────────────
-    section_title(story, 'Inhaltsverzeichnis', S)
-    toc = [('1','Angebotsübersicht'),('2','Detailbeschreibungen'),
-           ('3','Preiszusammenfassung'),('4','Anlagen'),('5','Rechtliche Hinweise')]
-    for num, label in toc:
+    # Inhaltsverzeichnis
+    section_title(story, 'Inhaltsverzeichnis', S, CW)
+    for num, label in [('1','Angebotsübersicht'),('2','Detailbeschreibungen'),
+                       ('3','Preiszusammenfassung'),('4','Anlagen'),('5','Rechtliche Hinweise')]:
         t = Table([[Paragraph(f'{num}.', S['tocn']), Paragraph(label, S['toc'])]],
                   colWidths=[10*mm, CW-10*mm])
         t.setStyle(TableStyle([
@@ -308,24 +333,25 @@ def generate_design_pdf(data: dict) -> dict:
         story.append(t)
     story.append(PageBreak())
 
-    # ── Angebotsübersicht ─────────────────────────────────────────────────────
-    section_title(story, '1. Angebotsübersicht', S)
+    # Angebotsübersicht
+    section_title(story, '1. Angebotsübersicht', S, CW)
     story.append(Paragraph(
-        f"Kunde: <b>{customer}</b>  ·  Projekt: <b>{proj_name}</b>  ·  "
-        f"Angebot: <b>{project.get('offerNo','')}</b>  ·  Datum: <b>{project.get('date','')}</b>",
-        S['body']))
+        f"Kunde: <b>{project.get('customer','')}</b>  ·  "
+        f"Projekt: <b>{project.get('project','')}</b>  ·  "
+        f"Angebot: <b>{project.get('offerNo','')}</b>  ·  "
+        f"Datum: <b>{project.get('date','')}</b>", S['body']))
     story.append(Spacer(1, 3*mm))
 
-    hdr = [Paragraph(x, S['muted']) for x in ['#','Option','Cluster','Preis']]
+    hdr  = [Paragraph(x, S['muted']) for x in ['#','Option','Cluster','Preis']]
     rows = [hdr]
     for i, item in enumerate(offer, 1):
         p = item.get('price') or 0
-        price_str = 'inklusive' if p==0 else (money(p)+'/Mo.' if item.get('recurring') else money(p))
+        ps = 'inklusive' if p==0 else (money(p)+'/Mo.' if item.get('recurring') else money(p))
         rows.append([
             Paragraph(str(i), S['muted']),
             Paragraph(item.get('name',''), S['body']),
             Paragraph(item.get('cluster',''), S['muted']),
-            Paragraph(price_str, S['body']),
+            Paragraph(ps, S['body']),
         ])
     t = Table(rows, colWidths=[10*mm, 95*mm, 38*mm, 32*mm])
     t.setStyle(TableStyle([
@@ -341,78 +367,69 @@ def generate_design_pdf(data: dict) -> dict:
     story.append(t)
     story.append(PageBreak())
 
-    # ── Detailseiten ──────────────────────────────────────────────────────────
-    section_title(story, '2. Detailbeschreibungen', S)
-
+    # Detailseiten
+    section_title(story, '2. Detailbeschreibungen', S, CW)
     for i, item in enumerate(offer, 1):
         display = (item.get('display_type') or '').strip()
         name    = item.get('name','')
         short   = item.get('short_text','') or ''
-        long    = item.get('long_text','')  or ''
+        long_t  = item.get('long_text','')  or ''
         p       = item.get('price') or 0
-        price_s = 'inklusive' if p==0 else (money(p)+'/Mo.' if item.get('recurring') else money(p))
+        ps      = 'inklusive' if p==0 else (money(p)+'/Mo.' if item.get('recurring') else money(p))
 
         story.append(Paragraph(f"{i}. {name}", S['h2']))
-
         img_data = fetch_image(item.get('image_path',''))
 
-        # display_type Logik
-        if display == 'Großes Bild + Beschreibung' or display == '':
+        if display in ('Großes Bild + Beschreibung', ''):
             if img_data:
                 try:
-                    img = RLImage(img_data, width=CW, height=65*mm)
-                    story.append(img)
+                    story.append(RLImage(img_data, width=CW, height=65*mm))
                     story.append(Spacer(1,2*mm))
-                except Exception:
-                    pass
+                except Exception: pass
             if short: story.append(Paragraph(f"<b>{short}</b>", S['body']))
-            if long:  story.append(Paragraph(long, S['body']))
+            if long_t: story.append(Paragraph(long_t, S['body']))
 
         elif display == 'Kleines Bild + Langtext':
-            desc_parts = []
-            if short: desc_parts.append(Paragraph(f"<b>{short}</b>", S['body']))
-            if long:  desc_parts.append(Paragraph(long, S['body']))
-            if img_data and desc_parts:
+            parts = []
+            if short: parts.append(Paragraph(f"<b>{short}</b>", S['body']))
+            if long_t: parts.append(Paragraph(long_t, S['body']))
+            if img_data and parts:
                 try:
                     img = RLImage(img_data, width=55*mm, height=40*mm)
-                    t = Table([[img, desc_parts]], colWidths=[58*mm, CW-58*mm])
-                    t.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(1,0),(1,0),8)]))
-                    story.append(t)
+                    t2  = Table([[img, parts]], colWidths=[58*mm, CW-58*mm])
+                    t2.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(1,0),(1,0),8)]))
+                    story.append(t2)
                 except Exception:
-                    for p in desc_parts: story.append(p)
+                    for p2 in parts: story.append(p2)
             else:
-                for p in desc_parts: story.append(p)
+                for p2 in parts: story.append(p2)
 
         elif display == 'Kein Bild, Langtext + Kurztext':
-            if long:  story.append(Paragraph(long, S['body']))
-            if short: story.append(Paragraph(short, S['muted']))
+            if long_t: story.append(Paragraph(long_t, S['body']))
+            if short:  story.append(Paragraph(short,  S['muted']))
 
         elif display == 'Kein Bild, Kurztext':
             if short: story.append(Paragraph(short, S['body']))
-
         else:
-            # Fallback
-            if short: story.append(Paragraph(short, S['body']))
-            if long:  story.append(Paragraph(long, S['body']))
+            if short:  story.append(Paragraph(short,  S['body']))
+            if long_t: story.append(Paragraph(long_t, S['body']))
 
         story.append(Spacer(1,2*mm))
-        story.append(Paragraph(f"Preis: <b>{price_s}</b>  ·  Cluster: {item.get('cluster','')}", S['muted']))
+        story.append(Paragraph(f"Preis: <b>{ps}</b>  ·  Cluster: {item.get('cluster','')}", S['muted']))
         story.append(Table([['']], colWidths=[CW],
             style=[('LINEBELOW',(0,0),(-1,-1),0.3,LINE),
                    ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),0)]))
         story.append(Spacer(1,4*mm))
-
     story.append(PageBreak())
 
-    # ── Preiszusammenfassung ──────────────────────────────────────────────────
-    section_title(story, '3. Preiszusammenfassung', S)
+    # Preiszusammenfassung
+    section_title(story, '3. Preiszusammenfassung', S, CW)
     one_time = sum((i.get('price') or 0) for i in offer if not i.get('recurring'))
     monthly  = sum((i.get('price') or 0) for i in offer if i.get('recurring'))
-
     t = Table([
         [Paragraph('<b>Einmalige Kosten</b>', S['h3']), Paragraph(f'<b>{money(one_time)}</b>', S['price'])],
-        [Paragraph('<b>Monatliche Kosten</b>', S['h3']), Paragraph(f'<b>{money(monthly)}</b>', S['price'])],
-    ], colWidths=[CW-38*mm, 38*mm])
+        [Paragraph('<b>Monatliche Kosten</b>', S['h3']), Paragraph(f'<b>{money(monthly)}</b>',  S['price'])],
+    ], colWidths=[CW-40*mm, 40*mm])
     t.setStyle(TableStyle([
         ('LINEBELOW',(0,0),(-1,-1),0.5,LINE),
         ('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8),
@@ -423,8 +440,8 @@ def generate_design_pdf(data: dict) -> dict:
     story.append(Paragraph('Alle Preise verstehen sich exkl. gesetzlicher MwSt.', S['muted']))
     story.append(PageBreak())
 
-    # ── Anlagen ───────────────────────────────────────────────────────────────
-    section_title(story, '4. Anlagen', S)
+    # Anlagen
+    section_title(story, '4. Anlagen', S, CW)
     sel = [a for a in attachments if a.get('selected') or a.get('selected_default')]
     if sel:
         for a in sel:
@@ -435,22 +452,22 @@ def generate_design_pdf(data: dict) -> dict:
         story.append(Paragraph('Keine Anlagen ausgewählt.', S['muted']))
     story.append(PageBreak())
 
-    # ── AGB ───────────────────────────────────────────────────────────────────
-    section_title(story, '5. Rechtliche Hinweise', S)
+    # AGB
+    section_title(story, '5. Rechtliche Hinweise', S, CW)
     agb = legal or (
-        'Die ausgewiesenen Preise sind Nettopreise und verstehen sich zuzüglich der gesetzlichen Mehrwertsteuer. '
-        'Die Distribution entscheidet Sielaff Austria GmbH. Es gelten die allgemeinen Geschäftsbedingungen '
-        'der Sielaff Austria GmbH in der jeweils gültigen Fassung.'
+        'Die ausgewiesenen Preise sind Nettopreise und verstehen sich zuzüglich der gesetzlichen '
+        'Mehrwertsteuer. Die Distribution entscheidet Sielaff Austria GmbH. Es gelten die '
+        'allgemeinen Geschäftsbedingungen der Sielaff Austria GmbH in der jeweils gültigen Fassung.'
     )
     for para in agb.split('\n'):
         if para.strip():
             story.append(Paragraph(para.strip(), S['body']))
 
-    # ── Build ─────────────────────────────────────────────────────────────────
+    # Build
     doc.build(story, canvasmaker=MyCanvas)
     content_buf.seek(0)
 
-    # ── Zusammenführen ────────────────────────────────────────────────────────
+    # Zusammenführen
     try:
         from pypdf import PdfReader, PdfWriter
         writer = PdfWriter()
