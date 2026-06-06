@@ -425,8 +425,8 @@ def generate_design_pdf(data: dict) -> dict:
         f"Datum: <b>{project.get('date','')}</b>", S['body']))
     story.append(Spacer(1, 3*mm))
 
-    one_time = sum((i.get('price') or 0) for i in offer if not i.get('recurring'))
-    monthly  = sum((i.get('price') or 0) for i in offer if i.get('recurring'))
+    one_time = sum((i.get('original_price') or i.get('price') or 0) for i in offer if not i.get('recurring') and not i.get('optional'))
+    monthly  = sum((i.get('original_price') or i.get('price') or 0) for i in offer if i.get('recurring') and not i.get('optional'))
 
     hdr  = [Paragraph(f'<b>{x}</b>', S['muted']) for x in ['#','Option','Cluster','Preis']]
     rows = [hdr]
@@ -434,7 +434,8 @@ def generate_design_pdf(data: dict) -> dict:
         p          = item.get('original_price') or item.get('price') or 0
         is_opt     = item.get('optional', False)
         if is_opt:
-            ps = 'optional'
+            price_str = money(p) + ('/Mo.' if item.get('recurring') else '')
+            ps = f'optional ({price_str})'
             name_text = f"{item.get('name','')}  <font color='#71717a' size='7'>[optional]</font>"
         else:
             ps = 'inklusive' if p==0 else (money(p)+'/Mo.' if item.get('recurring') else money(p))
@@ -484,7 +485,11 @@ def generate_design_pdf(data: dict) -> dict:
         short   = item.get('short_text','') or ''
         long_t  = item.get('long_text','')  or ''
         p       = item.get('price') or 0
-        ps      = 'inklusive' if p==0 else (money(p)+'/Mo.' if item.get('recurring') else money(p))
+        orig_p  = item.get('original_price') or p
+        if item.get('optional'):
+            ps = f'optional ({money(orig_p)}{"./Mo" if item.get("recurring") else ""})'
+        else:
+            ps = 'inklusive' if orig_p==0 else (money(orig_p)+'/Mo.' if item.get('recurring') else money(orig_p))
 
         # Jede Option wird als Block gesammelt und mit KeepTogether eingefügt.
         # So startet eine Option immer auf einer neuen Seite wenn sie nicht mehr passt –
@@ -584,15 +589,25 @@ def generate_design_pdf(data: dict) -> dict:
 
     # ── Preiszusammenfassung ──────────────────────────────────────────────────
     section_title(story, '3. Preiszusammenfassung', S, CW)
-    servicevertrag = data.get('servicevertrag') or (project.get('servicevertrag') if isinstance(project, dict) else 0) or 0
+    servicevertrag = (
+        data.get('servicevertrag') or
+        (project.get('servicevertrag') if isinstance(project, dict) else None) or
+        data.get('project', {}).get('servicevertrag') or
+        0
+    )
+    try:
+        servicevertrag = float(servicevertrag) if servicevertrag else 0
+    except Exception:
+        servicevertrag = 0
+    monthly_total = monthly + servicevertrag
     preis_rows = [
-        [Paragraph('<b>Einmalige Kosten</b>', S['h3']), Paragraph(f'<b>{money(one_time)}</b>', S['price'])],
-        [Paragraph('<b>Monatliche Kosten</b>', S['h3']), Paragraph(f'<b>{money(monthly)}</b>',  S['price'])],
+        [Paragraph('<b>Einmalige Kosten</b>', S['h3']),  Paragraph(f'<b>{money(one_time)}</b>', S['price'])],
+        [Paragraph('<b>Monatliche Kosten</b>', S['h3']), Paragraph(f'<b>{money(monthly_total)}</b>', S['price'])],
     ]
     if servicevertrag:
         preis_rows.append([
-            Paragraph('<b>Servicevertrag</b>', S['h3']),
-            Paragraph(f'<b>{money(servicevertrag)} / Mo.</b>', S['price'])
+            Paragraph(f'  davon Servicevertrag', S['muted']),
+            Paragraph(f'{money(servicevertrag)} / Mo.', S['muted'])
         ])
     t = Table(preis_rows, colWidths=[CW-40*mm, 40*mm])
     t.setStyle(TableStyle([

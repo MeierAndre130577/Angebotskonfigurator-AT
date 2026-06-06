@@ -197,8 +197,9 @@ Mit freundlichen Grüßen, {{anbieter}}`
   }
 
   const items   = offerData?.offer_items || []
-  const oneTime = items.filter(i => !i.recurring).reduce((s,i) => s+(i.price||0), 0)
-  const monthly = items.filter(i =>  i.recurring).reduce((s,i) => s+(i.price||0), 0)
+  const oneTime      = items.filter(i => !i.recurring && !i.optional).reduce((s,i) => s+(i.original_price||i.price||0), 0)
+  const monthly      = items.filter(i =>  i.recurring && !i.optional).reduce((s,i) => s+(i.original_price||i.price||0), 0)
+  const svcVal       = Number(offerData?.project?.servicevertrag) || 0
   const project = offerData?.project || {}
 
   return (
@@ -256,7 +257,16 @@ Mit freundlichen Grüßen, {{anbieter}}`
               <div key={i} className="between small" style={{ padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
                 <span><b>{item.name}</b><span className="pill muted" style={{ marginLeft: 8 }}>{item.cluster}</span></span>
                 <b style={{ color: 'var(--red)' }}>
-                  {(item.price||0) === 0 ? 'inkl.' : item.recurring ? money(item.price)+'/Mo.' : money(item.price)}
+                  {item.optional
+                    ? <span style={{ color: 'var(--muted)' }}>
+                        optional ({money(item.original_price || item.price)}{item.recurring ? '/Mo.' : ''})
+                      </span>
+                    : (item.original_price||item.price||0) === 0
+                      ? 'inkl.'
+                      : item.recurring
+                        ? money(item.original_price||item.price)+'/Mo.'
+                        : money(item.original_price||item.price)
+                  }
                 </b>
               </div>
             ))}
@@ -265,10 +275,12 @@ Mit freundlichen Grüßen, {{anbieter}}`
                 <div style={{ fontSize: 20, fontWeight: 850, color: 'var(--red)' }}>{money(oneTime)}</div>
                 <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Einmalig gesamt</div>
               </div>
-              {monthly > 0 && (
+              {(monthly + svcVal) > 0 && (
                 <div style={{ background: 'var(--red-light)', borderRadius: 12, padding: '12px 16px' }}>
-                  <div style={{ fontSize: 20, fontWeight: 850, color: 'var(--red)' }}>{money(monthly)}</div>
-                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Monatlich gesamt</div>
+                  <div style={{ fontSize: 20, fontWeight: 850, color: 'var(--red)' }}>{money(monthly + svcVal)}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                    Monatlich gesamt{svcVal > 0 ? ` (inkl. Service ${money(svcVal)}/Mo.)` : ''}
+                  </div>
                 </div>
               )}
             </div>
