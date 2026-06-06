@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 
 const BASE = (import.meta.env.VITE_API_URL || '') + '/api'
 
@@ -18,6 +18,8 @@ const DEFAULTS = {
   phone:     '0676/6570301',
   // AGB
   legal_notice: 'Die ausgewiesenen Preise sind Nettopreise und verstehen sich zuzüglich der gesetzlichen Mehrwertsteuer. Die Distribution entscheidet Sielaff Austria GmbH.',
+  // Pflichtanlagen
+  mandatory_documents: [],
 }
 
 function Field({ label, hint, children }) {
@@ -48,7 +50,9 @@ export default function Einstellungen() {
   const [settings, setSettings] = useState(DEFAULTS)
   const [saving, setSaving]     = useState(false)
   const [toast, setToast]       = useState('')
-  const [loading, setLoading]   = useState(true)
+  const [loading, setLoading]       = useState(true)
+  const [uploadingDoc, setUploadingDoc] = useState(false)
+  const docRef = useRef()
 
   useEffect(() => { loadSettings() }, [])
 
@@ -89,6 +93,42 @@ export default function Einstellungen() {
   function showToast(msg) {
     setToast(msg)
     setTimeout(() => setToast(''), 2500)
+  }
+
+  async function uploadMandatoryDoc(file) {
+    if (!file) return
+    setUploadingDoc(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file, file.name)
+      const res  = await fetch(`${BASE}/upload/document`, { method: 'POST', body: formData })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Upload fehlgeschlagen')
+      const newDoc = {
+        id:        crypto.randomUUID(),
+        title:     file.name.replace(/\.[^.]+$/, ''),
+        file_name: file.name,
+        file_url:  data.url || '',
+      }
+      setSettings(s => ({ ...s, mandatory_documents: [...(s.mandatory_documents || []), newDoc] }))
+      showToast('Dokument hochgeladen ✓')
+    } catch(e) {
+      showToast('Fehler: ' + e.message)
+    } finally {
+      setUploadingDoc(false)
+      if (docRef.current) docRef.current.value = ''
+    }
+  }
+
+  function removeMandatoryDoc(id) {
+    setSettings(s => ({ ...s, mandatory_documents: (s.mandatory_documents || []).filter(d => d.id !== id) }))
+  }
+
+  function updateMandatoryDocTitle(id, title) {
+    setSettings(s => ({
+      ...s,
+      mandatory_documents: (s.mandatory_documents || []).map(d => d.id === id ? { ...d, title } : d)
+    }))
   }
 
   if (loading) return <p className="muted">Lädt …</p>
@@ -212,16 +252,76 @@ export default function Einstellungen() {
       </div>
 
       {/* ── AGB ─────────────────────────────────────────────────────────────── */}
-      <div className="card">
+      <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-title">📋 Rechtliche Hinweise / AGB</div>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
-          Erscheint auf der letzten Seite des Angebots.
+          Erscheint als Text auf der letzten Seite des Angebots.
         </p>
         <Field label="">
           <textarea value={settings.legal_notice} onChange={e => set('legal_notice', e.target.value)}
             style={{ minHeight: 120, border: '1px solid var(--line)', borderRadius: 10,
               padding: '10px 14px', fontSize: 13, lineHeight: 1.6 }} />
         </Field>
+      </div>
+
+      {/* ── Pflichtanlagen ───────────────────────────────────────────────────── */}
+      <div className="card">
+        <div className="between" style={{ marginBottom: 12 }}>
+          <div>
+            <div className="card-title" style={{ marginBottom: 2 }}>📎 Pflichtanlagen</div>
+            <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+              Diese Dokumente werden <b>immer</b> beigefügt – bei jedem Angebot, unabhängig von den gewählten Optionen.
+            </p>
+          </div>
+          <button className="btn" style={{ padding: '7px 14px', fontSize: 12, flex: 'none' }}
+            onClick={() => docRef.current?.click()} disabled={uploadingDoc}>
+            {uploadingDoc ? '⏳' : '📎 Dokument hinzufügen'}
+          </button>
+        </div>
+        <input ref={docRef} type="file" accept=".pdf,.doc,.docx"
+          onChange={e => uploadMandatoryDoc(e.target.files[0])} style={{ display: 'none' }} />
+
+        {(settings.mandatory_documents || []).length === 0 ? (
+          <p style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic' }}>
+            Noch keine Pflichtanlagen – z.B. AGB als PDF hochladen.
+          </p>
+        ) : (
+          <div>
+            {(settings.mandatory_documents || []).map(doc => (
+              <div key={doc.id} style={{ marginBottom: 10 }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 12px', background: 'var(--bg)', borderRadius: 10,
+                  border: '1px solid var(--line)', marginBottom: 4
+                }}>
+                  <span style={{ fontSize: 18 }}>📄</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {doc.file_name}
+                    </div>
+                  </div>
+                  {doc.file_url && (
+                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer"
+                      className="btn" style={{ padding: '3px 8px', fontSize: 11, textDecoration: 'none', flex: 'none' }}>
+                      👁️
+                    </a>
+                  )}
+                  <button onClick={() => removeMandatoryDoc(doc.id)}
+                    style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--red)', fontSize: 16, flex: 'none' }}>
+                    ✕
+                  </button>
+                </div>
+                <input
+                  value={doc.title}
+                  onChange={e => updateMandatoryDocTitle(doc.id, e.target.value)}
+                  placeholder="Titel (erscheint in Anlagen)"
+                  style={{ width: '100%', border: '1px solid var(--line)', borderRadius: 8,
+                    padding: '6px 12px', fontSize: 12 }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ marginTop: 20 }}>

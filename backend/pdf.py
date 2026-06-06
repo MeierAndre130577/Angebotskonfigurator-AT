@@ -318,11 +318,18 @@ def generate_design_pdf(data: dict) -> dict:
     filename = f"Angebot_{project.get('offerNo','ENTWURF')}_{uuid.uuid4().hex[:6]}.pdf"
     filepath = os.path.join(EXPORT_DIR, filename)
 
-    # ── Anlagen sammeln: aus Optionen + explizite Anlagen (dedupliziert) ──────
+    # ── Anlagen sammeln: Pflichtanlagen + Optionsdokumente + explizite Anlagen ─
     all_attachments = []
     seen_titles = set()
 
-    # Dokumente aus Optionen
+    # 1. Pflichtanlagen aus Einstellungen (immer zuerst)
+    for doc in (s.get('mandatory_documents') or []):
+        title = doc.get('title', '').strip()
+        if title and title not in seen_titles:
+            seen_titles.add(title)
+            all_attachments.append({**doc, '_mandatory': True})
+
+    # 2. Dokumente aus Optionen
     for item in offer:
         for doc in (item.get('documents') or []):
             title = doc.get('title', '').strip()
@@ -330,7 +337,7 @@ def generate_design_pdf(data: dict) -> dict:
                 seen_titles.add(title)
                 all_attachments.append({**doc, '_from_option': item.get('name','')})
 
-    # Explizite Anlagen
+    # 3. Explizite Anlagen
     for a in attachments:
         if not (a.get('selected') or a.get('selected_default')):
             continue
@@ -504,7 +511,10 @@ def generate_design_pdf(data: dict) -> dict:
     section_title(story, '4. Anlagen', S, CW)
     if all_attachments:
         for a in all_attachments:
-            story.append(Paragraph(f"• <b>{a.get('title','')}</b>", S['body']))
+            label = a.get('title','')
+            if a.get('_mandatory'):
+                label += '  [Pflichtanlage]'
+            story.append(Paragraph(f"• <b>{label}</b>", S['body']))
             if a.get('description'):
                 story.append(Paragraph(a['description'], S['muted']))
             if a.get('_from_option'):
@@ -512,8 +522,6 @@ def generate_design_pdf(data: dict) -> dict:
             story.append(Spacer(1, 1*mm))
     else:
         story.append(Paragraph('Keine Anlagen ausgewählt.', S['muted']))
-    story.append(PageBreak())
-
     # ── AGB ───────────────────────────────────────────────────────────────────
     section_title(story, '5. Rechtliche Hinweise', S, CW)
     agb = legal or (
