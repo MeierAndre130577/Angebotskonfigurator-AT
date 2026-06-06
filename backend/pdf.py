@@ -61,6 +61,40 @@ def fetch_image(url: str) -> io.BytesIO | None:
         pass
     return None
 
+def make_image(img_data: io.BytesIO, max_w: float, max_h: float) -> RLImage | None:
+    """
+    Erstellt ein RLImage das NIEMALS skaliert wird (preserveAspectRatio).
+    Bild wird nur verkleinert wenn es größer als max_w/max_h ist,
+    nie vergrößert. Originalauflösung bleibt erhalten.
+    """
+    if not img_data:
+        return None
+    try:
+        img_data.seek(0)
+        from PIL import Image as PILImage
+        pil = PILImage.open(img_data)
+        orig_w_px, orig_h_px = pil.size
+        dpi = 96  # Standard-Bildschirm DPI
+        orig_w_pt = orig_w_px / dpi * 72   # px → pt
+        orig_h_pt = orig_h_px / dpi * 72
+
+        # Nur verkleinern, nie vergrößern
+        scale = min(1.0, max_w / orig_w_pt, max_h / orig_h_pt)
+        final_w = orig_w_pt * scale
+        final_h = orig_h_pt * scale
+
+        img_data.seek(0)
+        return RLImage(img_data, width=final_w, height=final_h)
+    except Exception:
+        # PIL nicht verfügbar – Fallback mit max_w/max_h aber preserveAspectRatio
+        try:
+            img_data.seek(0)
+            img = RLImage(img_data, width=max_w, height=max_h)
+            img.preserveAspectRatio = True
+            return img
+        except Exception:
+            return None
+
 # ── Deckblatt – Komplett Weiß ─────────────────────────────────────────────────
 
 def draw_cover(c: canvas.Canvas, data: dict):
@@ -430,8 +464,9 @@ def generate_design_pdf(data: dict) -> dict:
 
     # ── Detailseiten ──────────────────────────────────────────────────────────
     section_title(story, '2. Detailbeschreibungen', S, CW)
+
     for i, item in enumerate(offer, 1):
-        display = (item.get('display_type') or '').strip()
+        display = (item.get('display_type') or 'Großes Bild + Beschreibung').strip()
         name    = item.get('name','')
         short   = item.get('short_text','') or ''
         long_t  = item.get('long_text','')  or ''
@@ -439,55 +474,84 @@ def generate_design_pdf(data: dict) -> dict:
         ps      = 'inklusive' if p==0 else (money(p)+'/Mo.' if item.get('recurring') else money(p))
 
         story.append(Paragraph(f"{i}. {name}", S['h2']))
-        img_data = fetch_image(item.get('image_path',''))
 
+        img_raw  = fetch_image(item.get('image_path',''))
+
+        # ── Variante 1: Großes Bild oben, dann Kurz- und Langtext ────────────
         if display in ('Großes Bild + Beschreibung', ''):
-            if img_data:
-                try:
-                    story.append(RLImage(img_data, width=CW, height=65*mm))
-                    story.append(Spacer(1,2*mm))
-                except Exception: pass
-            if short: story.append(Paragraph(f"<b>{short}</b>", S['body']))
-            if long_t: story.append(Paragraph(long_t, S['body']))
+            img = make_image(img_raw, max_w=CW, max_h=100*mm)
+            if img:
+                story.append(img)
+                story.append(Spacer(1, 3*mm))
+            if short:
+                story.append(Paragraph(f"<b>{short}</b>", S['body']))
+                story.append(Spacer(1, 1*mm))
+            if long_t:
+                story.append(Paragraph(long_t, S['body']))
 
+        # ── Variante 2: Kleines Bild links, Langtext rechts daneben ──────────
         elif display == 'Kleines Bild + Langtext':
-            parts = []
-            if short: parts.append(Paragraph(f"<b>{short}</b>", S['body']))
-            if long_t: parts.append(Paragraph(long_t, S['body']))
-            if img_data and parts:
-                try:
-                    img = RLImage(img_data, width=55*mm, height=40*mm)
-                    t2  = Table([[img, parts]], colWidths=[58*mm, CW-58*mm])
-                    t2.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('LEFTPADDING',(1,0),(1,0),8)]))
-                    story.append(t2)
-                except Exception:
-                    for p2 in parts: story.append(p2)
+            img = make_image(img_raw, max_w=70*mm, max_h=55*mm)
+            text_parts = []
+            if short:
+                text_parts.append(Paragraph(f"<b>{short}</b>", S['body']))
+                text_parts.append(Spacer(1, 2*mm))
+            if long_t:
+                text_parts.append(Paragraph(long_t, S['body']))
+
+            if img and text_parts:
+                # Tatsächliche Bildbreite für Spaltenbreite verwenden
+                img_col_w = min(img.drawWidth + 5*mm, 80*mm)
+                t2 = Table([[img, text_parts]], colWidths=[img_col_w, CW - img_col_w])
+                t2.setStyle(TableStyle([
+                    ('VALIGN',      (0,0),(-1,-1),'TOP'),
+                    ('LEFTPADDING', (1,0),(1,0),  10),
+                    ('TOPPADDING',  (0,0),(-1,-1), 0),
+                    ('BOTTOMPADDING',(0,0),(-1,-1),0),
+                ]))
+                story.append(t2)
+            elif img:
+                story.append(img)
+                story.append(Spacer(1, 2*mm))
+                for tp in text_parts: story.append(tp)
             else:
-                for p2 in parts: story.append(p2)
+                for tp in text_parts: story.append(tp)
 
+        # ── Variante 3: Kein Bild – Langtext + Kurztext ───────────────────────
         elif display == 'Kein Bild, Langtext + Kurztext':
-            if long_t: story.append(Paragraph(long_t, S['body']))
-            if short:  story.append(Paragraph(short,  S['muted']))
+            if long_t:
+                story.append(Paragraph(long_t, S['body']))
+                story.append(Spacer(1, 2*mm))
+            if short:
+                story.append(Paragraph(f"<i>{short}</i>", S['muted']))
 
+        # ── Variante 4: Kein Bild – nur Kurztext ─────────────────────────────
         elif display == 'Kein Bild, Kurztext':
-            if short: story.append(Paragraph(short, S['body']))
+            if short:
+                story.append(Paragraph(short, S['body']))
+
+        # Fallback
         else:
-            if short:  story.append(Paragraph(short,  S['body']))
+            if short:  story.append(Paragraph(f"<b>{short}</b>", S['body']))
             if long_t: story.append(Paragraph(long_t, S['body']))
 
-        # Dokumente der Option
+        # Dokumente dieser Option
         docs = item.get('documents') or []
         if docs:
-            story.append(Spacer(1,1*mm))
+            story.append(Spacer(1, 1*mm))
             doc_names = ', '.join(d.get('title','') for d in docs if d.get('title'))
-            story.append(Paragraph(f"Dokumente: {doc_names}", S['muted']))
+            story.append(Paragraph(f"📎 Dokumente: {doc_names}", S['muted']))
 
-        story.append(Spacer(1,2*mm))
-        story.append(Paragraph(f"Preis: <b>{ps}</b>  ·  Cluster: {item.get('cluster','')}", S['muted']))
+        # Trennzeile
+        story.append(Spacer(1, 2*mm))
+        story.append(Paragraph(
+            f"Preis: <b>{ps}</b>  ·  Cluster: {item.get('cluster','')}",
+            S['muted']))
         story.append(Table([['']], colWidths=[CW],
             style=[('LINEBELOW',(0,0),(-1,-1),0.3,LINE),
-                   ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),0)]))
-        story.append(Spacer(1,4*mm))
+                   ('TOPPADDING',(0,0),(-1,-1),2),
+                   ('BOTTOMPADDING',(0,0),(-1,-1),0)]))
+        story.append(Spacer(1, 5*mm))
     story.append(PageBreak())
 
     # ── Preiszusammenfassung ──────────────────────────────────────────────────
