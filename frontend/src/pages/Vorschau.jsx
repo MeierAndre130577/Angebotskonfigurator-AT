@@ -135,7 +135,11 @@ Mit freundlichen Grüßen, {{anbieter}}`
       setOfferData(data)
       // PDF-URL und Package-URL aus DB direkt setzen
       if (data.pdf_url) {
-        setPdfUrl((import.meta.env.VITE_API_URL || '') + data.pdf_url)
+        // Wenn absolute URL (Supabase) → direkt verwenden, sonst Backend-Prefix
+        const url = data.pdf_url.startsWith('http')
+          ? data.pdf_url
+          : (import.meta.env.VITE_API_URL || '') + data.pdf_url
+        setPdfUrl(url)
       }
       if (data.zip_url) {
         setPackageUrl(data.zip_url)
@@ -176,7 +180,10 @@ Mit freundlichen Grüßen, {{anbieter}}`
         pages: [], clusters: [],
       })
       if (result.ok && result.download_url) {
-        setPdfUrl((import.meta.env.VITE_API_URL || '') + result.download_url)
+        const pUrl = result.download_url.startsWith('http')
+          ? result.download_url
+          : (import.meta.env.VITE_API_URL || '') + result.download_url
+        setPdfUrl(pUrl)
         if (result.package_url) setPackageUrl(result.package_url)
         showToast('PDF erstellt ✓')
       } else {

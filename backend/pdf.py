@@ -698,7 +698,46 @@ def generate_design_pdf(data: dict) -> dict:
         with open(filepath, 'wb') as f:
             f.write(content_buf.read())
 
-    return {'ok': True, 'download_url': f'/api/pdf/download/{filename}', 'package_url': download_url or '', 'zip_filename': pkg_result.get('zip_filename',''), 'expires_at': pkg_result.get('expires_at','')}
+    # PDF auch in Supabase Storage hochladen für dauerhaften Zugriff
+    supabase_pdf_url = ''
+    try:
+        supabase_url = os.environ.get('SUPABASE_URL', '')
+        service_key  = os.environ.get('SUPABASE_SERVICE_KEY', '')
+        if supabase_url and service_key:
+            with open(filepath, 'rb') as f:
+                pdf_bytes_upload = f.read()
+            upload_res = httpx.post(
+                f"{supabase_url}/storage/v1/object/pdfs/{filename}",
+                content=pdf_bytes_upload,
+                headers={
+                    'Authorization': f'Bearer {service_key}',
+                    'Content-Type': 'application/pdf',
+                },
+                timeout=60,
+            )
+            if upload_res.status_code in (200, 201):
+                # Signierte URL (1 Jahr)
+                sign_res = httpx.post(
+                    f"{supabase_url}/storage/v1/object/sign/pdfs/{filename}",
+                    headers={'Authorization': f'Bearer {service_key}', 'Content-Type': 'application/json'},
+                    json={'expiresIn': 365 * 24 * 3600},
+                    timeout=15,
+                )
+                if sign_res.status_code == 200:
+                    signed = sign_res.json().get('signedURL', '')
+                    if signed.startswith('/'):
+                        signed = f"{supabase_url}/storage/v1{signed}"
+                    supabase_pdf_url = signed
+    except Exception as e:
+        print(f"PDF Supabase Upload failed: {e}")
+
+    return {
+        'ok':           True,
+        'download_url': supabase_pdf_url or f'/api/pdf/download/{filename}',
+        'package_url':  download_url or '',
+        'zip_filename': pkg_result.get('zip_filename',''),
+        'expires_at':   pkg_result.get('expires_at',''),
+    }
 
 
 def get_pdf_path(filename: str) -> str | None:
