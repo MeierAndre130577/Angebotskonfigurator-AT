@@ -304,6 +304,17 @@ async def upload_document(file: UploadFile = File(...)):
 
     return {"url": url, "filename": filename}
 
+# ── Einstellungen ─────────────────────────────────────────────────────────────
+
+@app.get("/api/settings")
+def get_settings():
+    return db.get_settings()
+
+@app.post("/api/settings")
+def save_settings(data: dict):
+    return db.save_settings(data)
+
+
 from fastapi.responses import FileResponse
 
 @app.get("/api/pdf/download/{filename}")

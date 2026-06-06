@@ -6,6 +6,7 @@ import Konfiguration from './pages/Konfiguration'
 import Bibliothek    from './pages/Bibliothek'
 import Vorschau      from './pages/Vorschau'
 import Angebote      from './pages/Angebote'
+import Einstellungen from './pages/Einstellungen'
 
 const VERSION = 'v0.4.1'
 const BUILD_DATE = '2026-06-07'
@@ -20,8 +21,9 @@ const NAV = [
     { to: '/vorschau',      icon: '👁️', label: 'PDF-Vorschau' },
   ]},
   { group: 'Stammdaten', items: [
-    { to: '/angebote',   icon: '📋', label: 'Angebote' },
-    { to: '/bibliothek', icon: '📚', label: 'Optionsbibliothek' },
+    { to: '/angebote',     icon: '📋', label: 'Angebote' },
+    { to: '/bibliothek',   icon: '📚', label: 'Optionsbibliothek' },
+    { to: '/einstellungen',icon: '⚙️', label: 'Einstellungen' },
   ]},
 ]
 
@@ -111,6 +113,7 @@ export default function App() {
           <Route path="/konfiguration" element={<Konfiguration />} />
           <Route path="/bibliothek"    element={<Bibliothek />} />
           <Route path="/vorschau"      element={<Vorschau key={location.search} />} />
+          <Route path="/einstellungen" element={<Einstellungen />} />
         </Routes>
       </main>
     </div>

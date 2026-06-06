@@ -24,11 +24,22 @@ WHITE = colors.white
 BG    = colors.HexColor('#f8f8f8')
 
 W, H       = A4
-HEADER_H   = 26*mm   # Höhe der Kopfzeile (tiefer)
+# Defaults – werden durch DB-Einstellungen überschrieben
+HEADER_H   = 26*mm
 MARGIN_L   = 20*mm
 MARGIN_R   = 12*mm
-MARGIN_T   = HEADER_H + 13*mm  # Inhalt startet UNTER der Kopfzeile + 0.5cm extra
+MARGIN_T   = HEADER_H + 13*mm
 MARGIN_B   = 22*mm
+
+def _get_pdf_settings():
+    """Lädt PDF-Einstellungen aus der DB, fällt auf Defaults zurück"""
+    try:
+        import db as _db
+        s = _db.get_settings()
+        if not s: return {}
+        return s
+    except Exception:
+        return {}
 
 EXPORT_DIR = os.path.join(os.path.dirname(__file__), 'exports')
 os.makedirs(EXPORT_DIR, exist_ok=True)
@@ -204,43 +215,48 @@ def make_canvas_class(project, provider):
             c.setLineWidth(0.5)
             c.line(MARGIN_L, H - HEADER_H, W - MARGIN_R, H - HEADER_H)
 
-            # Logo
+            # Logo + Text vertikal mittig in der Kopfzeile
+            logo_size  = 14*mm
+            header_mid = H - HEADER_H + HEADER_H / 2   # vertikale Mitte der Kopfzeile
+            logo_y     = header_mid - logo_size / 2      # Logo zentriert auf Mitte
+            text_y     = header_mid - 2.5*mm             # Text auf gleicher Höhe wie Logo-Mitte
+
             if os.path.exists(LOGO_PATH):
                 try:
                     c.drawImage(LOGO_PATH,
                                MARGIN_L,
-                               H - HEADER_H + 2*mm,
-                               width=12*mm, height=12*mm,
+                               logo_y,
+                               width=logo_size, height=logo_size,
                                preserveAspectRatio=True, mask='auto')
                 except Exception:
                     pass
 
-            # Firmenname (bündig mit MARGIN_L + Logo-Breite)
+            # Firmenname – vertikal mittig neben Logo
             c.setFillColor(DARK)
             c.setFont('Helvetica-Bold', 8)
-            c.drawString(MARGIN_L + 14*mm, H - HEADER_H/2 - 1*mm,
+            c.drawString(MARGIN_L + logo_size + 3*mm, text_y,
                         provider.get('company', 'Sielaff Austria GmbH'))
 
-            # Angebotsnummer Mitte
+            # Angebotsnummer Mitte – gleiche Höhe
             c.setFont('Helvetica', 7.5)
             c.setFillColor(MUTED)
             offer_no = project.get('offerNo', '')
-            c.drawCentredString(W/2, H - HEADER_H/2 - 1*mm,
+            c.drawCentredString(W/2, text_y,
                                f'Angebot {offer_no}' if offer_no else '')
 
-            # Datum rechts
-            c.drawRightString(W - MARGIN_R, H - HEADER_H/2 - 1*mm,
+            # Datum rechts – gleiche Höhe
+            c.drawRightString(W - MARGIN_R, text_y,
                              project.get('date', ''))
 
             # Fußzeile
             c.setStrokeColor(LINE)
-            c.line(MARGIN_L, MARGIN_B - 8*mm, W - MARGIN_R, MARGIN_B - 8*mm)
+            c.line(MARGIN_L, f_d, W - MARGIN_R, f_d)
             addr = (f"{provider.get('company','')}  ·  {provider.get('address','')}  ·  "
                     f"{provider.get('email','')}  ·  {provider.get('phone','')}")
             c.setFont('Helvetica', 6.5)
             c.setFillColor(MUTED)
-            c.drawString(MARGIN_L, MARGIN_B - 14*mm, addr)
-            c.drawRightString(W - MARGIN_R, MARGIN_B - 14*mm,
+            c.drawString(MARGIN_L, f_d - 6*mm, addr)
+            c.drawRightString(W - MARGIN_R, f_d - 6*mm,
                              f'Seite {self._page_num + 1}')
 
     return MyCanvas
@@ -277,6 +293,24 @@ def generate_design_pdf(data: dict) -> dict:
     attachments = data.get('attachments')  or []
     legal       = data.get('legal_notice') or ''
 
+    # Einstellungen aus DB laden
+    s = _get_pdf_settings()
+    h_h  = s.get('header_height_mm',  26) * mm
+    m_t  = s.get('margin_top_mm',     39) * mm
+    m_b  = s.get('margin_bottom_mm',  22) * mm
+    m_l  = s.get('margin_left_mm',    20) * mm
+    m_r  = s.get('margin_right_mm',   12) * mm
+    f_d  = s.get('footer_distance_mm',14) * mm
+    # Provider aus Einstellungen überschreiben falls vorhanden
+    if s.get('company'): provider = {**provider,
+        'company': s.get('company', provider.get('company','')),
+        'address': s.get('address', provider.get('address','')),
+        'email':   s.get('email',   provider.get('email','')),
+        'phone':   s.get('phone',   provider.get('phone','')),
+    }
+    if s.get('legal_notice') and not legal:
+        legal = s['legal_notice']
+
     filename = f"Angebot_{project.get('offerNo','ENTWURF')}_{uuid.uuid4().hex[:6]}.pdf"
     filepath = os.path.join(EXPORT_DIR, filename)
 
@@ -310,16 +344,16 @@ def generate_design_pdf(data: dict) -> dict:
 
     # ── Inhalt ────────────────────────────────────────────────────────────────
     content_buf = io.BytesIO()
-    MyCanvas    = make_canvas_class(project, provider)
+    MyCanvas    = make_canvas_class(project, provider, h_h, m_l, m_r, f_d)
 
     doc = SimpleDocTemplate(
         content_buf, pagesize=A4,
-        leftMargin=MARGIN_L, rightMargin=MARGIN_R,
-        topMargin=MARGIN_T,  bottomMargin=MARGIN_B,
+        leftMargin=m_l, rightMargin=m_r,
+        topMargin=m_t,  bottomMargin=m_b,
     )
 
     S   = get_styles()
-    CW  = W - MARGIN_L - MARGIN_R
+    CW  = W - m_l - m_r
     story = []
 
     # Inhaltsverzeichnis

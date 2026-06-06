@@ -288,3 +288,33 @@ def delete_offer(offer_id: str):
     conn = _get_conn()
     conn.execute("DELETE FROM offers WHERE id=?", (offer_id,))
     conn.commit(); conn.close()
+
+# ── Einstellungen ─────────────────────────────────────────────────────────────
+
+def get_settings():
+    if USE_SUPABASE:
+        rows = _sb.table("settings").select("*").eq("key", "pdf_layout").execute().data
+        return rows[0]["value"] if rows else {}
+    # SQLite Fallback
+    try:
+        conn = _get_conn()
+        row = conn.execute("SELECT value FROM settings WHERE key='pdf_layout'").fetchone()
+        conn.close()
+        if row:
+            return json.loads(row[0]) if isinstance(row[0], str) else row[0]
+    except Exception:
+        pass
+    return {}
+
+def save_settings(data: dict):
+    if USE_SUPABASE:
+        return _sb.table("settings").upsert({"key": "pdf_layout", "value": data}).execute().data
+    conn = _get_conn()
+    try:
+        conn.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
+        conn.execute("INSERT INTO settings (key,value) VALUES ('pdf_layout',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    (json.dumps(data),))
+        conn.commit()
+    finally:
+        conn.close()
+    return data
