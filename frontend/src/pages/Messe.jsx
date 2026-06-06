@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { customers as customersApi, options as optionsApi, offers as offersApi } from '../lib/api'
 
 const STEPS = ['Kontakt', 'Optionen', 'Fertigstellen']
@@ -17,6 +18,7 @@ export default function Messe() {
   const [offerNo, setOfferNo]         = useState('')
   const [busy, setBusy]               = useState(false)
   const [done, setDone]               = useState(false)
+  const navigate                        = useNavigate()
   const [error, setError]             = useState('')
   const [allCustomers, setAllCustomers] = useState([])
 
@@ -70,6 +72,8 @@ export default function Messe() {
         status: 'draft',
       })
       setDone(true)
+      // Direkt zur PDF-Vorschau
+      setTimeout(() => navigate(`/vorschau?no=${encodeURIComponent(offerNo)}`), 800)
     } catch (e) {
       setError('Fehler: ' + e.message)
     } finally {
