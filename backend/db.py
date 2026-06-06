@@ -44,6 +44,7 @@ else:
                 display_type TEXT, short_text TEXT, long_text TEXT,
                 price REAL DEFAULT 0, recurring INTEGER DEFAULT 0,
                 image_path TEXT, sort_order INTEGER DEFAULT 0,
+                documents TEXT DEFAULT '[]',
                 created_at TEXT DEFAULT (datetime('now'))
             );
             CREATE TABLE IF NOT EXISTS attachments (
@@ -121,26 +122,39 @@ def get_options():
     conn = _get_conn()
     rows = conn.execute("SELECT * FROM options ORDER BY sort_order").fetchall()
     conn.close()
-    return [dict(r) for r in rows]
+    result = []
+    for r in rows:
+        d = dict(r)
+        if isinstance(d.get("documents"), str):
+            try: d["documents"] = json.loads(d["documents"])
+            except: d["documents"] = []
+        result.append(d)
+    return result
 
 def upsert_option(data: dict):
     if not data.get("id"):
         data["id"] = _new_id()
+    # Dokumente als JSON serialisieren
+    docs = data.get("documents") or []
+    if isinstance(docs, list):
+        data["documents"] = docs  # Supabase erwartet native Liste (jsonb)
     if USE_SUPABASE:
         return _sb.table("options").upsert(data).execute().data
+    # SQLite: documents als JSON-String
+    sqlite_data = {**data, "documents": json.dumps(docs)}
     conn = _get_conn()
     conn.execute("""
         INSERT INTO options (id,cluster,name,display_type,short_text,long_text,
-            price,recurring,image_path,sort_order)
+            price,recurring,image_path,sort_order,documents)
         VALUES (:id,:cluster,:name,:display_type,:short_text,:long_text,
-            :price,:recurring,:image_path,:sort_order)
+            :price,:recurring,:image_path,:sort_order,:documents)
         ON CONFLICT(id) DO UPDATE SET
             cluster=excluded.cluster, name=excluded.name,
             display_type=excluded.display_type, short_text=excluded.short_text,
             long_text=excluded.long_text, price=excluded.price,
             recurring=excluded.recurring, image_path=excluded.image_path,
-            sort_order=excluded.sort_order
-    """, data)
+            sort_order=excluded.sort_order, documents=excluded.documents
+    """, sqlite_data)
     conn.commit(); conn.close()
     return data
 
@@ -190,33 +204,6 @@ def delete_attachment(attachment_id: str):
     conn.commit(); conn.close()
 
 # ── Angebote ──────────────────────────────────────────────────────────────────
-
-
-def list_offers():
-    if USE_SUPABASE:
-        return _sb.table("offers").select("*").order("created_at", desc=True).execute().data
-    conn = _get_conn()
-    rows = conn.execute("SELECT * FROM offers ORDER BY created_at DESC").fetchall()
-    conn.close()
-    result = []
-    for row in rows:
-        d = dict(row)
-        for key in ("project", "purchase", "pages", "offer_items"):
-            if isinstance(d.get(key), str):
-                try:
-                    import json as _j
-                    d[key] = _j.loads(d[key])
-                except:
-                    d[key] = {} if key in ("project", "purchase") else []
-        result.append(d)
-    return result
-
-def delete_offer(offer_id: str):
-    if USE_SUPABASE:
-        return _sb.table("offers").delete().eq("id", offer_id).execute()
-    conn = _get_conn()
-    conn.execute("DELETE FROM offers WHERE id=?", (offer_id,))
-    conn.commit(); conn.close()
 
 def generate_offer_number():
     import random, string, datetime

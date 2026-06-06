@@ -24,7 +24,7 @@ WHITE = colors.white
 BG    = colors.HexColor('#f8f8f8')
 
 W, H       = A4
-HEADER_H   = 18*mm   # Höhe der Kopfzeile
+HEADER_H   = 26*mm   # Höhe der Kopfzeile (tiefer)
 MARGIN_L   = 20*mm
 MARGIN_R   = 12*mm
 MARGIN_T   = HEADER_H + 13*mm  # Inhalt startet UNTER der Kopfzeile + 0.5cm extra

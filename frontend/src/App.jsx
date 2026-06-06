@@ -7,6 +7,9 @@ import Bibliothek    from './pages/Bibliothek'
 import Vorschau      from './pages/Vorschau'
 import Angebote      from './pages/Angebote'
 
+const VERSION = 'v0.4.1'
+const BUILD_DATE = '2026-06-07'
+
 const NAV = [
   { group: 'Messe', items: [
     { to: '/messe',    icon: '🎯', label: 'Schnellerfassung' },
@@ -45,7 +48,7 @@ export default function App() {
       )}
 
       {showSidebar && (
-        <aside className="sidebar" style={isMobile ? {
+        <aside className="sidebar" style={isMobile ? { display: 'flex', flexDirection: 'column',
           position: 'fixed', top: 0, left: 0, bottom: 0,
           width: 220, zIndex: 100, boxShadow: '4px 0 24px rgba(0,0,0,.15)',
         } : {}}>
@@ -69,6 +72,18 @@ export default function App() {
               ))}
             </div>
           ))}
+          {/* Versionsnummer */}
+          <div style={{
+            marginTop: 'auto', padding: '12px 16px',
+            borderTop: '1px solid var(--line)',
+          }}>
+            <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+              {VERSION}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--line)', marginTop: 2 }}>
+              {BUILD_DATE}
+            </div>
+          </div>
         </aside>
       )}
 

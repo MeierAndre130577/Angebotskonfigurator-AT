@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { offers, pdf } from '../lib/api'
 
@@ -22,15 +22,16 @@ export default function Vorschau() {
   const [pdfUrl, setPdfUrl]         = useState('')
   const [toast, setToast]           = useState('')
   const [error, setError]           = useState('')
+  const loadedNo = useRef('')  // verhindert doppeltes Laden
 
-  // Sofort laden wenn ?no= in URL
   useEffect(() => {
-    const no = searchParams.get('no')
-    if (no && no.trim()) {
-      setOfferNo(no.trim())
-      doLoad(no.trim())
+    const no = (searchParams.get('no') || '').trim()
+    if (no && no !== loadedNo.current) {
+      loadedNo.current = no
+      setOfferNo(no)
+      doLoad(no)
     }
-  }, [searchParams.get('no')])
+  })  // kein dependency array → läuft bei jeder Render, aber loadedNo verhindert Loops
 
   function showToast(msg) {
     setToast(msg)
@@ -95,7 +96,6 @@ export default function Vorschau() {
         <div><h1>👁️ PDF-Vorschau</h1><p className="subtitle">Angebot laden und PDF generieren</p></div>
       </div>
 
-      {/* Angebot laden */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-title">Angebotsnummer</div>
         <div className="row">
@@ -112,10 +112,9 @@ export default function Vorschau() {
           </button>
         </div>
         {loading && <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8 }}>⏳ Wird geladen …</p>}
-        {error && <p style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>⚠ {error}</p>}
+        {error   && <p style={{ color: 'var(--red)',   fontSize: 13, marginTop: 8 }}>⚠ {error}</p>}
       </div>
 
-      {/* Vorschau */}
       {offerData && (
         <>
           <div className="card" style={{ marginBottom: 16 }}>
