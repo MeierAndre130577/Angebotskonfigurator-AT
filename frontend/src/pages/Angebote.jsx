@@ -7,10 +7,13 @@ function money(n) {
   return new Intl.NumberFormat('de-AT', { style: 'currency', currency: 'EUR' }).format(n || 0)
 }
 
-function formatDate(iso) {
+function formatDateTime(iso) {
   if (!iso) return '—'
   try {
-    return new Date(iso).toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    return new Date(iso).toLocaleString('de-AT', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    })
   } catch { return '—' }
 }
 
@@ -19,6 +22,7 @@ export default function Angebote() {
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
   const [toast, setToast]       = useState('')
+  const [debug, setDebug]       = useState(null)  // temporär für Debugging
   const navigate = useNavigate()
 
   useEffect(() => { load() }, [])
@@ -28,7 +32,11 @@ export default function Angebote() {
     try {
       const res  = await fetch(`${BASE}/offers`)
       const data = await res.json()
-      setAngebote(Array.isArray(data) ? data.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)) : [])
+      // Debug: erste Zeile anzeigen
+      if (data.length > 0) setDebug(data[0])
+      setAngebote(Array.isArray(data)
+        ? data.sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
+        : [])
     } catch(e) {
       console.warn('Fehler:', e)
     } finally {
@@ -51,17 +59,52 @@ export default function Angebote() {
     } catch { showToast('Fehler beim Löschen') }
   }
 
-  const filtered = angebote.filter(a => {
-    const q = search.toLowerCase()
-    // Kunde steht in a.project (JSONB/Objekt)
-    const p = a.project || {}
-    return (
-      (a.offer_no       || '').toLowerCase().includes(q) ||
-      (p.customer       || '').toLowerCase().includes(q) ||
-      (p.project        || '').toLowerCase().includes(q) ||
-      (p.contact        || '').toLowerCase().includes(q)
-    )
-  })
+  function goToVorschau(offerNo) {
+    navigate(`/vorschau?no=${encodeURIComponent(offerNo)}`)
+  }
+
+  // Kunde aus verschiedenen möglichen Strukturen lesen
+  function getCustomer(a) {
+    const p = a.project
+    if (!p) return '—'
+    // Supabase gibt JSONB direkt als Objekt zurück
+    if (typeof p === 'object') return p.customer || p.company || '—'
+    // SQLite gibt JSON-String zurück
+    if (typeof p === 'string') {
+      try { return JSON.parse(p).customer || '—' } catch { return '—' }
+    }
+    return '—'
+  }
+
+  function getContact(a) {
+    const p = a.project
+    if (!p) return ''
+    if (typeof p === 'object') return p.contact || ''
+    if (typeof p === 'string') {
+      try { return JSON.parse(p).contact || '' } catch { return '' }
+    }
+    return ''
+  }
+
+  function getProject(a) {
+    const p = a.project
+    if (!p) return '—'
+    if (typeof p === 'object') return p.project || '—'
+    if (typeof p === 'string') {
+      try { return JSON.parse(p).project || '—' } catch { return '—' }
+    }
+    return '—'
+  }
+
+  function getDate(a) {
+    const p = a.project
+    if (!p) return '—'
+    if (typeof p === 'object') return p.date || '—'
+    if (typeof p === 'string') {
+      try { return JSON.parse(p).date || '—' } catch { return '—' }
+    }
+    return '—'
+  }
 
   function calcSums(a) {
     const items = Array.isArray(a.offer_items) ? a.offer_items : []
@@ -70,6 +113,16 @@ export default function Angebote() {
       monthly: items.filter(i =>  i.recurring).reduce((s,i) => s+(Number(i.price)||0), 0),
     }
   }
+
+  const filtered = angebote.filter(a => {
+    const q = search.toLowerCase()
+    return (
+      (a.offer_no || '').toLowerCase().includes(q) ||
+      getCustomer(a).toLowerCase().includes(q) ||
+      getProject(a).toLowerCase().includes(q) ||
+      getContact(a).toLowerCase().includes(q)
+    )
+  })
 
   return (
     <div>
@@ -90,7 +143,7 @@ export default function Angebote() {
 
       <div style={{ marginBottom: 20 }}>
         <input
-          placeholder="🔍 Nach Angebotsnummer, Kunde, Projekt oder Ansprechpartner suchen …"
+          placeholder="🔍 Nach Angebotsnummer, Kunde oder Projekt suchen …"
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{ width: '100%', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }}
@@ -102,7 +155,7 @@ export default function Angebote() {
       ) : filtered.length === 0 ? (
         <div className="card">
           <p className="muted small">
-            {search ? 'Keine Angebote gefunden.' : 'Noch keine Angebote vorhanden. Erstelle dein erstes Angebot über den Messe-Modus.'}
+            {search ? 'Keine Angebote gefunden.' : 'Noch keine Angebote vorhanden.'}
           </p>
         </div>
       ) : (
@@ -130,55 +183,40 @@ export default function Angebote() {
             </thead>
             <tbody>
               {filtered.map(a => {
-                const p    = a.project || {}
                 const sums = calcSums(a)
                 return (
                   <tr key={a.id}
-                    onClick={() => navigate(`/vorschau?no=${encodeURIComponent(a.offer_no)}`)}
+                    onClick={() => goToVorschau(a.offer_no)}
                     style={{ borderBottom: '1px solid var(--line)', cursor: 'pointer' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'white'}
                   >
-                    {/* Angebotsnummer */}
                     <td style={{ padding: '12px 14px' }}>
                       <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--red)', fontSize: 12 }}>
                         {a.offer_no || '—'}
                       </span>
                     </td>
-                    {/* Kunde */}
                     <td style={{ padding: '12px 14px' }}>
-                      <b>{p.customer || '—'}</b>
-                      {p.contact && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>{p.contact}</div>}
+                      <b>{getCustomer(a)}</b>
+                      {getContact(a) && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>{getContact(a)}</div>}
                     </td>
-                    {/* Projekt */}
-                    <td style={{ padding: '12px 14px', color: 'var(--muted)' }}>
-                      {p.project || '—'}
-                    </td>
-                    {/* Erstellt (DB Timestamp) */}
+                    <td style={{ padding: '12px 14px', color: 'var(--muted)' }}>{getProject(a)}</td>
                     <td style={{ padding: '12px 14px', color: 'var(--muted)', whiteSpace: 'nowrap', fontSize: 12 }}>
-                      {formatDate(a.created_at)}
+                      {formatDateTime(a.created_at)}
                     </td>
-                    {/* Angebotsdatum (aus Projektdaten) */}
                     <td style={{ padding: '12px 14px', color: 'var(--muted)', whiteSpace: 'nowrap', fontSize: 12 }}>
-                      {p.date || '—'}
+                      {getDate(a)}
                     </td>
-                    {/* Einmalig */}
                     <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700 }}>
-                      {sums.oneTime > 0
-                        ? money(sums.oneTime)
-                        : <span style={{ color: 'var(--muted)' }}>—</span>}
+                      {sums.oneTime > 0 ? money(sums.oneTime) : <span style={{ color: 'var(--muted)' }}>—</span>}
                     </td>
-                    {/* Monatlich */}
                     <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700, color: 'var(--red)' }}>
-                      {sums.monthly > 0
-                        ? money(sums.monthly)+'/Mo.'
-                        : <span style={{ color: 'var(--muted)' }}>—</span>}
+                      {sums.monthly > 0 ? money(sums.monthly)+'/Mo.' : <span style={{ color: 'var(--muted)' }}>—</span>}
                     </td>
-                    {/* Aktionen */}
                     <td style={{ padding: '12px 14px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div className="row" style={{ justifyContent: 'flex-end' }}>
                         <button className="btn" style={{ padding: '5px 10px', fontSize: 11 }}
-                          onClick={() => navigate(`/vorschau?no=${encodeURIComponent(a.offer_no)}`)}>
+                          onClick={() => goToVorschau(a.offer_no)}>
                           👁️ PDF
                         </button>
                         <button className="btn" style={{ padding: '5px 10px', fontSize: 11, color: 'var(--red)' }}
