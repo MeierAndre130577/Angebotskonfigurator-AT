@@ -77,41 +77,45 @@ export default function Vorschau() {
   }
 
   function buildMailtoLink(pdfUrl) {
-    const s       = settings || {}
-    const proj    = offerData?.project || {}
-    const replace = (tpl) => (tpl || '')
-      .replace(/{{kunde}}/g,          proj.customer   || '')
-      .replace(/{{ansprechpartner}}/g, proj.contact    || proj.customer || '')
-      .replace(/{{angebotsnummer}}/g,  proj.offerNo    || '')
-      .replace(/{{projekt}}/g,         proj.project    || '')
-      .replace(/{{datum}}/g,           proj.date       || '')
-      .replace(/{{gueltigBis}}/g,      proj.valid      || '')
-      .replace(/{{downloadLink}}/g,     packageUrl      || '')
-      .replace(/{{anbieter}}/g,        s.company       || 'Sielaff Austria GmbH')
+    const s    = settings || {}
+    const proj = offerData?.project || {}
+
+    const rep = (tpl) => (tpl || '')
+      .replace(/{{kunde}}/g,          proj.customer  || '')
+      .replace(/{{ansprechpartner}}/g, proj.contact   || proj.customer || '')
+      .replace(/{{angebotsnummer}}/g,  proj.offerNo   || '')
+      .replace(/{{projekt}}/g,         proj.project   || '')
+      .replace(/{{datum}}/g,           proj.date      || '')
+      .replace(/{{gueltigBis}}/g,      proj.valid     || '')
+      .replace(/{{downloadLink}}/g,    packageUrl     || '')
+      .replace(/{{anbieter}}/g,        s.company      || 'Sielaff Austria GmbH')
 
     const to      = proj.customerEmail || ''
-    const subject = encodeURIComponent(replace(
-      s.email_subject || 'Angebot {{angebotsnummer}} – {{projekt}} für {{kunde}}'
-    ))
-    const body    = encodeURIComponent(replace(
-      s.email_body ||
+    const subject = rep(s.email_subject || 'Angebot {{angebotsnummer}} – {{projekt}} für {{kunde}}')
+    const body    = rep(s.email_body ||
 `Sehr geehrte(r) {{ansprechpartner}},
 
-vielen Dank für Ihr Interesse. Anbei finden Sie unser Angebot {{angebotsnummer}} für {{projekt}}.
+Angebot: {{angebotsnummer}}
+Projekt: {{projekt}}
+Gültig bis: {{gueltigBis}}
 
-Das Angebot ist gültig bis {{gueltigBis}}.
-
-Alle Dokumente zum Download (30 Tage gültig):
-{{downloadLink}}
-
-Bei Fragen stehen wir Ihnen gerne zur Verfügung.
+Download: {{downloadLink}}
 
 Mit freundlichen Grüßen
-{{anbieter}}`
-    ))
-    // Hinweis: Anhänge können über mailto: nicht automatisch beigefügt werden.
-    // Das PDF muss manuell angehängt werden – wir öffnen es gleichzeitig zum Download.
-    return `mailto:${to}?subject=${subject}&body=${body}`
+{{anbieter}}`)
+
+    // Firefox: mailto URL darf max ~2000 Zeichen haben
+    const raw = `mailto:${to}?subject=${subject}&body=${body}`
+    if (raw.length <= 1800) return raw
+
+    // Zu lang: nur Betreff + gekürzter Body
+    const shortBody = rep(
+`Angebot {{angebotsnummer}} für {{kunde}}
+Download: {{downloadLink}}
+
+Mit freundlichen Grüßen, {{anbieter}}`
+    )
+    return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(shortBody)}`
   }
 
   function handleSendEmail() {
