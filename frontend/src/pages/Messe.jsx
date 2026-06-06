@@ -132,46 +132,11 @@ export default function Messe() {
   const oneTime  = selected.filter(o => !o.recurring).reduce((s, o) => s + (o.price || 0), 0)
   const monthly  = selected.filter(o => o.recurring).reduce((s, o) => s + (o.price || 0), 0)
 
-  // ── Done Screen ───────────────────────────────────────────────────────────
-  if (done) return (
-    <div style={{ maxWidth: 600, margin: '40px auto' }}>
-      <div style={{ textAlign: 'center', marginBottom: 24 }}>
-        <div style={{ fontSize: 64, marginBottom: 12 }}>✅</div>
-        <h1 style={{ fontSize: 26, fontWeight: 850, marginBottom: 6 }}>Angebot generiert!</h1>
-        <p className="muted"><b>{contact.company}</b> · {contact.email}</p>
-        <p style={{ marginTop: 6 }}>
-          <b style={{ color: 'var(--red)', fontFamily: 'var(--font-mono)', fontSize: 14 }}>{result?.offer_no}</b>
-        </p>
-      </div>
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-title">Aktionen</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {result?.pdf_url && (
-            <a href={(import.meta.env.VITE_API_URL || '') + result.pdf_url}
-              target="_blank" rel="noopener noreferrer"
-              className="btn btn-red btn-lg" style={{ textDecoration: 'none', justifyContent: 'center' }}>
-              📄 PDF öffnen
-            </a>
-          )}
-          {result?.zip_url && (
-            <button className="btn btn-lg" style={{ justifyContent: 'center' }}
-              onClick={() => { navigator.clipboard.writeText(result.zip_url); alert('Link kopiert!') }}>
-              📋 Download-Link kopieren
-            </button>
-          )}
-          {result?.zip_url && (
-            <a href={result.zip_url} target="_blank" rel="noopener noreferrer"
-              className="btn btn-lg" style={{ textDecoration: 'none', justifyContent: 'center' }}>
-              📦 ZIP herunterladen
-            </a>
-          )}
-        </div>
-      </div>
-      <button className="btn btn-red btn-lg" style={{ marginBottom: 12 }} onClick={reset}>
-        ＋ Neues Messegespräch
-      </button>
-    </div>
-  )
+  // Nach Generieren direkt zur PDF-Vorschau
+  if (done && result?.offer_no) {
+    navigate(`/vorschau?no=${encodeURIComponent(result.offer_no)}`)
+    return null
+  }
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>

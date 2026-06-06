@@ -30,7 +30,8 @@ export default function Angebote() {
   const [search, setSearch]         = useState('')
   const [showArchiv, setShowArchiv] = useState(false)
   const [toast, setToast]           = useState('')
-  const navigate = useNavigate()
+  const navigate   = useNavigate()
+  const [qrModal, setQrModal] = useState(null)  // zip_url des aktiven QR
 
   useEffect(() => {
     load()
@@ -75,6 +76,21 @@ export default function Angebote() {
     // Aktuellen Zähler updaten
     setAngebote(prev => prev.map(x => x.id === a.id ? { ...x, zip_downloads: data.zip_downloads } : x))
     window.open(a.zip_url, '_blank')
+  }
+
+  async function archiveOffer(e, a) {
+    e.stopPropagation()
+    if (!confirm(`Angebot ${a.offer_no} archivieren?
+Das ZIP wird gelöscht, das PDF bleibt erhalten.`)) return
+    try {
+      if (a.zip_filename) {
+        await fetch(`${BASE}/offers/${a.id}/zip`, { method: 'DELETE' })
+      }
+      setAngebote(prev => prev.map(x => x.id === a.id
+        ? { ...x, status: 'archived', zip_url: '', zip_filename: '' }
+        : x))
+      showToast('Archiviert ✓')
+    } catch { showToast('Fehler beim Archivieren') }
   }
 
   function copyLink(e, url) {
@@ -124,6 +140,33 @@ export default function Angebote() {
 
   return (
     <div>
+      {/* QR-Code Modal */}
+      {qrModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
+          zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setQrModal(null)}>
+          <div style={{ background: 'white', borderRadius: 20, padding: 32,
+            textAlign: 'center', boxShadow: '0 24px 60px rgba(0,0,0,.2)' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginBottom: 16, fontSize: 16 }}>🔳 QR-Code</h3>
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrModal)}`}
+              alt="QR-Code" style={{ width: 220, height: 220, borderRadius: 8 }}
+            />
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 12 }}>
+              Gültig 30 Tage · Alle Dokumente als ZIP
+            </p>
+            <div className="row" style={{ justifyContent: 'center', marginTop: 16, gap: 10 }}>
+              <a href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(qrModal)}`}
+                download="QR-Code.png" target="_blank" rel="noopener noreferrer"
+                className="btn" style={{ textDecoration: 'none', fontSize: 12 }}>
+                ⬇️ Herunterladen
+              </a>
+              <button className="btn" onClick={() => setQrModal(null)}>Schließen</button>
+            </div>
+          </div>
+        </div>
+      )}
       {toast && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24, background: 'var(--dark)',
@@ -272,6 +315,20 @@ export default function Angebote() {
                           <button className="btn" style={{ padding: '5px 8px', fontSize: 11 }}
                             onClick={e => openEmail(e, a)} title="E-Mail öffnen">
                             ✉️
+                          </button>
+                        )}
+                        {/* Archivieren (nur aktive) */}
+                        {!archived && (
+                          <button className="btn" style={{ padding: '5px 8px', fontSize: 11, color: 'var(--muted)' }}
+                            onClick={e => archiveOffer(e, a)} title="Archivieren">
+                            📦
+                          </button>
+                        )}
+                        {/* QR-Code (nur aktive mit ZIP) */}
+                        {!archived && a.zip_url && (
+                          <button className="btn" style={{ padding: '5px 8px', fontSize: 11 }}
+                            onClick={e => { e.stopPropagation(); setQrModal(a.zip_url) }} title="QR-Code anzeigen">
+                            🔳
                           </button>
                         )}
                         {/* Löschen */}

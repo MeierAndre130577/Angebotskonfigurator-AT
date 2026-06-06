@@ -25,6 +25,8 @@ export default function Vorschau() {
   const [toast, setToast]           = useState('')
   const [error, setError]           = useState('')
   const [packageUrl, setPackageUrl]   = useState('')
+  const [qrVisible, setQrVisible]     = useState(false)
+  const [copied, setCopied]           = useState(false)
   const [loadingLatest, setLoadingLatest] = useState(false)
   const [settings, setSettings]           = useState(null)
 
@@ -65,6 +67,13 @@ export default function Vorschau() {
     } finally {
       setLoadingLatest(false)
     }
+  }
+
+  function copyLink() {
+    if (!packageUrl) return
+    navigator.clipboard.writeText(packageUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   function buildMailtoLink(pdfUrl) {
@@ -247,32 +256,65 @@ Mit freundlichen Grüßen
           </div>
 
           <div className="card">
-            <div className="card-title">PDF generieren</div>
-            <button className="btn btn-red btn-lg" onClick={generatePdf} disabled={generating}>
-              {generating ? '⏳ PDF wird erstellt …' : '📄 PDF erstellen'}
-            </button>
-            {pdfUrl && (
-              <div style={{ marginTop: 16, padding: 16, background: 'var(--bg)', borderRadius: 12 }}>
-                <p style={{ fontSize: 13, marginBottom: 10 }}>✅ PDF ist bereit:</p>
-                <div className="row" style={{ flexWrap: 'wrap' }}>
-                  <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="btn btn-red" style={{ textDecoration: 'none' }}>📥 Herunterladen</a>
-                  <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="btn" style={{ textDecoration: 'none' }}>👁️ Im Browser öffnen</a>
-                  <button className="btn" onClick={handleSendEmail} style={{ background: 'var(--dark)', color: 'white', border: 'none' }}>
-                    ✉️ Per E-Mail senden
-                  </button>
-                </div>
+            <div className="card-title">Aktionen</div>
+
+            {!pdfUrl ? (
+              <button className="btn btn-red btn-lg" onClick={generatePdf} disabled={generating}>
+                {generating ? '⏳ PDF wird erstellt …' : '📄 PDF erstellen'}
+              </button>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                {/* PDF öffnen */}
+                <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
+                  className="btn btn-red btn-lg" style={{ textDecoration: 'none', justifyContent: 'center' }}>
+                  📄 PDF anzeigen
+                </a>
+
+                {/* QR-Code anzeigen */}
                 {packageUrl && (
-                  <div style={{ marginTop: 10, padding: '10px 14px', background: 'var(--bg)', borderRadius: 10, fontSize: 12 }}>
-                    <b>📦 Download-Paket (30 Tage gültig):</b>
-                    <a href={packageUrl} target="_blank" rel="noopener noreferrer"
-                      style={{ display: 'block', color: 'var(--red)', marginTop: 4, wordBreak: 'break-all', fontSize: 11 }}>
-                      {packageUrl}
+                  <button className="btn btn-lg" style={{ justifyContent: 'center' }}
+                    onClick={() => setQrVisible(v => !v)}>
+                    🔳 QR-Code {qrVisible ? 'ausblenden' : 'anzeigen'}
+                  </button>
+                )}
+
+                {/* QR-Code Bild */}
+                {qrVisible && packageUrl && (
+                  <div style={{ textAlign: 'center', padding: 16, background: 'var(--bg)',
+                    borderRadius: 12, border: '1px solid var(--line)' }}>
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(packageUrl)}`}
+                      alt="QR-Code"
+                      style={{ width: 180, height: 180, borderRadius: 8 }}
+                    />
+                    <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
+                      Gültig 30 Tage · Alle Dokumente als ZIP
+                    </p>
+                    <a
+                      href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(packageUrl)}`}
+                      download="QR-Code.png" target="_blank" rel="noopener noreferrer"
+                      className="btn" style={{ textDecoration: 'none', marginTop: 8, fontSize: 12 }}>
+                      ⬇️ QR-Code herunterladen
                     </a>
                   </div>
                 )}
-                <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
-                  💡 Das E-Mail-Programm öffnet sich mit vorausgefülltem Betreff, Text und Download-Link. Der QR-Code befindet sich auf der Anlagen-Seite im PDF.
-                </p>
+
+                {/* Link kopieren */}
+                {packageUrl && (
+                  <button className="btn btn-lg" style={{ justifyContent: 'center' }}
+                    onClick={copyLink}>
+                    {copied ? '✅ Kopiert!' : '📋 Download-Link kopieren'}
+                  </button>
+                )}
+
+                {/* E-Mail */}
+                <button className="btn btn-lg"
+                  style={{ justifyContent: 'center', background: 'var(--dark)', color: 'white', border: 'none' }}
+                  onClick={handleSendEmail}>
+                  ✉️ E-Mail schreiben
+                </button>
+
               </div>
             )}
           </div>
