@@ -589,26 +589,11 @@ def generate_design_pdf(data: dict) -> dict:
 
     # ── Preiszusammenfassung ──────────────────────────────────────────────────
     section_title(story, '3. Preiszusammenfassung', S, CW)
-    servicevertrag = (
-        data.get('servicevertrag') or
-        (project.get('servicevertrag') if isinstance(project, dict) else None) or
-        data.get('project', {}).get('servicevertrag') or
-        0
-    )
-    try:
-        servicevertrag = float(servicevertrag) if servicevertrag else 0
-    except Exception:
-        servicevertrag = 0
-    monthly_total = monthly + servicevertrag
+    servicevertrag = 0  # wird über Optionsbibliothek abgewickelt
     preis_rows = [
-        [Paragraph('<b>Einmalige Kosten</b>', S['h3']),  Paragraph(f'<b>{money(one_time)}</b>', S['price'])],
-        [Paragraph('<b>Monatliche Kosten</b>', S['h3']), Paragraph(f'<b>{money(monthly_total)}</b>', S['price'])],
+        [Paragraph('<b>Einmalige Kosten</b>', S['h3']), Paragraph(f'<b>{money(one_time)}</b>', S['price'])],
+        [Paragraph('<b>Monatliche Kosten</b>', S['h3']), Paragraph(f'<b>{money(monthly)}</b>',  S['price'])],
     ]
-    if servicevertrag:
-        preis_rows.append([
-            Paragraph(f'  davon Servicevertrag', S['muted']),
-            Paragraph(f'{money(servicevertrag)} / Mo.', S['muted'])
-        ])
     t = Table(preis_rows, colWidths=[CW-40*mm, 40*mm])
     t.setStyle(TableStyle([
         ('LINEBELOW',(0,0),(-1,-1),0.5,LINE),

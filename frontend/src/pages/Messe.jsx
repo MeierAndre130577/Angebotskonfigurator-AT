@@ -18,7 +18,6 @@ export default function Messe() {
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [projectName, setProjectName]   = useState('')
   const [optionalIds, setOptionalIds]   = useState(new Set())  // Optionen die als optional markiert sind
-  const [servicevertrag, setServicevertrag] = useState('')
   const [offerNo, setOfferNo]         = useState('')
   const [busy, setBusy]               = useState(false)
   const [done, setDone]               = useState(false)
@@ -104,7 +103,6 @@ export default function Messe() {
         contact:       contact.contactName,
         customerEmail: contact.email,
         project:       projectName || 'Messegespräch',
-        servicevertrag: Number(servicevertrag) || 0,
         date:          new Date().toLocaleDateString('de-AT'),
         valid:         new Date(Date.now() + 28*864e5).toLocaleDateString('de-AT'),
       }
@@ -157,7 +155,6 @@ export default function Messe() {
   const selected = allOptions.filter(o => selectedIds.has(o.id))
   const oneTime  = selected.filter(o => !o.recurring && !optionalIds.has(o.id)).reduce((s, o) => s + (o.price || 0), 0)
   const monthly  = selected.filter(o =>  o.recurring && !optionalIds.has(o.id)).reduce((s, o) => s + (o.price || 0), 0)
-  const svcVal   = Number(servicevertrag) || 0
 
   // Nach Generieren direkt zur PDF-Vorschau
   if (done && result?.offer_no) {
@@ -297,7 +294,7 @@ export default function Messe() {
             <div className="card-title">Zusammenfassung</div>
             <div className="grid2" style={{ marginBottom: 16 }}>
               <div className="stat-card"><div className="value">{money(oneTime)}</div><div className="label">Einmalig</div></div>
-              <div className="stat-card"><div className="value">{money(monthly + svcVal)}</div><div className="label">Monatlich{svcVal > 0 ? ' (inkl. Service)' : ''}</div></div>
+              <div className="stat-card"><div className="value">{money(monthly)}</div><div className="label">Monatlich</div></div>
             </div>
             {selected.map(o => {
               const isOptional = optionalIds.has(o.id)
@@ -341,21 +338,7 @@ export default function Messe() {
           </div>
 
           <div className="card">
-            <div className="field">
-              <label>Servicevertrag pro Monat (€)</label>
-              <div className="row" style={{ gap: 8 }}>
-                <input
-                  type="number"
-                  value={servicevertrag}
-                  onChange={e => setServicevertrag(e.target.value)}
-                  placeholder="0,00"
-                  style={{ width: 140 }}
-                />
-                <span style={{ fontSize: 12, color: 'var(--muted)', alignSelf: 'center' }}>
-                  € / Monat
-                </span>
-              </div>
-            </div>
+
             <div className="field">
               <label>Projektbezeichnung (optional)</label>
               <input value={projectName} onChange={e => setProjectName(e.target.value)} placeholder="z.B. Standort Wien · Büro 3. OG" />
