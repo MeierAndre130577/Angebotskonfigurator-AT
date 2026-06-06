@@ -101,6 +101,9 @@ vielen Dank für Ihr Interesse. Anbei finden Sie unser Angebot {{angebotsnummer}
 
 Das Angebot ist gültig bis {{gueltigBis}}.
 
+Alle Dokumente zum Download (30 Tage gültig):
+{{downloadLink}}
+
 Bei Fragen stehen wir Ihnen gerne zur Verfügung.
 
 Mit freundlichen Grüßen
