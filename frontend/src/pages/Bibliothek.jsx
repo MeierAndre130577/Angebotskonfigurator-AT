@@ -383,11 +383,14 @@ export default function Bibliothek() {
             <button className="btn btn-red" style={{ flex: 'none' }}
               onClick={() => {
                 if (!newTplName.trim()) return
-                const ids = filtered.map(o => o.id)  // aktuelle Sichtauswahl
+                // Alle aktuell gefilterten/sichtbaren Optionen speichern
+                const ids = filtered.map(o => o.id)
+                if (ids.length === 0) { alert('Keine Optionen in der aktuellen Ansicht'); return }
                 saveTemplate({ id: crypto.randomUUID(), name: newTplName.trim(), option_ids: ids })
                 setNewTplName('')
+                showToast(`Vorlage "${newTplName.trim()}" mit ${ids.length} Optionen gespeichert ✓`)
               }}>
-              ＋ Aus aktueller Ansicht
+              ＋ Aus aktueller Ansicht ({filtered.length})
             </button>
           </div>
 
@@ -432,8 +435,9 @@ export default function Bibliothek() {
                       <button className="btn" style={{ padding: '4px 10px', fontSize: 11 }}
                         onClick={() => {
                           const ids = filtered.map(o => o.id)
+                          if (ids.length === 0) { alert('Keine Optionen in der aktuellen Ansicht'); return }
                           saveTemplate({...tpl, option_ids: ids})
-                        }} title="Mit aktueller Ansicht überschreiben">🔄</button>
+                        }} title={`Mit aktueller Ansicht überschreiben (${filtered.length} Opt.)`}>🔄</button>
                       <button className="btn" style={{ padding: '4px 10px', fontSize: 11, color: 'var(--red)' }}
                         onClick={() => deleteTemplate(tpl.id)}>🗑️</button>
                     </>
@@ -445,7 +449,7 @@ export default function Bibliothek() {
         </div>
       )}
 
-      <div className="row" style={{ marginBottom: 20, gap: 12 }}>
+      <div className="row" style={{ marginBottom: 12, gap: 12 }}>
         <input placeholder="🔍 Suchen …" value={search} onChange={e => setSearch(e.target.value)}
           style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '9px 14px', fontSize: 13, flex: 1 }} />
         <select value={filterCluster} onChange={e => setFilter(e.target.value)}
@@ -453,6 +457,27 @@ export default function Bibliothek() {
           <option value="">Alle Cluster</option>
           {clusters.map(c => <option key={c}>{c}</option>)}
         </select>
+      </div>
+
+      {/* Alle aktiv / inaktiv */}
+      <div className="row" style={{ marginBottom: 16, gap: 8 }}>
+        <span style={{ fontSize: 12, color: 'var(--muted)' }}>Sichtbare Optionen:</span>
+        <button className="btn" style={{ fontSize: 11, padding: '5px 12px' }}
+          onClick={async () => {
+            await Promise.all(filtered.filter(o => o.active === false).map(o => optionsApi.upsert({...o, active: true})))
+            await load()
+            showToast('Alle aktiviert ✓')
+          }}>
+          ✅ Alle aktivieren
+        </button>
+        <button className="btn" style={{ fontSize: 11, padding: '5px 12px' }}
+          onClick={async () => {
+            await Promise.all(filtered.filter(o => o.active !== false).map(o => optionsApi.upsert({...o, active: false})))
+            await load()
+            showToast('Alle deaktiviert ✓')
+          }}>
+          ⬜ Alle deaktivieren
+        </button>
       </div>
 
       {/* ── Edit Modal ──────────────────────────────────────────────────────── */}

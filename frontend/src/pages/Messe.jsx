@@ -152,7 +152,10 @@ export default function Messe() {
   // Nur aktive Optionen, gefiltert nach Vorlage
   const visibleOptions = allOptions.filter(o => {
     if (o.active === false) return false
-    if (activeTemplate) return (activeTemplate.option_ids || []).includes(o.id)
+    if (activeTemplate) {
+      const ids = (activeTemplate.option_ids || []).map(String)
+      return ids.includes(String(o.id))
+    }
     return true
   })
 
