@@ -128,6 +128,13 @@ Mit freundlichen Grüßen
     try {
       const data = await offers.getByNumber(num)
       setOfferData(data)
+      // PDF-URL und Package-URL aus DB direkt setzen
+      if (data.pdf_url) {
+        setPdfUrl((import.meta.env.VITE_API_URL || '') + data.pdf_url)
+      }
+      if (data.zip_url) {
+        setPackageUrl(data.zip_url)
+      }
     } catch(e) {
       setError(`Angebot „${num}" nicht gefunden`)
     } finally {
