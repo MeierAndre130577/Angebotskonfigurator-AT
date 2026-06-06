@@ -177,8 +177,11 @@ export default function Bibliothek() {
   const [toast, setToast]           = useState('')
   const [templates, setTemplates]   = useState([])
   const [showTemplates, setShowTemplates] = useState(false)
-  const [editingTemplate, setEditingTemplate] = useState(null)  // null | {id,name,option_ids}
-  const [newTplName, setNewTplName] = useState('')
+  const [editingTemplate, setEditingTemplate] = useState(null)
+  const [newTplName, setNewTplName]           = useState('')
+  const [defaultTemplateId, setDefaultTemplateId] = useState(
+    () => localStorage.getItem('bibliothek_default_template') || null
+  )
   const fileRef                     = useRef()
   const docRef                      = useRef()
   const BASE = (import.meta.env.VITE_API_URL || '') + '/api'
@@ -216,9 +219,45 @@ export default function Bibliothek() {
 
   async function loadTemplates() {
     try {
-      const res = await fetch(`${BASE}/templates`)
-      setTemplates(await res.json())
+      const res  = await fetch(`${BASE}/templates`)
+      const tpls = await res.json()
+      setTemplates(tpls)
+
+      // Standard-Vorlage anwenden: Optionen aktivieren/deaktivieren
+      const defId = localStorage.getItem('bibliothek_default_template')
+      if (defId) {
+        const defTpl = tpls.find(t => t.id === defId)
+        if (defTpl) applyTemplate(defTpl)
+      }
     } catch(e) { console.warn(e) }
+  }
+
+  async function applyTemplate(tpl) {
+    // Alle Optionen: aktiv wenn in Vorlage, inaktiv sonst
+    const ids = new Set((tpl.option_ids || []).map(String))
+    const all  = await optionsApi.list()
+    const toUpdate = all.filter(o => {
+      const inTpl    = ids.has(String(o.id))
+      const isActive = o.active !== false
+      return inTpl !== isActive  // nur ändern wenn nötig
+    })
+    if (toUpdate.length === 0) return
+    await Promise.all(toUpdate.map(o => optionsApi.upsert({ ...o, active: ids.has(String(o.id)) })))
+    await load()
+    showToast(`Vorlage "${tpl.name}" angewendet ✓`)
+  }
+
+  function setAsDefault(tpl) {
+    if (defaultTemplateId === tpl.id) {
+      // Abwählen
+      localStorage.removeItem('bibliothek_default_template')
+      setDefaultTemplateId(null)
+      showToast('Standard-Vorlage entfernt')
+    } else {
+      localStorage.setItem('bibliothek_default_template', tpl.id)
+      setDefaultTemplateId(tpl.id)
+      showToast(`"${tpl.name}" als Standard gesetzt ✓`)
+    }
   }
 
   async function saveTemplate(tpl) {
@@ -417,7 +456,10 @@ export default function Bibliothek() {
                     <span style={{ flex: 1, fontWeight: 700, fontSize: 13 }}>{tpl.name}</span>
                   )}
                   <span style={{ fontSize: 11, color: 'var(--muted)' }}>
-                    {(tpl.option_ids || []).length} Optionen
+                    {(tpl.option_ids || []).length} Opt.
+                    {defaultTemplateId === tpl.id && (
+                      <span style={{ marginLeft: 6, color: 'var(--dark)', fontWeight: 700 }}>★</span>
+                    )}
                   </span>
                   {editingTemplate?.id === tpl.id ? (
                     <>
@@ -430,6 +472,21 @@ export default function Bibliothek() {
                     </>
                   ) : (
                     <>
+                      {/* Anwenden */}
+                      <button className="btn" style={{ padding: '4px 10px', fontSize: 11,
+                        background: 'var(--red)', color: 'white', border: 'none' }}
+                        onClick={() => applyTemplate(tpl)}
+                        title="Toggle-Status aller Optionen nach dieser Vorlage setzen">
+                        ▶ Laden
+                      </button>
+                      {/* Als Standard */}
+                      <button className="btn" style={{ padding: '4px 10px', fontSize: 11,
+                        background: defaultTemplateId === tpl.id ? 'var(--dark)' : 'white',
+                        color: defaultTemplateId === tpl.id ? 'white' : 'var(--muted)' }}
+                        onClick={() => setAsDefault(tpl)}
+                        title={defaultTemplateId === tpl.id ? 'Standard entfernen' : 'Beim Öffnen automatisch laden'}>
+                        {defaultTemplateId === tpl.id ? '★ Standard' : '☆ Standard'}
+                      </button>
                       <button className="btn" style={{ padding: '4px 10px', fontSize: 11 }}
                         onClick={() => setEditingTemplate(tpl)} title="Umbenennen">✏️</button>
                       <button className="btn" style={{ padding: '4px 10px', fontSize: 11 }}
