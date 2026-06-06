@@ -98,20 +98,36 @@ export default function Messe() {
     if (busy) return
     setBusy(true); setError('')
     try {
-      import.meta.env.VITE_API_URL  // ensure BASE is defined
-      const items = allOptions.filter(o => selectedIds.has(o.id))
+      const rawItems = allOptions.filter(o => selectedIds.has(o.id))
       const proj  = {
         customer:      contact.company,
         contact:       contact.contactName,
         customerEmail: contact.email,
         project:       projectName || 'Messegespräch',
+        servicevertrag: Number(servicevertrag) || 0,
         date:          new Date().toLocaleDateString('de-AT'),
         valid:         new Date(Date.now() + 28*864e5).toLocaleDateString('de-AT'),
       }
+      // offer_items mit optional-Flag und korrekten Preisen
+      const offer_items = rawItems.map(o => ({
+        option_id:      o.id,
+        name:           o.name,
+        cluster:        o.cluster      || '',
+        short_text:     o.short_text   || '',
+        long_text:      o.long_text    || '',
+        original_price: o.price        || 0,
+        price:          optionalIds.has(o.id) ? 0 : (o.price || 0),
+        optional:       optionalIds.has(o.id),
+        recurring:      o.recurring    || false,
+        image_path:     o.image_path   || '',
+        display_type:   o.display_type || '',
+        documents:      o.documents    || [],
+        qty:            1,
+      }))
       const res  = await fetch(`${BASE}/offers/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project: proj, offer_items: items, provider: {}, attachments: [] })
+        body: JSON.stringify({ project: proj, offer_items, provider: {}, attachments: [] })
       })
       const data = await res.json()
       if (!data.ok) throw new Error('Generierung fehlgeschlagen')
@@ -139,8 +155,9 @@ export default function Messe() {
   }, {})
 
   const selected = allOptions.filter(o => selectedIds.has(o.id))
-  const oneTime  = selected.filter(o => !o.recurring).reduce((s, o) => s + (o.price || 0), 0)
-  const monthly  = selected.filter(o => o.recurring).reduce((s, o) => s + (o.price || 0), 0)
+  const oneTime  = selected.filter(o => !o.recurring && !optionalIds.has(o.id)).reduce((s, o) => s + (o.price || 0), 0)
+  const monthly  = selected.filter(o =>  o.recurring && !optionalIds.has(o.id)).reduce((s, o) => s + (o.price || 0), 0)
+  const svcVal   = Number(servicevertrag) || 0
 
   // Nach Generieren direkt zur PDF-Vorschau
   if (done && result?.offer_no) {
@@ -280,7 +297,7 @@ export default function Messe() {
             <div className="card-title">Zusammenfassung</div>
             <div className="grid2" style={{ marginBottom: 16 }}>
               <div className="stat-card"><div className="value">{money(oneTime)}</div><div className="label">Einmalig</div></div>
-              <div className="stat-card"><div className="value">{money(monthly)}</div><div className="label">Monatlich</div></div>
+              <div className="stat-card"><div className="value">{money(monthly + svcVal)}</div><div className="label">Monatlich{svcVal > 0 ? ' (inkl. Service)' : ''}</div></div>
             </div>
             {selected.map(o => {
               const isOptional = optionalIds.has(o.id)
