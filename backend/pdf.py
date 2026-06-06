@@ -431,13 +431,19 @@ def generate_design_pdf(data: dict) -> dict:
     hdr  = [Paragraph(f'<b>{x}</b>', S['muted']) for x in ['#','Option','Cluster','Preis']]
     rows = [hdr]
     for i, item in enumerate(offer, 1):
-        p  = item.get('price') or 0
-        ps = 'inklusive' if p==0 else (money(p)+'/Mo.' if item.get('recurring') else money(p))
+        p          = item.get('original_price') or item.get('price') or 0
+        is_opt     = item.get('optional', False)
+        if is_opt:
+            ps = 'optional'
+            name_text = f"{item.get('name','')}  <font color='#71717a' size='7'>[optional]</font>"
+        else:
+            ps = 'inklusive' if p==0 else (money(p)+'/Mo.' if item.get('recurring') else money(p))
+            name_text = item.get('name','')
         rows.append([
             Paragraph(str(i), S['muted']),
-            Paragraph(item.get('name',''), S['body']),
+            Paragraph(name_text, S['body']),
             Paragraph(item.get('cluster',''), S['muted']),
-            Paragraph(ps, S['body']),
+            Paragraph(ps, S['muted'] if is_opt else S['body']),
         ])
 
     # Summenzeilen
@@ -578,10 +584,17 @@ def generate_design_pdf(data: dict) -> dict:
 
     # ── Preiszusammenfassung ──────────────────────────────────────────────────
     section_title(story, '3. Preiszusammenfassung', S, CW)
-    t = Table([
+    servicevertrag = data.get('servicevertrag') or (project.get('servicevertrag') if isinstance(project, dict) else 0) or 0
+    preis_rows = [
         [Paragraph('<b>Einmalige Kosten</b>', S['h3']), Paragraph(f'<b>{money(one_time)}</b>', S['price'])],
         [Paragraph('<b>Monatliche Kosten</b>', S['h3']), Paragraph(f'<b>{money(monthly)}</b>',  S['price'])],
-    ], colWidths=[CW-40*mm, 40*mm])
+    ]
+    if servicevertrag:
+        preis_rows.append([
+            Paragraph('<b>Servicevertrag</b>', S['h3']),
+            Paragraph(f'<b>{money(servicevertrag)} / Mo.</b>', S['price'])
+        ])
+    t = Table(preis_rows, colWidths=[CW-40*mm, 40*mm])
     t.setStyle(TableStyle([
         ('LINEBELOW',(0,0),(-1,-1),0.5,LINE),
         ('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8),

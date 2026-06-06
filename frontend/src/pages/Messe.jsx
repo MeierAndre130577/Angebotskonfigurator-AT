@@ -16,7 +16,9 @@ export default function Messe() {
   const [suggestions, setSuggestions] = useState([])
   const [allOptions, setAllOptions]   = useState([])
   const [selectedIds, setSelectedIds] = useState(new Set())
-  const [projectName, setProjectName] = useState('')
+  const [projectName, setProjectName]   = useState('')
+  const [optionalIds, setOptionalIds]   = useState(new Set())  // Optionen die als optional markiert sind
+  const [servicevertrag, setServicevertrag] = useState('')
   const [offerNo, setOfferNo]         = useState('')
   const [busy, setBusy]               = useState(false)
   const [done, setDone]               = useState(false)
@@ -55,6 +57,14 @@ export default function Messe() {
     if (!contact.company.trim()) { setError('Firma ist erforderlich'); return false }
     if (!contact.email.trim() || !contact.email.includes('@')) { setError('Bitte gültige E-Mail angeben'); return false }
     setError(''); return true
+  }
+
+  function toggleOptional(id) {
+    setOptionalIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
   }
 
   function validateStep1() {
@@ -272,15 +282,63 @@ export default function Messe() {
               <div className="stat-card"><div className="value">{money(oneTime)}</div><div className="label">Einmalig</div></div>
               <div className="stat-card"><div className="value">{money(monthly)}</div><div className="label">Monatlich</div></div>
             </div>
-            {selected.map(o => (
-              <div key={o.id} className="between small" style={{ padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
-                <span><b>{o.name}</b> <span className="muted">{o.cluster}</span></span>
-                <b style={{ color: 'var(--red)' }}>{o.price === 0 ? 'inkl.' : o.recurring ? money(o.price) + '/Mo.' : money(o.price)}</b>
-              </div>
-            ))}
+            {selected.map(o => {
+              const isOptional = optionalIds.has(o.id)
+              return (
+                <div key={o.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+                  <div className="between small">
+                    <span>
+                      <b>{o.name}</b>
+                      <span className="muted" style={{ marginLeft: 6 }}>{o.cluster}</span>
+                      {isOptional && (
+                        <span style={{ marginLeft: 8, fontSize: 10, background: 'var(--bg)',
+                          border: '1px solid var(--line)', borderRadius: 6, padding: '1px 6px',
+                          color: 'var(--muted)', fontWeight: 700 }}>
+                          OPTIONAL
+                        </span>
+                      )}
+                    </span>
+                    <div className="row" style={{ gap: 8 }}>
+                      <b style={{ color: isOptional ? 'var(--muted)' : 'var(--red)',
+                        textDecoration: isOptional ? 'line-through' : 'none' }}>
+                        {o.price === 0 ? 'inkl.' : o.recurring ? money(o.price)+'/Mo.' : money(o.price)}
+                      </b>
+                      {/* Optional-Schalter */}
+                      <button
+                        onClick={() => toggleOptional(o.id)}
+                        title={isOptional ? 'Als pflicht markieren' : 'Als optional markieren'}
+                        style={{
+                          border: `1px solid ${isOptional ? 'var(--red)' : 'var(--line)'}`,
+                          background: isOptional ? 'var(--red-light)' : 'white',
+                          borderRadius: 6, padding: '2px 8px', fontSize: 10,
+                          cursor: 'pointer', color: isOptional ? 'var(--red)' : 'var(--muted)',
+                          fontWeight: 700,
+                        }}>
+                        {isOptional ? '✓ opt.' : 'opt.?'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
           <div className="card">
+            <div className="field">
+              <label>Servicevertrag pro Monat (€)</label>
+              <div className="row" style={{ gap: 8 }}>
+                <input
+                  type="number"
+                  value={servicevertrag}
+                  onChange={e => setServicevertrag(e.target.value)}
+                  placeholder="0,00"
+                  style={{ width: 140 }}
+                />
+                <span style={{ fontSize: 12, color: 'var(--muted)', alignSelf: 'center' }}>
+                  € / Monat
+                </span>
+              </div>
+            </div>
             <div className="field">
               <label>Projektbezeichnung (optional)</label>
               <input value={projectName} onChange={e => setProjectName(e.target.value)} placeholder="z.B. Standort Wien · Büro 3. OG" />
