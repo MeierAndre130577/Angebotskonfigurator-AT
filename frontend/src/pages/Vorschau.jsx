@@ -115,13 +115,11 @@ Mit freundlichen Grüßen
   }
 
   function handleSendEmail() {
-    if (!pdfUrl) return
-    // PDF öffnen damit es heruntergeladen wird
-    window.open(pdfUrl, '_blank')
     // E-Mail-Client öffnen
-    setTimeout(() => {
-      window.location.href = buildMailtoLink(pdfUrl)
-    }, 500)
+    const link = buildMailtoLink(pdfUrl)
+    const a = document.createElement('a')
+    a.href = link
+    a.click()
   }
 
   async function doLoad(no) {
