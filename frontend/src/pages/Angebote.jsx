@@ -255,7 +255,8 @@ Das ZIP wird gelöscht, das PDF bleibt erhalten.`)) return
 
                 return (
                   <tr key={a.id}
-                    style={{ borderBottom: '1px solid var(--line)',
+                    onClick={() => navigate(`/vorschau?no=${encodeURIComponent(a.offer_no)}`)}
+                    style={{ borderBottom: '1px solid var(--line)', cursor: 'pointer',
                       background: archived ? 'var(--bg)' : 'white' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#f0f0f0'}
                     onMouseLeave={e => e.currentTarget.style.background = archived ? 'var(--bg)' : 'white'}
@@ -288,52 +289,16 @@ Das ZIP wird gelöscht, das PDF bleibt erhalten.`)) return
                     </td>
                     <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                       <div className="row" style={{ justifyContent: 'flex-end', gap: 4 }}>
-                        {/* PDF öffnen */}
-                        {pdfUrl && (
-                          <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
-                            className="btn" style={{ padding: '5px 8px', fontSize: 11, textDecoration: 'none' }}
-                            onClick={e => e.stopPropagation()}>
-                            📄
-                          </a>
-                        )}
-                        {/* Download-Link kopieren (nur aktive) */}
-                        {!archived && a.zip_url && (
-                          <button className="btn" style={{ padding: '5px 8px', fontSize: 11 }}
-                            onClick={e => copyLink(e, a.zip_url)} title="Download-Link kopieren">
-                            📋
-                          </button>
-                        )}
-                        {/* ZIP herunterladen (nur aktive) */}
-                        {!archived && a.zip_url && (
-                          <button className="btn" style={{ padding: '5px 8px', fontSize: 11 }}
-                            onClick={e => handleDownload(e, a)} title="ZIP herunterladen">
-                            📦
-                          </button>
-                        )}
-                        {/* E-Mail */}
-                        {pdfUrl && (
-                          <button className="btn" style={{ padding: '5px 8px', fontSize: 11 }}
-                            onClick={e => openEmail(e, a)} title="E-Mail öffnen">
-                            ✉️
-                          </button>
-                        )}
                         {/* Archivieren (nur aktive) */}
                         {!archived && (
-                          <button className="btn" style={{ padding: '5px 8px', fontSize: 11, color: 'var(--muted)' }}
+                          <button className="btn" style={{ padding: '5px 10px', fontSize: 11, color: 'var(--muted)' }}
                             onClick={e => archiveOffer(e, a)} title="Archivieren">
-                            📦
-                          </button>
-                        )}
-                        {/* QR-Code (nur aktive mit ZIP) */}
-                        {!archived && a.zip_url && (
-                          <button className="btn" style={{ padding: '5px 8px', fontSize: 11 }}
-                            onClick={e => { e.stopPropagation(); setQrModal(a.zip_url) }} title="QR-Code anzeigen">
-                            🔳
+                            📦 Archiv
                           </button>
                         )}
                         {/* Löschen */}
-                        <button className="btn" style={{ padding: '5px 8px', fontSize: 11, color: 'var(--red)' }}
-                          onClick={e => handleDelete(e, a)}>
+                        <button className="btn" style={{ padding: '5px 10px', fontSize: 11, color: 'var(--red)' }}
+                          onClick={e => handleDelete(e, a)} title="Löschen">
                           🗑️
                         </button>
                       </div>

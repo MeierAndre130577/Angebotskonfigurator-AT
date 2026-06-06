@@ -284,13 +284,37 @@ Mit freundlichen Grüßen, {{anbieter}}`
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-                {/* PDF öffnen */}
+                {/* 1. PDF öffnen */}
                 <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
                   className="btn btn-red btn-lg" style={{ textDecoration: 'none', justifyContent: 'center' }}>
-                  📄 PDF anzeigen
+                  📄 PDF öffnen
                 </a>
 
-                {/* QR-Code anzeigen */}
+                {/* 2. ZIP herunterladen */}
+                {packageUrl && (
+                  <a href={packageUrl} target="_blank" rel="noopener noreferrer"
+                    className="btn btn-lg" style={{ textDecoration: 'none', justifyContent: 'center' }}>
+                    📦 ZIP herunterladen
+                  </a>
+                )}
+
+                {/* 3. Download-Link kopieren */}
+                {packageUrl && (
+                  <button className="btn btn-lg" style={{ justifyContent: 'center' }}
+                    onClick={copyLink}>
+                    {copied ? '✅ Kopiert!' : '📋 Download-Link kopieren'}
+                  </button>
+                )}
+
+                {/* 4. E-Mail schreiben */}
+                <a href={buildMailtoLink(pdfUrl)}
+                  className="btn btn-lg"
+                  style={{ justifyContent: 'center', background: 'var(--dark)', color: 'white',
+                    border: 'none', textDecoration: 'none' }}>
+                  ✉️ E-Mail schreiben
+                </a>
+
+                {/* 5. QR-Code anzeigen */}
                 {packageUrl && (
                   <button className="btn btn-lg" style={{ justifyContent: 'center' }}
                     onClick={() => setQrVisible(v => !v)}>
@@ -301,38 +325,21 @@ Mit freundlichen Grüßen, {{anbieter}}`
                 {/* QR-Code Bild */}
                 {qrVisible && packageUrl && (
                   <div style={{ textAlign: 'center', padding: 16, background: 'var(--bg)',
-                    borderRadius: 12, border: '1px solid var(--line)' }}>
+                    borderRadius: 12, border: '1px solid var(--line)', marginTop: 4 }}>
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(packageUrl)}`}
-                      alt="QR-Code"
-                      style={{ width: 180, height: 180, borderRadius: 8 }}
+                      alt="QR-Code" style={{ width: 180, height: 180, borderRadius: 8 }}
                     />
                     <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
                       Gültig 30 Tage · Alle Dokumente als ZIP
                     </p>
-                    <a
-                      href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(packageUrl)}`}
+                    <a href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(packageUrl)}`}
                       download="QR-Code.png" target="_blank" rel="noopener noreferrer"
                       className="btn" style={{ textDecoration: 'none', marginTop: 8, fontSize: 12 }}>
                       ⬇️ QR-Code herunterladen
                     </a>
                   </div>
                 )}
-
-                {/* Link kopieren */}
-                {packageUrl && (
-                  <button className="btn btn-lg" style={{ justifyContent: 'center' }}
-                    onClick={copyLink}>
-                    {copied ? '✅ Kopiert!' : '📋 Download-Link kopieren'}
-                  </button>
-                )}
-
-                {/* E-Mail */}
-                <button className="btn btn-lg"
-                  style={{ justifyContent: 'center', background: 'var(--dark)', color: 'white', border: 'none' }}
-                  onClick={() => { window.location.href = buildMailtoLink(pdfUrl) }}>
-                  ✉️ E-Mail schreiben
-                </button>
 
               </div>
             )}
