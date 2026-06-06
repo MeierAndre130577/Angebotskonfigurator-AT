@@ -45,6 +45,13 @@ else:
                 price REAL DEFAULT 0, recurring INTEGER DEFAULT 0,
                 image_path TEXT, sort_order INTEGER DEFAULT 0,
                 documents TEXT DEFAULT '[]',
+                active INTEGER DEFAULT 1,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
+            CREATE TABLE IF NOT EXISTS templates (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                option_ids TEXT DEFAULT '[]',
                 created_at TEXT DEFAULT (datetime('now'))
             );
             CREATE TABLE IF NOT EXISTS attachments (
@@ -141,19 +148,20 @@ def upsert_option(data: dict):
     if USE_SUPABASE:
         return _sb.table("options").upsert(data).execute().data
     # SQLite: documents als JSON-String
-    sqlite_data = {**data, "documents": json.dumps(docs)}
+    sqlite_data = {**data, "documents": json.dumps(docs), "active": 1 if data.get('active', True) else 0}
     conn = _get_conn()
     conn.execute("""
         INSERT INTO options (id,cluster,name,display_type,short_text,long_text,
-            price,recurring,image_path,sort_order,documents)
+            price,recurring,image_path,sort_order,documents,active)
         VALUES (:id,:cluster,:name,:display_type,:short_text,:long_text,
-            :price,:recurring,:image_path,:sort_order,:documents)
+            :price,:recurring,:image_path,:sort_order,:documents,:active)
         ON CONFLICT(id) DO UPDATE SET
             cluster=excluded.cluster, name=excluded.name,
             display_type=excluded.display_type, short_text=excluded.short_text,
             long_text=excluded.long_text, price=excluded.price,
             recurring=excluded.recurring, image_path=excluded.image_path,
-            sort_order=excluded.sort_order, documents=excluded.documents
+            sort_order=excluded.sort_order, documents=excluded.documents,
+            active=excluded.active
     """, sqlite_data)
     conn.commit(); conn.close()
     return data
@@ -355,3 +363,42 @@ def save_settings(data: dict):
     finally:
         conn.close()
     return data
+
+
+# ── Vorlagen ──────────────────────────────────────────────────────────────────
+
+def get_templates():
+    if USE_SUPABASE:
+        return _sb.table("templates").select("*").order("name").execute().data
+    conn = _get_conn()
+    rows = conn.execute("SELECT * FROM templates ORDER BY name").fetchall()
+    conn.close()
+    result = []
+    for r in rows:
+        d = dict(r)
+        if isinstance(d.get("option_ids"), str):
+            try: d["option_ids"] = json.loads(d["option_ids"])
+            except: d["option_ids"] = []
+        result.append(d)
+    return result
+
+def upsert_template(data: dict):
+    if not data.get("id"):
+        data["id"] = _new_id()
+    if USE_SUPABASE:
+        return _sb.table("templates").upsert(data).execute().data
+    conn = _get_conn()
+    conn.execute(
+        "INSERT INTO templates (id,name,option_ids) VALUES (:id,:name,:option_ids) "
+        "ON CONFLICT(id) DO UPDATE SET name=excluded.name, option_ids=excluded.option_ids",
+        {**data, "option_ids": json.dumps(data.get("option_ids", []))}
+    )
+    conn.commit(); conn.close()
+    return data
+
+def delete_template(template_id: str):
+    if USE_SUPABASE:
+        return _sb.table("templates").delete().eq("id", template_id).execute()
+    conn = _get_conn()
+    conn.execute("DELETE FROM templates WHERE id=?", (template_id,))
+    conn.commit(); conn.close()

@@ -17,7 +17,7 @@ function money(n) {
 const EMPTY = {
   name: '', cluster: 'Farmer Shop', display_type: 'Großes Bild + Beschreibung',
   short_text: '', long_text: '', price: 0, recurring: false,
-  image_path: '', sort_order: 0, documents: []
+  image_path: '', sort_order: 0, documents: [], active: true
 }
 
 async function uploadDocument(file) {
@@ -31,7 +31,7 @@ async function uploadDocument(file) {
 }
 
 // ── Sortierbare Tabellenzeile ─────────────────────────────────────────────────
-function SortableRow({ o, onEdit, onDelete }) {
+function SortableRow({ o, onEdit, onDelete, onToggleActive }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: o.id })
 
   const style = {
@@ -45,7 +45,8 @@ function SortableRow({ o, onEdit, onDelete }) {
   return (
     <tr ref={setNodeRef} style={style}
       onMouseEnter={e => { if (!isDragging) e.currentTarget.style.background = 'var(--bg)' }}
-      onMouseLeave={e => { if (!isDragging) e.currentTarget.style.background = 'white' }}>
+      onMouseLeave={e => { if (!isDragging) e.currentTarget.style.background = o.active !== false ? 'white' : '#fafafa' }}
+      style={{ ...style, opacity: o.active !== false ? 1 : 0.5 }}>
 
       {/* Drag Handle – 3 waagrechte Striche */}
       <td style={{ padding: '10px 8px', width: 36 }}>
@@ -104,6 +105,24 @@ function SortableRow({ o, onEdit, onDelete }) {
             : money(o.price)}
       </td>
 
+      {/* Aktiv Toggle */}
+      <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+        <button
+          onClick={() => onToggleActive(o)}
+          style={{
+            width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+            background: o.active !== false ? 'var(--red)' : 'var(--line)',
+            position: 'relative', transition: '.2s',
+          }}
+        >
+          <div style={{
+            width: 18, height: 18, borderRadius: '50%', background: 'white',
+            position: 'absolute', top: 3,
+            left: o.active !== false ? 23 : 3,
+            transition: '.2s',
+          }} />
+        </button>
+      </td>
       <td style={{ padding: '10px 8px', textAlign: 'right' }}>
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button className="btn" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => onEdit(o)}>✏️</button>
@@ -156,15 +175,20 @@ export default function Bibliothek() {
   const [uploading, setUploading]   = useState(false)
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const [toast, setToast]           = useState('')
+  const [templates, setTemplates]   = useState([])
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState(null)  // null | {id,name,option_ids}
+  const [newTplName, setNewTplName] = useState('')
   const fileRef                     = useRef()
   const docRef                      = useRef()
+  const BASE = (import.meta.env.VITE_API_URL || '') + '/api'
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 5 } })
   )
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(); loadTemplates() }, [])
 
   useEffect(() => {
     if (!editing) return
@@ -188,6 +212,37 @@ export default function Bibliothek() {
     try { setItems(await optionsApi.list()) }
     catch(e) { showToast('Fehler: ' + e.message) }
     finally { setLoading(false) }
+  }
+
+  async function loadTemplates() {
+    try {
+      const res = await fetch(`${BASE}/templates`)
+      setTemplates(await res.json())
+    } catch(e) { console.warn(e) }
+  }
+
+  async function saveTemplate(tpl) {
+    await fetch(`${BASE}/templates`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tpl)
+    })
+    await loadTemplates()
+    showToast('Vorlage gespeichert ✓')
+  }
+
+  async function deleteTemplate(id) {
+    if (!confirm('Vorlage löschen?')) return
+    await fetch(`${BASE}/templates/${id}`, { method: 'DELETE' })
+    await loadTemplates()
+    showToast('Vorlage gelöscht')
+  }
+
+  async function toggleActive(item) {
+    try {
+      await optionsApi.upsert({ ...item, active: !item.active })
+      await load()
+    } catch(e) { showToast('Fehler: ' + e.message) }
   }
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 2500) }
@@ -295,10 +350,100 @@ export default function Bibliothek() {
       <div className="page-header">
         <div>
           <h1>📚 Optionsbibliothek</h1>
-          <p className="subtitle">{items.length} Optionen · ☰ Halten und ziehen zum Sortieren</p>
+          <p className="subtitle">
+            {items.filter(i => i.active !== false).length} aktiv · {items.filter(i => i.active === false).length} inaktiv
+          </p>
         </div>
-        <button className="btn btn-red" onClick={startNew}>＋ Neue Option</button>
+        <div className="row" style={{ gap: 8 }}>
+          <button className="btn" onClick={() => setShowTemplates(v => !v)}
+            style={{ background: showTemplates ? 'var(--dark)' : 'white', color: showTemplates ? 'white' : 'var(--dark)' }}>
+            📋 Vorlagen {templates.length > 0 ? `(${templates.length})` : ''}
+          </button>
+          <button className="btn btn-red" onClick={startNew}>＋ Neue Option</button>
+        </div>
       </div>
+
+      {/* ── Vorlagen Panel ───────────────────────────────────────────────── */}
+      {showTemplates && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-title">📋 Vorlagen</div>
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+            Eine Vorlage ist eine benannte Auswahl von Optionen – z.B. „Weinmesse" oder „Bauernmarkt".
+            In der Schnellerfassung kannst du eine Vorlage auswählen um nur relevante Optionen zu sehen.
+          </p>
+
+          {/* Neue Vorlage */}
+          <div className="row" style={{ marginBottom: 16, gap: 8 }}>
+            <input
+              value={newTplName}
+              onChange={e => setNewTplName(e.target.value)}
+              placeholder="Vorlagenname z.B. Weinmesse"
+              style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px', fontSize: 13 }}
+            />
+            <button className="btn btn-red" style={{ flex: 'none' }}
+              onClick={() => {
+                if (!newTplName.trim()) return
+                const ids = filtered.map(o => o.id)  // aktuelle Sichtauswahl
+                saveTemplate({ id: crypto.randomUUID(), name: newTplName.trim(), option_ids: ids })
+                setNewTplName('')
+              }}>
+              ＋ Aus aktueller Ansicht
+            </button>
+          </div>
+
+          {/* Vorlagen Liste */}
+          {templates.length === 0 ? (
+            <p style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic' }}>Noch keine Vorlagen</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {templates.map(tpl => (
+                <div key={tpl.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 14px', background: 'var(--bg)',
+                  borderRadius: 10, border: '1px solid var(--line)'
+                }}>
+                  <span style={{ fontSize: 14 }}>📋</span>
+                  {editingTemplate?.id === tpl.id ? (
+                    <input
+                      value={editingTemplate.name}
+                      onChange={e => setEditingTemplate(t => ({...t, name: e.target.value}))}
+                      style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 8, padding: '4px 8px', fontSize: 13 }}
+                      autoFocus
+                    />
+                  ) : (
+                    <span style={{ flex: 1, fontWeight: 700, fontSize: 13 }}>{tpl.name}</span>
+                  )}
+                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                    {(tpl.option_ids || []).length} Optionen
+                  </span>
+                  {editingTemplate?.id === tpl.id ? (
+                    <>
+                      <button className="btn" style={{ padding: '4px 10px', fontSize: 11 }}
+                        onClick={() => { saveTemplate(editingTemplate); setEditingTemplate(null) }}>
+                        💾
+                      </button>
+                      <button className="btn" style={{ padding: '4px 10px', fontSize: 11 }}
+                        onClick={() => setEditingTemplate(null)}>✕</button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="btn" style={{ padding: '4px 10px', fontSize: 11 }}
+                        onClick={() => setEditingTemplate(tpl)} title="Umbenennen">✏️</button>
+                      <button className="btn" style={{ padding: '4px 10px', fontSize: 11 }}
+                        onClick={() => {
+                          const ids = filtered.map(o => o.id)
+                          saveTemplate({...tpl, option_ids: ids})
+                        }} title="Mit aktueller Ansicht überschreiben">🔄</button>
+                      <button className="btn" style={{ padding: '4px 10px', fontSize: 11, color: 'var(--red)' }}
+                        onClick={() => deleteTemplate(tpl.id)}>🗑️</button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="row" style={{ marginBottom: 20, gap: 12 }}>
         <input placeholder="🔍 Suchen …" value={search} onChange={e => setSearch(e.target.value)}
@@ -410,6 +555,7 @@ export default function Bibliothek() {
                 <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 700, color: 'var(--muted)' }}>Cluster</th>
                 <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 700, color: 'var(--muted)' }}>Beschreibung</th>
                 <th style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 700, color: 'var(--muted)' }}>Preis</th>
+                <th style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 700, color: 'var(--muted)' }}>Aktiv</th>
                 <th style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 700, color: 'var(--muted)' }}></th>
               </tr>
             </thead>
@@ -417,7 +563,7 @@ export default function Bibliothek() {
               <SortableContext items={filtered.map(o => o.id)} strategy={verticalListSortingStrategy}>
                 <tbody>
                   {filtered.map(o => (
-                    <SortableRow key={o.id} o={o} onEdit={startEdit} onDelete={handleDelete} />
+                    <SortableRow key={o.id} o={o} onEdit={startEdit} onDelete={handleDelete} onToggleActive={toggleActive} />
                   ))}
                 </tbody>
               </SortableContext>

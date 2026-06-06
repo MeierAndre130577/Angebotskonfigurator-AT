@@ -102,6 +102,7 @@ class OptionIn(BaseModel):
     image_path: Optional[str] = ""
     sort_order: Optional[int] = 0
     documents: Optional[list] = []
+    active: Optional[bool] = True
 
 @app.get("/api/options")
 def list_options():
@@ -114,6 +115,21 @@ def upsert_option(data: OptionIn):
 @app.delete("/api/options/{option_id}")
 def delete_option(option_id: str):
     db.delete_option(option_id)
+    return {"ok": True}
+
+# ── Vorlagen ──────────────────────────────────────────────────────────────────
+
+@app.get("/api/templates")
+def list_templates():
+    return db.get_templates()
+
+@app.post("/api/templates")
+def upsert_template(data: dict):
+    return db.upsert_template(data)
+
+@app.delete("/api/templates/{template_id}")
+def delete_template(template_id: str):
+    db.delete_template(template_id)
     return {"ok": True}
 
 # ── Anlagen ───────────────────────────────────────────────────────────────────
