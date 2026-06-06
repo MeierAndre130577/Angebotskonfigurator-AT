@@ -101,6 +101,7 @@ class OptionIn(BaseModel):
     recurring: Optional[bool] = False
     image_path: Optional[str] = ""
     sort_order: Optional[int] = 0
+    documents: Optional[list] = []
 
 @app.get("/api/options")
 def list_options():
