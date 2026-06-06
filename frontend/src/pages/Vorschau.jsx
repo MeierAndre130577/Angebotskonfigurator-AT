@@ -316,12 +316,14 @@ Mit freundlichen Grüßen
                   </button>
                 )}
 
-                {/* E-Mail */}
-                <button className="btn btn-lg"
-                  style={{ justifyContent: 'center', background: 'var(--dark)', color: 'white', border: 'none' }}
-                  onClick={handleSendEmail}>
+                {/* E-Mail – direkter mailto Link funktioniert auf allen Geräten */}
+                <a
+                  href={buildMailtoLink(pdfUrl)}
+                  className="btn btn-lg"
+                  style={{ justifyContent: 'center', background: 'var(--dark)', color: 'white',
+                    border: 'none', textDecoration: 'none' }}>
                   ✉️ E-Mail schreiben
-                </button>
+                </a>
 
               </div>
             )}
