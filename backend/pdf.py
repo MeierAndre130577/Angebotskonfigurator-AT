@@ -634,7 +634,7 @@ def generate_design_pdf(data: dict) -> dict:
             story.append(Spacer(1, 4*mm))
 
             # QR-Code generieren
-            qr_buf = _dl.generate_qr_code(download_url, size_mm=35)
+            qr_buf = _dl.generate_qr_code(download_url)
 
             # Layout: QR links, Text rechts
             qr_col_w = 40*mm
