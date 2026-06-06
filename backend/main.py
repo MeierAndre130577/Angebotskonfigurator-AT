@@ -153,6 +153,16 @@ class OfferIn(BaseModel):
     offer_items: Optional[list] = []
     status: Optional[str] = "draft"
 
+
+@app.get("/api/offers")
+def list_offers():
+    return db.list_offers()
+
+@app.delete("/api/offers/{offer_id}")
+def delete_offer(offer_id: str):
+    db.delete_offer(offer_id)
+    return {"ok": True}
+
 @app.post("/api/offers/number")
 def generate_offer_number():
     return {"offer_no": db.generate_offer_number()}

@@ -23,21 +23,21 @@ export default function Vorschau() {
   const [toast, setToast]           = useState('')
   const [error, setError]           = useState('')
 
-  // Sofort laden wenn Angebotsnummer per URL übergeben
+  // Sofort laden wenn ?no= in URL
   useEffect(() => {
     const no = searchParams.get('no')
-    if (no) {
-      setOfferNo(no)
-      loadOfferByNo(no)
+    if (no && no.trim()) {
+      setOfferNo(no.trim())
+      doLoad(no.trim())
     }
-  }, [searchParams])
+  }, [searchParams.get('no')])
 
   function showToast(msg) {
     setToast(msg)
     setTimeout(() => setToast(''), 3000)
   }
 
-  async function loadOfferByNo(no) {
+  async function doLoad(no) {
     const num = (no || offerNo || '').trim()
     if (!num) return
     setLoading(true); setError(''); setOfferData(null); setPdfUrl('')
@@ -64,8 +64,7 @@ export default function Vorschau() {
         pages: [], clusters: [],
       })
       if (result.ok && result.download_url) {
-        const fullUrl = (import.meta.env.VITE_API_URL || '') + result.download_url
-        setPdfUrl(fullUrl)
+        setPdfUrl((import.meta.env.VITE_API_URL || '') + result.download_url)
         showToast('PDF erstellt ✓')
       } else {
         setError('PDF-Generierung fehlgeschlagen')
@@ -103,16 +102,17 @@ export default function Vorschau() {
           <input
             value={offerNo}
             onChange={e => setOfferNo(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && loadOfferByNo()}
+            onKeyDown={e => e.key === 'Enter' && doLoad()}
             placeholder="z.B. ANG-2026-06-483921"
-            style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 14, fontFamily: 'var(--font-mono)' }}
+            style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 10,
+              padding: '10px 14px', fontSize: 14, fontFamily: 'var(--font-mono)' }}
           />
-          <button className="btn btn-red" onClick={() => loadOfferByNo()} disabled={loading}>
+          <button className="btn btn-red" onClick={() => doLoad()} disabled={loading}>
             {loading ? '⏳ Lädt …' : '🔍 Laden'}
           </button>
         </div>
+        {loading && <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8 }}>⏳ Wird geladen …</p>}
         {error && <p style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>⚠ {error}</p>}
-        {loading && <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8 }}>⏳ Angebot wird geladen …</p>}
       </div>
 
       {/* Vorschau */}
@@ -130,7 +130,6 @@ export default function Vorschau() {
                 <div className="label">{project.date}</div>
               </div>
             </div>
-
             {items.map((item, i) => (
               <div key={i} className="between small" style={{ padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
                 <span><b>{item.name}</b><span className="pill muted" style={{ marginLeft: 8 }}>{item.cluster}</span></span>
@@ -139,8 +138,6 @@ export default function Vorschau() {
                 </b>
               </div>
             ))}
-
-            {/* Summe */}
             <div className="grid2" style={{ marginTop: 16 }}>
               <div style={{ background: 'var(--red-light)', borderRadius: 12, padding: '12px 16px' }}>
                 <div style={{ fontSize: 20, fontWeight: 850, color: 'var(--red)' }}>{money(oneTime)}</div>
@@ -175,7 +172,7 @@ export default function Vorschau() {
 
       {!offerData && !loading && (
         <div className="card">
-          <p className="muted small">Gib eine Angebotsnummer ein oder erstelle ein Angebot über den Messe-Modus.</p>
+          <p className="muted small">Gib eine Angebotsnummer ein oder wähle ein Angebot aus der Übersicht.</p>
         </div>
       )}
     </div>
