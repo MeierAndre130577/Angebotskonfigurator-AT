@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { offers, pdf } from '../lib/api'
 
@@ -22,16 +22,14 @@ export default function Vorschau() {
   const [pdfUrl, setPdfUrl]         = useState('')
   const [toast, setToast]           = useState('')
   const [error, setError]           = useState('')
-  const loadedNo = useRef('')  // verhindert doppeltes Laden
-
+  // Angebotsnummer aus URL laden – einmalig beim Mount und bei URL-Änderung
   useEffect(() => {
     const no = (searchParams.get('no') || '').trim()
-    if (no && no !== loadedNo.current) {
-      loadedNo.current = no
+    if (no) {
       setOfferNo(no)
       doLoad(no)
     }
-  })  // kein dependency array → läuft bei jeder Render, aber loadedNo verhindert Loops
+  }, [searchParams.toString()])
 
   function showToast(msg) {
     setToast(msg)
