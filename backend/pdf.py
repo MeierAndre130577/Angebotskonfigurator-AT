@@ -12,7 +12,7 @@ from reportlab.lib import colors
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
-                                 TableStyle, PageBreak, Image as RLImage)
+                                 TableStyle, PageBreak, Image as RLImage, KeepTogether)
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 
@@ -473,21 +473,27 @@ def generate_design_pdf(data: dict) -> dict:
         p       = item.get('price') or 0
         ps      = 'inklusive' if p==0 else (money(p)+'/Mo.' if item.get('recurring') else money(p))
 
-        story.append(Paragraph(f"{i}. {name}", S['h2']))
+        # Jede Option wird als Block gesammelt und mit KeepTogether eingefügt.
+        # So startet eine Option immer auf einer neuen Seite wenn sie nicht mehr passt –
+        # unabhängig von den konfigurierbaren Seitenrändern.
+        block = []
 
-        img_raw  = fetch_image(item.get('image_path',''))
+        block.append(Paragraph(f"{i}. {name}", S['h2']))
+        block.append(Spacer(1, 2*mm))
+
+        img_raw = fetch_image(item.get('image_path',''))
 
         # ── Variante 1: Großes Bild oben, dann Kurz- und Langtext ────────────
         if display in ('Großes Bild + Beschreibung', ''):
             img = make_image(img_raw, max_w=CW, max_h=100*mm)
             if img:
-                story.append(img)
-                story.append(Spacer(1, 3*mm))
+                block.append(img)
+                block.append(Spacer(1, 3*mm))
             if short:
-                story.append(Paragraph(f"<b>{short}</b>", S['body']))
-                story.append(Spacer(1, 1*mm))
+                block.append(Paragraph(f"<b>{short}</b>", S['body']))
+                block.append(Spacer(1, 1*mm))
             if long_t:
-                story.append(Paragraph(long_t, S['body']))
+                block.append(Paragraph(long_t, S['body']))
 
         # ── Variante 2: Kleines Bild links, Langtext rechts daneben ──────────
         elif display == 'Kleines Bild + Langtext':
@@ -500,58 +506,67 @@ def generate_design_pdf(data: dict) -> dict:
                 text_parts.append(Paragraph(long_t, S['body']))
 
             if img and text_parts:
-                # Tatsächliche Bildbreite für Spaltenbreite verwenden
                 img_col_w = min(img.drawWidth + 5*mm, 80*mm)
                 t2 = Table([[img, text_parts]], colWidths=[img_col_w, CW - img_col_w])
                 t2.setStyle(TableStyle([
-                    ('VALIGN',      (0,0),(-1,-1),'TOP'),
-                    ('LEFTPADDING', (1,0),(1,0),  10),
-                    ('TOPPADDING',  (0,0),(-1,-1), 0),
-                    ('BOTTOMPADDING',(0,0),(-1,-1),0),
+                    ('VALIGN',       (0,0),(-1,-1),'TOP'),
+                    ('LEFTPADDING',  (1,0),(1,0),   10),
+                    ('TOPPADDING',   (0,0),(-1,-1),  0),
+                    ('BOTTOMPADDING',(0,0),(-1,-1),  0),
                 ]))
-                story.append(t2)
+                block.append(t2)
             elif img:
-                story.append(img)
-                story.append(Spacer(1, 2*mm))
-                for tp in text_parts: story.append(tp)
+                block.append(img)
+                block.append(Spacer(1, 2*mm))
+                for tp in text_parts: block.append(tp)
             else:
-                for tp in text_parts: story.append(tp)
+                for tp in text_parts: block.append(tp)
 
         # ── Variante 3: Kein Bild – Langtext + Kurztext ───────────────────────
         elif display == 'Kein Bild, Langtext + Kurztext':
             if long_t:
-                story.append(Paragraph(long_t, S['body']))
-                story.append(Spacer(1, 2*mm))
+                block.append(Paragraph(long_t, S['body']))
+                block.append(Spacer(1, 2*mm))
             if short:
-                story.append(Paragraph(f"<i>{short}</i>", S['muted']))
+                block.append(Paragraph(f"<i>{short}</i>", S['muted']))
 
         # ── Variante 4: Kein Bild – nur Kurztext ─────────────────────────────
         elif display == 'Kein Bild, Kurztext':
             if short:
-                story.append(Paragraph(short, S['body']))
+                block.append(Paragraph(short, S['body']))
 
         # Fallback
         else:
-            if short:  story.append(Paragraph(f"<b>{short}</b>", S['body']))
-            if long_t: story.append(Paragraph(long_t, S['body']))
+            if short:  block.append(Paragraph(f"<b>{short}</b>", S['body']))
+            if long_t: block.append(Paragraph(long_t, S['body']))
 
         # Dokumente dieser Option
         docs = item.get('documents') or []
         if docs:
-            story.append(Spacer(1, 1*mm))
+            block.append(Spacer(1, 1*mm))
             doc_names = ', '.join(d.get('title','') for d in docs if d.get('title'))
-            story.append(Paragraph(f"📎 Dokumente: {doc_names}", S['muted']))
+            block.append(Paragraph(f"📎 Dokumente: {doc_names}", S['muted']))
 
-        # Trennzeile
-        story.append(Spacer(1, 2*mm))
-        story.append(Paragraph(
+        # Trennzeile + Preis
+        block.append(Spacer(1, 2*mm))
+        block.append(Paragraph(
             f"Preis: <b>{ps}</b>  ·  Cluster: {item.get('cluster','')}",
             S['muted']))
-        story.append(Table([['']], colWidths=[CW],
+        block.append(Table([['']], colWidths=[CW],
             style=[('LINEBELOW',(0,0),(-1,-1),0.3,LINE),
                    ('TOPPADDING',(0,0),(-1,-1),2),
                    ('BOTTOMPADDING',(0,0),(-1,-1),0)]))
-        story.append(Spacer(1, 5*mm))
+        block.append(Spacer(1, 5*mm))
+
+        # KeepTogether: Block passt auf Seite → bleibt zusammen.
+        # Passt er nicht → neue Seite, dann der Block.
+        # Bei sehr langen Blöcken (z.B. Variante 1 mit großem Bild + viel Text)
+        # wird automatisch aufgeteilt wenn nötig.
+        try:
+            story.append(KeepTogether(block))
+        except Exception:
+            # Fallback falls KeepTogether den Block nicht verarbeiten kann
+            story.extend(block)
     story.append(PageBreak())
 
     # ── Preiszusammenfassung ──────────────────────────────────────────────────
