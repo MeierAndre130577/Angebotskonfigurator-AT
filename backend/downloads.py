@@ -1,19 +1,21 @@
 """
-downloads.py – ZIP-Bündelung und signierte Download-Links
+downloads.py – ZIP-Bündelung, signierte Download-Links und automatischer Cleanup
 
 Workflow:
 1. Alle Dokumente eines Angebots per URL laden
 2. Als ZIP bündeln
 3. ZIP in Supabase Storage hochladen (Bucket: downloads)
-4. Signierte URL mit 30-Tage-Gültigkeit zurückgeben
+4. Signierte URL (30 Tage) + Ablaufdatum in DB speichern
+5. Beim nächsten PDF-Generieren: abgelaufene Dateien automatisch löschen
 """
 
-import os, io, uuid, zipfile, httpx
+import os, io, uuid, zipfile, datetime, httpx
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SERVICE_KEY  = os.environ.get("SUPABASE_SERVICE_KEY", "")
 BUCKET       = "downloads"
 EXPIRES_IN   = 30 * 24 * 3600   # 30 Tage in Sekunden
+EXPIRES_DAYS = 30
 
 
 def _fetch_file(url: str) -> bytes | None:
@@ -27,6 +29,56 @@ def _fetch_file(url: str) -> bytes | None:
     except Exception as e:
         print(f"Fetch failed for {url}: {e}")
     return None
+
+
+def cleanup_expired_files():
+    """
+    Löscht abgelaufene ZIP-Dateien aus Supabase Storage.
+    Wird automatisch beim PDF-Generieren aufgerufen.
+    """
+    if not SUPABASE_URL or not SERVICE_KEY:
+        return
+
+    headers = {
+        "Authorization": f"Bearer {SERVICE_KEY}",
+        "Content-Type":  "application/json",
+    }
+
+    try:
+        # Alle Dateien im downloads Bucket auflisten
+        list_url = f"{SUPABASE_URL}/storage/v1/object/list/{BUCKET}"
+        res = httpx.post(list_url, headers=headers,
+                        json={"prefix": "", "limit": 1000}, timeout=15)
+        if res.status_code != 200:
+            return
+
+        files = res.json()
+        now   = datetime.datetime.utcnow()
+        deleted = 0
+
+        for f in files:
+            name       = f.get("name", "")
+            created_at = f.get("created_at", "")
+            if not created_at:
+                continue
+            try:
+                created = datetime.datetime.fromisoformat(
+                    created_at.replace("Z", "+00:00")
+                ).replace(tzinfo=None)
+                age_days = (now - created).days
+                if age_days >= EXPIRES_DAYS:
+                    # Datei löschen
+                    del_url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET}/{name}"
+                    httpx.delete(del_url, headers=headers, timeout=10)
+                    deleted += 1
+            except Exception:
+                continue
+
+        if deleted > 0:
+            print(f"Cleanup: {deleted} abgelaufene Download-Pakete gelöscht")
+
+    except Exception as e:
+        print(f"Cleanup failed: {e}")
 
 
 def _upload_to_supabase(data: bytes, filename: str, content_type: str) -> str | None:
@@ -77,6 +129,12 @@ def create_download_package(
     all_attachments: Liste von Dicts mit 'title' und 'file_url'
     pdf_bytes:       Fertig generiertes PDF als Bytes (optional)
     """
+
+    # Abgelaufene Dateien aufräumen (async-freundlich, Fehler werden ignoriert)
+    try:
+        cleanup_expired_files()
+    except Exception:
+        pass
 
     zip_buf = io.BytesIO()
 
