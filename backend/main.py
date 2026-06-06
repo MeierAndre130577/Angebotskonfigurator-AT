@@ -254,15 +254,17 @@ async def generate_full_offer(data: dict):
     })
 
     pdf_download_url = pdf_result.get("download_url", "")
-    pdf_filename     = pdf_download_url.split("/")[-1] if pdf_download_url else ""
 
-    # PDF Bytes lesen für ZIP
-    pdf_bytes = None
-    if pdf_filename:
-        pdf_path = pdf.get_pdf_path(pdf_filename)
-        if pdf_path:
-            with open(pdf_path, "rb") as f:
-                pdf_bytes = f.read()
+    # PDF Bytes direkt aus dem Result – kein Disk-Zugriff nötig
+    pdf_bytes = pdf_result.get("pdf_bytes") or b''
+    if not pdf_bytes:
+        # Fallback: lokal lesen
+        local_name = pdf_result.get("local_filename", "")
+        if local_name:
+            pdf_path = pdf.get_pdf_path(local_name)
+            if pdf_path:
+                with open(pdf_path, "rb") as f:
+                    pdf_bytes = f.read()
 
     # 4. ZIP erstellen
     pkg = {}

@@ -731,12 +731,21 @@ def generate_design_pdf(data: dict) -> dict:
     except Exception as e:
         print(f"PDF Supabase Upload failed: {e}")
 
+    # PDF Bytes für ZIP direkt mitlesen (bevor Datei evtl. weg ist)
+    try:
+        with open(filepath, 'rb') as _f:
+            _pdf_bytes_final = _f.read()
+    except Exception:
+        _pdf_bytes_final = b''
+
     return {
-        'ok':           True,
-        'download_url': supabase_pdf_url or f'/api/pdf/download/{filename}',
-        'package_url':  download_url or '',
-        'zip_filename': pkg_result.get('zip_filename',''),
-        'expires_at':   pkg_result.get('expires_at',''),
+        'ok':             True,
+        'download_url':   supabase_pdf_url or f'/api/pdf/download/{filename}',
+        'local_filename': filename,
+        'pdf_bytes':      _pdf_bytes_final,  # direkt im Speicher, kein Disk-Zugriff nötig
+        'package_url':    download_url or '',
+        'zip_filename':   pkg_result.get('zip_filename',''),
+        'expires_at':     pkg_result.get('expires_at',''),
     }
 
 
