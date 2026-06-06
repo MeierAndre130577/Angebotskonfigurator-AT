@@ -15,7 +15,7 @@ const DEFAULT_PROVIDER = {
 
 export default function Vorschau() {
   const [searchParams] = useSearchParams()
-  const [offerNo, setOfferNo]       = useState(searchParams.get('no') || '')
+  const [offerNo, setOfferNo]       = useState('')
   const [offerData, setOfferData]   = useState(null)
   const [loading, setLoading]       = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -23,14 +23,14 @@ export default function Vorschau() {
   const [toast, setToast]           = useState('')
   const [error, setError]           = useState('')
 
-  // Wenn Angebotsnummer per URL übergeben → sofort laden
+  // Sofort laden wenn Angebotsnummer per URL übergeben
   useEffect(() => {
     const no = searchParams.get('no')
     if (no) {
       setOfferNo(no)
       loadOfferByNo(no)
     }
-  }, [])
+  }, [searchParams])
 
   function showToast(msg) {
     setToast(msg)
@@ -38,11 +38,11 @@ export default function Vorschau() {
   }
 
   async function loadOfferByNo(no) {
-    const num = no || offerNo
-    if (!num.trim()) return
+    const num = (no || offerNo || '').trim()
+    if (!num) return
     setLoading(true); setError(''); setOfferData(null); setPdfUrl('')
     try {
-      const data = await offers.getByNumber(num.trim())
+      const data = await offers.getByNumber(num)
       setOfferData(data)
     } catch(e) {
       setError(`Angebot „${num}" nicht gefunden`)
@@ -55,15 +55,14 @@ export default function Vorschau() {
     if (!offerData) return
     setGenerating(true); setPdfUrl('')
     try {
-      const payload = {
-        project:     offerData.project     || {},
-        provider:    DEFAULT_PROVIDER,
-        offer:       offerData.offer_items || [],
-        attachments: [],
+      const result = await pdf.generate({
+        project:      offerData.project     || {},
+        provider:     DEFAULT_PROVIDER,
+        offer:        offerData.offer_items || [],
+        attachments:  [],
         legal_notice: '',
         pages: [], clusters: [],
-      }
-      const result = await pdf.generate(payload)
+      })
       if (result.ok && result.download_url) {
         const fullUrl = (import.meta.env.VITE_API_URL || '') + result.download_url
         setPdfUrl(fullUrl)
@@ -85,8 +84,6 @@ export default function Vorschau() {
 
   return (
     <div style={{ maxWidth: 800 }}>
-
-      {/* Toast */}
       {toast && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24, background: 'var(--dark)',
@@ -96,10 +93,7 @@ export default function Vorschau() {
       )}
 
       <div className="page-header">
-        <div>
-          <h1>👁️ PDF-Vorschau</h1>
-          <p className="subtitle">Angebot laden und PDF generieren</p>
-        </div>
+        <div><h1>👁️ PDF-Vorschau</h1><p className="subtitle">Angebot laden und PDF generieren</p></div>
       </div>
 
       {/* Angebot laden */}
@@ -118,70 +112,60 @@ export default function Vorschau() {
           </button>
         </div>
         {error && <p style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>⚠ {error}</p>}
+        {loading && <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8 }}>⏳ Angebot wird geladen …</p>}
       </div>
 
-      {/* Angebotsvorschau */}
+      {/* Vorschau */}
       {offerData && (
         <>
           <div className="card" style={{ marginBottom: 16 }}>
             <div className="card-title">Vorschau</div>
-
             <div className="grid2" style={{ marginBottom: 16 }}>
               <div className="stat-card">
                 <div className="value" style={{ fontSize: 18 }}>{project.customer || '—'}</div>
                 <div className="label">{project.contact}</div>
               </div>
               <div className="stat-card">
-                <div className="value" style={{ fontSize: 14, fontFamily: 'var(--font-mono)' }}>
-                  {project.offerNo || '—'}
-                </div>
+                <div className="value" style={{ fontSize: 14, fontFamily: 'var(--font-mono)' }}>{project.offerNo || '—'}</div>
                 <div className="label">{project.date}</div>
               </div>
             </div>
 
             {items.map((item, i) => (
               <div key={i} className="between small" style={{ padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
-                <span>
-                  <b>{item.name}</b>
-                  <span className="pill muted" style={{ marginLeft: 8 }}>{item.cluster}</span>
-                </span>
+                <span><b>{item.name}</b><span className="pill muted" style={{ marginLeft: 8 }}>{item.cluster}</span></span>
                 <b style={{ color: 'var(--red)' }}>
                   {(item.price||0) === 0 ? 'inkl.' : item.recurring ? money(item.price)+'/Mo.' : money(item.price)}
                 </b>
               </div>
             ))}
 
+            {/* Summe */}
             <div className="grid2" style={{ marginTop: 16 }}>
-              <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '12px 16px' }}>
+              <div style={{ background: 'var(--red-light)', borderRadius: 12, padding: '12px 16px' }}>
                 <div style={{ fontSize: 20, fontWeight: 850, color: 'var(--red)' }}>{money(oneTime)}</div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Einmalig</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Einmalig gesamt</div>
               </div>
-              <div style={{ background: 'var(--bg)', borderRadius: 12, padding: '12px 16px' }}>
-                <div style={{ fontSize: 20, fontWeight: 850, color: 'var(--red)' }}>{money(monthly)}</div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Monatlich</div>
-              </div>
+              {monthly > 0 && (
+                <div style={{ background: 'var(--red-light)', borderRadius: 12, padding: '12px 16px' }}>
+                  <div style={{ fontSize: 20, fontWeight: 850, color: 'var(--red)' }}>{money(monthly)}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Monatlich gesamt</div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* PDF generieren */}
           <div className="card">
             <div className="card-title">PDF generieren</div>
             <button className="btn btn-red btn-lg" onClick={generatePdf} disabled={generating}>
               {generating ? '⏳ PDF wird erstellt …' : '📄 PDF erstellen'}
             </button>
-
             {pdfUrl && (
               <div style={{ marginTop: 16, padding: 16, background: 'var(--bg)', borderRadius: 12 }}>
                 <p style={{ fontSize: 13, marginBottom: 10 }}>✅ PDF ist bereit:</p>
                 <div className="row">
-                  <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
-                    className="btn btn-red" style={{ textDecoration: 'none' }}>
-                    📥 Herunterladen
-                  </a>
-                  <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
-                    className="btn" style={{ textDecoration: 'none' }}>
-                    👁️ Im Browser öffnen
-                  </a>
+                  <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="btn btn-red" style={{ textDecoration: 'none' }}>📥 Herunterladen</a>
+                  <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="btn" style={{ textDecoration: 'none' }}>👁️ Im Browser öffnen</a>
                 </div>
               </div>
             )}
@@ -191,10 +175,7 @@ export default function Vorschau() {
 
       {!offerData && !loading && (
         <div className="card">
-          <p className="muted small">
-            Gib eine Angebotsnummer ein oder erstelle ein Angebot über den Messe-Modus –
-            du wirst dann automatisch hier weitergeleitet.
-          </p>
+          <p className="muted small">Gib eine Angebotsnummer ein oder erstelle ein Angebot über den Messe-Modus.</p>
         </div>
       )}
     </div>
