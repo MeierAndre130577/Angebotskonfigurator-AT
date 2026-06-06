@@ -183,3 +183,15 @@ class PdfIn(BaseModel):
 @app.post("/api/pdf/design")
 def generate_pdf(data: PdfIn):
     return pdf.generate_design_pdf(data.model_dump())
+
+from fastapi.responses import FileResponse
+
+@app.get("/api/pdf/download/{filename}")
+def download_pdf(filename: str):
+    import re
+    if not re.match(r'^[a-zA-Z0-9_\-\.]+\.pdf$', filename):
+        raise HTTPException(status_code=400, detail="Ungültiger Dateiname")
+    path = pdf.get_pdf_path(filename)
+    if not path:
+        raise HTTPException(status_code=404, detail="PDF nicht gefunden")
+    return FileResponse(path, media_type='application/pdf', filename=filename)
