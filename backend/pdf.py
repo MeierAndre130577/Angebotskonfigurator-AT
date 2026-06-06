@@ -598,14 +598,16 @@ def generate_design_pdf(data: dict) -> dict:
 
     # ZIP + Download-Link generieren
     download_url = None
+    pkg_result   = {}
     if all_attachments:
         try:
-            download_url = _dl.create_download_package(
-                offer_no      = project.get('offerNo', 'ENTWURF'),
+            pkg_result   = _dl.create_download_package(
+                offer_no        = project.get('offerNo', 'ENTWURF'),
                 all_attachments = all_attachments,
-                pdf_bytes     = None,   # PDF noch nicht fertig hier
-                pdf_filename  = filename,
+                pdf_bytes       = None,
+                pdf_filename    = filename,
             )
+            download_url = pkg_result.get('zip_url', '') or None
         except Exception as e:
             print(f"ZIP generation failed: {e}")
 
@@ -696,7 +698,7 @@ def generate_design_pdf(data: dict) -> dict:
         with open(filepath, 'wb') as f:
             f.write(content_buf.read())
 
-    return {'ok': True, 'download_url': f'/api/pdf/download/{filename}', 'package_url': download_url or ''}
+    return {'ok': True, 'download_url': f'/api/pdf/download/{filename}', 'package_url': download_url or '', 'zip_filename': pkg_result.get('zip_filename',''), 'expires_at': pkg_result.get('expires_at','')}
 
 
 def get_pdf_path(filename: str) -> str | None:
