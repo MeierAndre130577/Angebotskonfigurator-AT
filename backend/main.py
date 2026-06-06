@@ -251,6 +251,49 @@ Return ONLY valid JSON array, no markdown, no explanation.
 
     return {"ok": True, "items": merged}
 
+@app.post("/api/upload/document")
+async def upload_document(file: UploadFile = File(...)):
+    """Dokument (PDF etc.) zu Supabase Storage hochladen"""
+    supabase_url = os.environ.get("SUPABASE_URL")
+    service_key  = os.environ.get("SUPABASE_SERVICE_KEY")
+
+    ext      = (file.filename or "document.pdf").split(".")[-1].lower()
+    filename = f"{uuid.uuid4()}.{ext}"
+    content_bytes  = await file.read()
+
+    if not supabase_url or not service_key:
+        local_dir = os.path.join(os.path.dirname(__file__), "uploads", "documents")
+        os.makedirs(local_dir, exist_ok=True)
+        with open(os.path.join(local_dir, filename), "wb") as f:
+            f.write(content_bytes)
+        return {"url": f"/uploads/documents/{filename}", "filename": filename}
+
+    upload_url = f"{supabase_url}/storage/v1/object/documents/{filename}"
+    headers = {
+        "Authorization": f"Bearer {service_key}",
+        "Content-Type": file.content_type or "application/pdf",
+    }
+    async with httpx.AsyncClient() as client:
+        res = await client.post(upload_url, content=content_bytes, headers=headers)
+
+    if res.status_code not in (200, 201):
+        return JSONResponse(status_code=500, content={"error": f"Upload fehlgeschlagen: {res.text}"})
+
+    # Signed URL für Download (1 Jahr gültig)
+    signed_url_endpoint = f"{supabase_url}/storage/v1/object/sign/documents/{filename}"
+    async with httpx.AsyncClient() as client:
+        sign_res = await client.post(signed_url_endpoint,
+            headers={"Authorization": f"Bearer {service_key}", "Content-Type": "application/json"},
+            json={"expiresIn": 31536000})
+    
+    if sign_res.status_code == 200:
+        signed = sign_res.json().get("signedURL", "")
+        url = f"{supabase_url}/storage/v1{signed}" if signed.startswith("/") else signed
+    else:
+        url = f"{supabase_url}/storage/v1/object/documents/{filename}"
+
+    return {"url": url, "filename": filename}
+
 from fastapi.responses import FileResponse
 
 @app.get("/api/pdf/download/{filename}")
