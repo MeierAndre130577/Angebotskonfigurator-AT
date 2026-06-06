@@ -7,6 +7,7 @@ PDF-Generierung – Angebotskonfigurator Sielaff Austria v5
 """
 
 import os, uuid, io, httpx
+import downloads as _dl
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import mm
@@ -594,7 +595,22 @@ def generate_design_pdf(data: dict) -> dict:
 
     # ── Anlagen ───────────────────────────────────────────────────────────────
     section_title(story, '4. Anlagen', S, CW)
+
+    # ZIP + Download-Link generieren
+    download_url = None
     if all_attachments:
+        try:
+            download_url = _dl.create_download_package(
+                offer_no      = project.get('offerNo', 'ENTWURF'),
+                all_attachments = all_attachments,
+                pdf_bytes     = None,   # PDF noch nicht fertig hier
+                pdf_filename  = filename,
+            )
+        except Exception as e:
+            print(f"ZIP generation failed: {e}")
+
+    if all_attachments:
+        # Anlage-Liste
         for a in all_attachments:
             label = a.get('title','')
             if a.get('_mandatory'):
@@ -605,6 +621,52 @@ def generate_design_pdf(data: dict) -> dict:
             if a.get('_from_option'):
                 story.append(Paragraph(f"Zugehörig zu: {a['_from_option']}", S['muted']))
             story.append(Spacer(1, 1*mm))
+
+        # Download-Link + QR-Code
+        if download_url:
+            story.append(Spacer(1, 6*mm))
+
+            # Trennlinie
+            story.append(Table([['']], colWidths=[CW],
+                style=[('LINEBELOW',(0,0),(-1,-1),0.5,RED),
+                       ('TOPPADDING',(0,0),(-1,-1),0),
+                       ('BOTTOMPADDING',(0,0),(-1,-1),2)]))
+            story.append(Spacer(1, 4*mm))
+
+            # QR-Code generieren
+            qr_buf = _dl.generate_qr_code(download_url, size_mm=35)
+
+            # Layout: QR links, Text rechts
+            qr_col_w = 40*mm
+            text_col = [
+                Paragraph('<b>Alle Dokumente herunterladen</b>', S['h3']),
+                Spacer(1, 2*mm),
+                Paragraph(
+                    f'Scannen Sie den QR-Code oder verwenden Sie folgenden Link, '
+                    f'um alle Anlagen als ZIP-Paket herunterzuladen.',
+                    S['body']),
+                Spacer(1, 3*mm),
+                Paragraph(
+                    f'<font size="7" color="#71717a">{download_url[:80]}{"..." if len(download_url)>80 else ""}</font>',
+                    S['body']),
+                Spacer(1, 2*mm),
+                Paragraph(
+                    '<font size="7" color="#71717a">Link gültig für 30 Tage</font>',
+                    S['muted']),
+            ]
+
+            if qr_buf:
+                qr_img = RLImage(qr_buf, width=35*mm, height=35*mm)
+                t_qr   = Table([[qr_img, text_col]], colWidths=[qr_col_w, CW - qr_col_w])
+                t_qr.setStyle(TableStyle([
+                    ('VALIGN',      (0,0),(-1,-1),'MIDDLE'),
+                    ('LEFTPADDING', (1,0),(1,0),   10),
+                    ('TOPPADDING',  (0,0),(-1,-1),  0),
+                    ('BOTTOMPADDING',(0,0),(-1,-1), 0),
+                ]))
+                story.append(t_qr)
+            else:
+                for el in text_col: story.append(el)
     else:
         story.append(Paragraph('Keine Anlagen ausgewählt.', S['muted']))
     # ── AGB ───────────────────────────────────────────────────────────────────
@@ -634,7 +696,7 @@ def generate_design_pdf(data: dict) -> dict:
         with open(filepath, 'wb') as f:
             f.write(content_buf.read())
 
-    return {'ok': True, 'download_url': f'/api/pdf/download/{filename}'}
+    return {'ok': True, 'download_url': f'/api/pdf/download/{filename}', 'package_url': download_url or ''}
 
 
 def get_pdf_path(filename: str) -> str | None:

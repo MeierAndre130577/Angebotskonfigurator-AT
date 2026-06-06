@@ -28,6 +28,9 @@ vielen Dank für Ihr Interesse. Anbei finden Sie unser Angebot {{angebotsnummer}
 
 Das Angebot ist gültig bis {{gueltigBis}}.
 
+Alle Dokumente und Anlagen können Sie unter folgendem Link herunterladen (gültig 30 Tage):
+{{downloadLink}}
+
 Bei Fragen stehen wir Ihnen gerne zur Verfügung.
 
 Mit freundlichen Grüßen
@@ -340,7 +343,7 @@ export default function Einstellungen() {
       <div className="card" style={{ marginBottom: 16, marginTop: 16 }}>
         <div className="card-title">✉️ E-Mail Vorlage</div>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
-          Verfügbare Platzhalter: <code>{'{{kunde}}'}</code> <code>{'{{ansprechpartner}}'}</code> <code>{'{{angebotsnummer}}'}</code> <code>{'{{projekt}}'}</code> <code>{'{{datum}}'}</code> <code>{'{{gueltigBis}}'}</code> <code>{'{{anbieter}}'}</code>
+          Verfügbare Platzhalter: <code>{'{{kunde}}'}</code> <code>{'{{ansprechpartner}}'}</code> <code>{'{{angebotsnummer}}'}</code> <code>{'{{projekt}}'}</code> <code>{'{{datum}}'}</code> <code>{'{{gueltigBis}}'}</code> <code>{'{{anbieter}}'}</code> <code>{'{{downloadLink}}'}</code>
         </p>
         <Field label="Betreff">
           <input value={settings.email_subject || ''} onChange={e => set('email_subject', e.target.value)}

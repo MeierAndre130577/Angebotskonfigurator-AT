@@ -24,6 +24,7 @@ export default function Vorschau() {
   const [pdfUrl, setPdfUrl]         = useState('')
   const [toast, setToast]           = useState('')
   const [error, setError]           = useState('')
+  const [packageUrl, setPackageUrl]   = useState('')
   const [loadingLatest, setLoadingLatest] = useState(false)
   const [settings, setSettings]           = useState(null)
 
@@ -76,6 +77,7 @@ export default function Vorschau() {
       .replace(/{{projekt}}/g,         proj.project    || '')
       .replace(/{{datum}}/g,           proj.date       || '')
       .replace(/{{gueltigBis}}/g,      proj.valid      || '')
+      .replace(/{{downloadLink}}/g,     packageUrl      || '')
       .replace(/{{anbieter}}/g,        s.company       || 'Sielaff Austria GmbH')
 
     const to      = proj.customerEmail || ''
@@ -113,7 +115,7 @@ Mit freundlichen Grüßen
   async function doLoad(no) {
     const num = (no || offerNo || '').trim()
     if (!num) return
-    setLoading(true); setError(''); setOfferData(null); setPdfUrl('')
+    setLoading(true); setError(''); setOfferData(null); setPdfUrl(''); setPackageUrl('')
     try {
       const data = await offers.getByNumber(num)
       setOfferData(data)
@@ -154,6 +156,7 @@ Mit freundlichen Grüßen
       })
       if (result.ok && result.download_url) {
         setPdfUrl((import.meta.env.VITE_API_URL || '') + result.download_url)
+        if (result.package_url) setPackageUrl(result.package_url)
         showToast('PDF erstellt ✓')
       } else {
         setError('PDF-Generierung fehlgeschlagen')
@@ -258,8 +261,17 @@ Mit freundlichen Grüßen
                     ✉️ Per E-Mail senden
                   </button>
                 </div>
+                {packageUrl && (
+                  <div style={{ marginTop: 10, padding: '10px 14px', background: 'var(--bg)', borderRadius: 10, fontSize: 12 }}>
+                    <b>📦 Download-Paket (30 Tage gültig):</b>
+                    <a href={packageUrl} target="_blank" rel="noopener noreferrer"
+                      style={{ display: 'block', color: 'var(--red)', marginTop: 4, wordBreak: 'break-all', fontSize: 11 }}>
+                      {packageUrl}
+                    </a>
+                  </div>
+                )}
                 <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
-                  💡 Das PDF wird heruntergeladen und dein E-Mail-Programm öffnet sich mit vorausgefülltem Betreff und Text. Anhänge bitte manuell beifügen.
+                  💡 Das E-Mail-Programm öffnet sich mit vorausgefülltem Betreff, Text und Download-Link. Der QR-Code befindet sich auf der Anlagen-Seite im PDF.
                 </p>
               </div>
             )}
