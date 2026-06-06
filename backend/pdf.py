@@ -447,18 +447,24 @@ def generate_design_pdf(data: dict) -> dict:
                      Paragraph(f'<b>{money(monthly)}</b>', S['price'])])
 
     t = Table(rows, colWidths=[10*mm, 95*mm, 40*mm, 30*mm])
-    t.setStyle(TableStyle([
+    # Summenzeilen: 1 wenn kein monthly, 2 wenn monthly vorhanden
+    n_sum_rows = 2 if monthly > 0 else 1
+    n_rows     = len(rows)
+    sum_start  = n_rows - n_sum_rows  # Index der ersten Summenzeile
+
+    ts = TableStyle([
         ('BACKGROUND',(0,0),(-1,0),BG),
         ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),
         ('FONTSIZE',(0,0),(-1,0),7.5),
         ('LINEBELOW',(0,0),(-1,0),0.5,LINE),
-        ('LINEBELOW',(0,1),(-1,-3),0.3,LINE),
-        ('LINEABOVE',(0,-2),(-1,-1),0.8,RED),
-        ('BACKGROUND',(0,-2),(-1,-1),colors.HexColor('#fff1f2')),
+        ('LINEBELOW',(0,1),(- 1,sum_start-1),0.3,LINE),   # Optionszeilen
+        ('LINEABOVE',(0,sum_start),(-1,-1),0.8,RED),       # Linie vor Summen
+        ('BACKGROUND',(0,sum_start),(-1,-1),colors.HexColor('#fff1f2')),  # Summen rosa
         ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
         ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5),
         ('ALIGN',(3,0),(3,-1),'RIGHT'),
-    ]))
+    ])
+    t.setStyle(ts)
     story.append(t)
     story.append(PageBreak())
 

@@ -25,6 +25,11 @@ export default function Vorschau() {
   const [toast, setToast]           = useState('')
   const [error, setError]           = useState('')
   const [loadingLatest, setLoadingLatest] = useState(false)
+  const [settings, setSettings]           = useState(null)
+
+  useEffect(() => {
+    fetch(`${BASE}/settings`).then(r => r.json()).then(setSettings).catch(() => {})
+  }, [])
   // Dank key={location.search} in App.jsx wird die Komponente neu gemountet
   // wenn sich die URL ändert – dieser useEffect läuft also genau einmal
   useEffect(() => {
@@ -59,6 +64,50 @@ export default function Vorschau() {
     } finally {
       setLoadingLatest(false)
     }
+  }
+
+  function buildMailtoLink(pdfUrl) {
+    const s       = settings || {}
+    const proj    = offerData?.project || {}
+    const replace = (tpl) => (tpl || '')
+      .replace(/{{kunde}}/g,          proj.customer   || '')
+      .replace(/{{ansprechpartner}}/g, proj.contact    || proj.customer || '')
+      .replace(/{{angebotsnummer}}/g,  proj.offerNo    || '')
+      .replace(/{{projekt}}/g,         proj.project    || '')
+      .replace(/{{datum}}/g,           proj.date       || '')
+      .replace(/{{gueltigBis}}/g,      proj.valid      || '')
+      .replace(/{{anbieter}}/g,        s.company       || 'Sielaff Austria GmbH')
+
+    const to      = proj.customerEmail || ''
+    const subject = encodeURIComponent(replace(
+      s.email_subject || 'Angebot {{angebotsnummer}} – {{projekt}} für {{kunde}}'
+    ))
+    const body    = encodeURIComponent(replace(
+      s.email_body ||
+`Sehr geehrte(r) {{ansprechpartner}},
+
+vielen Dank für Ihr Interesse. Anbei finden Sie unser Angebot {{angebotsnummer}} für {{projekt}}.
+
+Das Angebot ist gültig bis {{gueltigBis}}.
+
+Bei Fragen stehen wir Ihnen gerne zur Verfügung.
+
+Mit freundlichen Grüßen
+{{anbieter}}`
+    ))
+    // Hinweis: Anhänge können über mailto: nicht automatisch beigefügt werden.
+    // Das PDF muss manuell angehängt werden – wir öffnen es gleichzeitig zum Download.
+    return `mailto:${to}?subject=${subject}&body=${body}`
+  }
+
+  function handleSendEmail() {
+    if (!pdfUrl) return
+    // PDF öffnen damit es heruntergeladen wird
+    window.open(pdfUrl, '_blank')
+    // E-Mail-Client öffnen
+    setTimeout(() => {
+      window.location.href = buildMailtoLink(pdfUrl)
+    }, 500)
   }
 
   async function doLoad(no) {
@@ -202,10 +251,16 @@ export default function Vorschau() {
             {pdfUrl && (
               <div style={{ marginTop: 16, padding: 16, background: 'var(--bg)', borderRadius: 12 }}>
                 <p style={{ fontSize: 13, marginBottom: 10 }}>✅ PDF ist bereit:</p>
-                <div className="row">
+                <div className="row" style={{ flexWrap: 'wrap' }}>
                   <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="btn btn-red" style={{ textDecoration: 'none' }}>📥 Herunterladen</a>
                   <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="btn" style={{ textDecoration: 'none' }}>👁️ Im Browser öffnen</a>
+                  <button className="btn" onClick={handleSendEmail} style={{ background: 'var(--dark)', color: 'white', border: 'none' }}>
+                    ✉️ Per E-Mail senden
+                  </button>
                 </div>
+                <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
+                  💡 Das PDF wird heruntergeladen und dein E-Mail-Programm öffnet sich mit vorausgefülltem Betreff und Text. Anhänge bitte manuell beifügen.
+                </p>
               </div>
             )}
           </div>

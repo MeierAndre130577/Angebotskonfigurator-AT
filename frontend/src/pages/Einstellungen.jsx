@@ -20,6 +20,18 @@ const DEFAULTS = {
   legal_notice: 'Die ausgewiesenen Preise sind Nettopreise und verstehen sich zuzüglich der gesetzlichen Mehrwertsteuer. Die Distribution entscheidet Sielaff Austria GmbH.',
   // Pflichtanlagen
   mandatory_documents: [],
+  // E-Mail Vorlage
+  email_subject: 'Angebot {{angebotsnummer}} – {{projekt}} für {{kunde}}',
+  email_body: `Sehr geehrte(r) {{ansprechpartner}},
+
+vielen Dank für Ihr Interesse. Anbei finden Sie unser Angebot {{angebotsnummer}} für {{projekt}}.
+
+Das Angebot ist gültig bis {{gueltigBis}}.
+
+Bei Fragen stehen wir Ihnen gerne zur Verfügung.
+
+Mit freundlichen Grüßen
+{{anbieter}}`,
 }
 
 function Field({ label, hint, children }) {
@@ -324,7 +336,24 @@ export default function Einstellungen() {
         )}
       </div>
 
-      <div style={{ marginTop: 20 }}>
+      {/* ── E-Mail Vorlage ───────────────────────────────────────────────────── */}
+      <div className="card" style={{ marginBottom: 16, marginTop: 16 }}>
+        <div className="card-title">✉️ E-Mail Vorlage</div>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+          Verfügbare Platzhalter: <code>{'{{kunde}}'}</code> <code>{'{{ansprechpartner}}'}</code> <code>{'{{angebotsnummer}}'}</code> <code>{'{{projekt}}'}</code> <code>{'{{datum}}'}</code> <code>{'{{gueltigBis}}'}</code> <code>{'{{anbieter}}'}</code>
+        </p>
+        <Field label="Betreff">
+          <input value={settings.email_subject || ''} onChange={e => set('email_subject', e.target.value)}
+            style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }} />
+        </Field>
+        <Field label="E-Mail Text">
+          <textarea value={settings.email_body || ''} onChange={e => set('email_body', e.target.value)}
+            style={{ minHeight: 180, border: '1px solid var(--line)', borderRadius: 10,
+              padding: '10px 14px', fontSize: 12, lineHeight: 1.6, fontFamily: 'var(--font-mono)' }} />
+        </Field>
+      </div>
+
+      <div style={{ marginTop: 8 }}>
         <button className="btn btn-red btn-lg" onClick={save} disabled={saving}>
           {saving ? '⏳ Speichert …' : '💾 Alle Einstellungen speichern'}
         </button>
