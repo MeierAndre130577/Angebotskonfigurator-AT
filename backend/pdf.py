@@ -183,15 +183,11 @@ def _draw_icon(c: canvas.Canvas, cx: float, cy: float, kind: str):
 
 def draw_cover(c: canvas.Canvas, data: dict):
     """
-    Deckblatt nach neuem Design:
+    Deckblatt nach neuem Design (KEIN clipPath – weiße Maske stattdessen):
     - Weißer Hintergrund
-    - Graues Dreieck-Dekor oben rechts
-    - Bogen-Foto rechts (aus Einstellungen: cover_image)
-    - Logo oben links (aus Einstellungen: logo_image)
-    - 'ANGEBOT' in Serif-Schrift, groß, links
-    - Rote Trennlinie
-    - Info-Box mit Angebotsdaten (abgerundet, mit Schatten)
-    - Graue Fußzeile mit Firmendaten
+    - Bogen-Foto rechts: wird ohne Clipping gezeichnet, linke Seite mit weißer
+      Bezier-Maske überdeckt → kein PDF-Rendering-Artefakt
+    - Logo oben links, ANGEBOT, Untertitel, Info-Box, Fußzeile
     """
     project  = data.get('project')  or {}
     provider = data.get('provider') or {}
@@ -206,98 +202,100 @@ def draw_cover(c: canvas.Canvas, data: dict):
 
     FOOTER_H = 88   # Höhe der Fußzeile in pt
 
-    # ── Weißer Hintergrund ────────────────────────────────────────────────────
-    c.setFillColor(colors.white)
-    c.rect(0, 0, W, H, fill=1, stroke=0)
-
-    # ── Graues Dreieck-Dekor oben rechts ─────────────────────────────────────
-    c.setFillColor(C_GRAY_TRI)
-    p = c.beginPath()
-    p.moveTo(W * 0.50, H)
-    p.lineTo(W, H)
-    p.lineTo(W, H * 0.70)
-    p.curveTo(W * 0.82, H * 0.84, W * 0.63, H * 0.93, W * 0.50, H)
-    p.close()
-    c.drawPath(p, fill=1, stroke=0)
-
-    # ── Bogen-Foto rechts ─────────────────────────────────────────────────────
-    # Bogen-Pfad: linke Grenze ist eine geschwungene Kurve
-    ARCH_TOP_X = W * 0.52    # ~309 pt – Startpunkt oben
-    ARCH_BOT_X = W * 0.61    # ~363 pt – Endpunkt unten
-    ARCH_BOT_Y = FOOTER_H + 2
-    ARCH_CP_X  = W * 0.44    # ~262 pt – Kontrollpunkt (am weitesten links)
+    # Bogen-Geometrie (Kurve von oben-rechts nach unten)
+    # Alle Werte bewusst weiter rechts als vorher → ANGEBOT/Untertitel bleiben frei
+    ARCH_TOP_X = W * 0.63    # ~375 pt – wo Kurve oben beginnt
+    ARCH_CP_X  = W * 0.57    # ~339 pt – linkster Punkt der Kurve
+    ARCH_BOT_X = W * 0.70    # ~417 pt – wo Kurve unten endet
     ARCH_CP1_Y = H * 0.65
     ARCH_CP2_Y = H * 0.35
 
+    from PIL import Image as PILImage
+
+    # ── 1. Weißer Hintergrund ─────────────────────────────────────────────────
+    c.setFillColor(colors.white)
+    c.rect(0, 0, W, H, fill=1, stroke=0)
+
+    # ── 2. Graues Dreieck-Dekor oben rechts ──────────────────────────────────
+    c.setFillColor(C_GRAY_TRI)
+    p = c.beginPath()
+    p.moveTo(W * 0.60, H)
+    p.lineTo(W, H)
+    p.lineTo(W, H * 0.72)
+    p.curveTo(W * 0.84, H * 0.86, W * 0.70, H * 0.94, W * 0.60, H)
+    p.close()
+    c.drawPath(p, fill=1, stroke=0)
+
+    # ── 3. Cover-Bild (OHNE clipPath – weißer Maske danach) ──────────────────
     cover_url = (provider.get('cover_image') or
                  project.get('coverImage')   or
                  data.get('cover_image')     or '')
     cover_img = fetch_image(cover_url) if cover_url else None
 
-    c.saveState()
-    p_arch = c.beginPath()
-    p_arch.moveTo(ARCH_TOP_X, H)
-    p_arch.lineTo(W, H)
-    p_arch.lineTo(W, ARCH_BOT_Y)
-    p_arch.lineTo(ARCH_BOT_X, ARCH_BOT_Y)
-    p_arch.curveTo(ARCH_CP_X, ARCH_CP2_Y,
-                   ARCH_CP_X, ARCH_CP1_Y,
-                   ARCH_TOP_X, H)
-    p_arch.close()
-    c.clipPath(p_arch, fill=1, stroke=0)
-
     if cover_img:
         try:
             cover_img.seek(0)
             cover_bytes = cover_img.read()
-            from PIL import Image as PILImage
             pil = PILImage.open(io.BytesIO(cover_bytes))
+            # Alpha entfernen → sauberes JPEG (verhindert Compositing-Artefakte)
+            if pil.mode in ('RGBA', 'LA', 'P'):
+                bg = PILImage.new('RGB', pil.size, (255, 255, 255))
+                src = pil.convert('RGBA') if pil.mode == 'P' else pil
+                bg.paste(src, mask=src.split()[-1])
+                pil = bg
+            elif pil.mode != 'RGB':
+                pil = pil.convert('RGB')
+
             img_px_w, img_px_h = pil.size
 
-            # Zielbereich (sichtbarer Arch-Bereich)
+            # Zielbereich: rechte Seite ab ARCH_CP_X, über gesamte Höhe (ohne Fußzeile)
             target_x = ARCH_CP_X
-            target_y = ARCH_BOT_Y
+            target_y = FOOTER_H
             target_w = W - target_x
             target_h = H - target_y
 
-            # "Cover": Verhältnis erhalten, Bereich vollständig füllen (überstehend abschneiden)
-            scale_w = target_w / img_px_w
-            scale_h = target_h / img_px_h
-            scale   = max(scale_w, scale_h)          # füllen, nicht strecken
-
+            # Cover-Skalierung: Bereich füllen, Verhältnis erhalten
+            scale   = max(target_w / img_px_w, target_h / img_px_h)
             draw_w  = img_px_w * scale
             draw_h  = img_px_h * scale
-
-            # Bild zentrieren (Überhang wird durch Clip abgeschnitten)
             draw_x  = target_x - (draw_w - target_w) / 2
             draw_y  = target_y - (draw_h - target_h) / 2
 
-            c.drawImage(ImageReader(io.BytesIO(cover_bytes)),
-                        draw_x, draw_y, width=draw_w, height=draw_h)
+            img_buf = io.BytesIO()
+            pil.save(img_buf, format='JPEG', quality=88)
+            img_buf.seek(0)
+            c.drawImage(ImageReader(img_buf), draw_x, draw_y,
+                        width=draw_w, height=draw_h)
         except Exception as e:
-            print(f"[draw_cover] cover drawImage Fehler: {e}")
+            print(f"[draw_cover] Bildfehler: {e}")
             c.setFillColor(colors.HexColor('#CCCCCC'))
-            c.rect(ARCH_CP_X, ARCH_BOT_Y, W - ARCH_CP_X, H - ARCH_BOT_Y, fill=1, stroke=0)
+            c.rect(ARCH_CP_X, FOOTER_H, W - ARCH_CP_X, H - FOOTER_H, fill=1, stroke=0)
     else:
         c.setFillColor(colors.HexColor('#CCCCCC'))
-        c.rect(ARCH_CP_X, ARCH_BOT_Y, W - ARCH_CP_X, H - ARCH_BOT_Y, fill=1, stroke=0)
+        c.rect(ARCH_CP_X, FOOTER_H, W - ARCH_CP_X, H - FOOTER_H, fill=1, stroke=0)
 
-    c.restoreState()
-    # Sauberen Zustand sicherstellen
-    c.setFillAlpha(1.0)
+    # ── 4. Weiße Bogen-Maske: linke Seite des Bildes überdecken ─────────────
+    # Verhindert dass das Bild in den Textbereich ragt – kein clipPath nötig
     c.setFillColor(colors.white)
+    p_mask = c.beginPath()
+    p_mask.moveTo(0, H)
+    p_mask.lineTo(ARCH_TOP_X, H)
+    p_mask.curveTo(ARCH_CP_X, ARCH_CP1_Y,
+                   ARCH_CP_X, ARCH_CP2_Y,
+                   ARCH_BOT_X, FOOTER_H)
+    p_mask.lineTo(0, FOOTER_H)
+    p_mask.close()
+    c.drawPath(p_mask, fill=1, stroke=0)
 
-    # Weißer Rand entlang der Bogenkurve
-    c.saveState()
+    # ── 5. Weißer Rand entlang der Bogenkurve ────────────────────────────────
     c.setStrokeColor(colors.white)
     c.setLineWidth(7)
     p_border = c.beginPath()
     p_border.moveTo(ARCH_TOP_X, H)
     p_border.curveTo(ARCH_CP_X, ARCH_CP1_Y,
                      ARCH_CP_X, ARCH_CP2_Y,
-                     ARCH_BOT_X, ARCH_BOT_Y)
+                     ARCH_BOT_X, FOOTER_H)
     c.drawPath(p_border, fill=0, stroke=1)
-    c.restoreState()
 
     # ── Logo oben links ───────────────────────────────────────────────────────
     LOGO_X    = 35
@@ -413,9 +411,13 @@ def draw_cover(c: canvas.Canvas, data: dict):
             c.setLineWidth(0.4)
             c.line(BOX_X + 12, sep_y, BOX_X + BOX_W - 12, sep_y)
 
-    # ── Fußzeile ──────────────────────────────────────────────────────────────
+    # ── Fußzeile (wird als letztes gezeichnet → liegt garantiert oben) ───────
     c.setFillColor(C_FOOTER_BG)
     c.rect(0, 0, W, FOOTER_H, fill=1, stroke=0)
+    # Trennlinie oben
+    c.setStrokeColor(colors.HexColor('#CCCCCC'))
+    c.setLineWidth(0.5)
+    c.line(0, FOOTER_H, W, FOOTER_H)
 
     # Vertikale Trenner
     c.setStrokeColor(colors.HexColor('#BBBBBB'))
