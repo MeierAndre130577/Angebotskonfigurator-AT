@@ -202,11 +202,11 @@ def draw_cover(c: canvas.Canvas, data: dict):
 
     FOOTER_H = 88   # Höhe der Fußzeile in pt
 
-    # Bogen-Geometrie (Kurve von oben-rechts nach unten)
-    # Alle Werte bewusst weiter rechts als vorher → ANGEBOT/Untertitel bleiben frei
-    ARCH_TOP_X = W * 0.63    # ~375 pt – wo Kurve oben beginnt
-    ARCH_CP_X  = W * 0.57    # ~339 pt – linkster Punkt der Kurve
-    ARCH_BOT_X = W * 0.70    # ~417 pt – wo Kurve unten endet
+    # Bogen-Geometrie
+    # ANGEBOT in Times-Roman 60pt endet bei ca. x=318pt → ARCH_CP_X muss > 330pt sein
+    ARCH_TOP_X = W * 0.66    # ~393 pt – wo Kurve oben beginnt
+    ARCH_CP_X  = W * 0.61    # ~363 pt – linkster Punkt der Kurve (Sicherheitsabstand zu ANGEBOT)
+    ARCH_BOT_X = W * 0.73    # ~435 pt – wo Kurve unten endet
     ARCH_CP1_Y = H * 0.65
     ARCH_CP2_Y = H * 0.35
 
@@ -219,10 +219,10 @@ def draw_cover(c: canvas.Canvas, data: dict):
     # ── 2. Graues Dreieck-Dekor oben rechts ──────────────────────────────────
     c.setFillColor(C_GRAY_TRI)
     p = c.beginPath()
-    p.moveTo(W * 0.60, H)
+    p.moveTo(W * 0.62, H)
     p.lineTo(W, H)
     p.lineTo(W, H * 0.72)
-    p.curveTo(W * 0.84, H * 0.86, W * 0.70, H * 0.94, W * 0.60, H)
+    p.curveTo(W * 0.86, H * 0.87, W * 0.73, H * 0.95, W * 0.62, H)
     p.close()
     c.drawPath(p, fill=1, stroke=0)
 
@@ -350,18 +350,18 @@ def draw_cover(c: canvas.Canvas, data: dict):
 
     # ── „ANGEBOT" Titel ───────────────────────────────────────────────────────
     c.setFillColor(C_DARK)
-    c.setFont('Times-Roman', 68)
-    c.drawString(35, H - 215, 'ANGEBOT')
+    c.setFont('Times-Roman', 60)
+    c.drawString(35, H - 210, 'ANGEBOT')
 
     # Kurze rote Linie unter Titel
     c.setStrokeColor(C_RED)
     c.setLineWidth(2.5)
-    c.line(35, H - 233, 90, H - 233)
+    c.line(35, H - 225, 90, H - 225)
 
     # Untertitel
-    c.setFont('Helvetica', 13)
+    c.setFont('Helvetica', 12)
     c.setFillColor(C_DARK)
-    c.drawString(35, H - 260, 'Maßgeschneiderte Lösung für Ihr Vorhaben')
+    c.drawString(35, H - 250, 'Maßgeschneiderte Lösung für Ihr Vorhaben')
 
     # ── Info-Box ──────────────────────────────────────────────────────────────
     BOX_X = 35
