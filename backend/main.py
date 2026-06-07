@@ -262,6 +262,10 @@ async def generate_full_offer(data: dict):
             if title and title not in seen_titles:
                 seen_titles.add(title); all_attachments.append({**doc, "_from_option": item.get("name","")})
 
+    # Cover-Bild aus Einstellungen in provider einfügen
+    if s.get("cover_image"):
+        provider = {**provider, "cover_image": s["cover_image"]}
+
     # 3. PDF generieren
     pdf_result = pdf.generate_design_pdf({
         "project": project, "provider": provider,
