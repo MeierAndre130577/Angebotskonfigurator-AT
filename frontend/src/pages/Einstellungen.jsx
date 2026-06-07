@@ -69,7 +69,10 @@ export default function Einstellungen() {
   const [toast, setToast]       = useState('')
   const [loading, setLoading]       = useState(true)
   const [uploadingDoc, setUploadingDoc] = useState(false)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const [coverDragOver, setCoverDragOver] = useState(false)
   const docRef = useRef()
+  const coverRef = useRef()
 
   useEffect(() => { loadSettings() }, [])
 
@@ -148,6 +151,40 @@ export default function Einstellungen() {
     }))
   }
 
+  async function uploadCoverImage(file) {
+    if (!file || !file.type.startsWith('image/')) {
+      showToast('Nur Bilddateien erlaubt')
+      return
+    }
+    setUploadingCover(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file, file.name || 'cover.png')
+      const res  = await fetch(`${BASE}/upload/image`, { method: 'POST', body: formData })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Upload fehlgeschlagen')
+      set('cover_image', data.url)
+      showToast('Deckblatt-Foto hochgeladen ✓')
+    } catch(e) {
+      showToast('Fehler: ' + e.message)
+    } finally {
+      setUploadingCover(false)
+      if (coverRef.current) coverRef.current.value = ''
+    }
+  }
+
+  function handleCoverPaste(e) {
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault()
+        uploadCoverImage(item.getAsFile())
+        return
+      }
+    }
+  }
+
   if (loading) return <p className="muted">Lädt …</p>
 
   return (
@@ -171,20 +208,48 @@ export default function Einstellungen() {
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-title">🖼️ Deckblatt-Foto</div>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
-          Vollbild-Foto das auf dem Deckblatt erscheint. URL zu einem Bild (Supabase, externer Link etc.)
+          Vollbild-Foto das auf dem Deckblatt erscheint. Datei hochladen, Drag & Drop oder Bild einfügen (Strg+V).
         </p>
-        <Field label="Foto-URL">
-          <input
-            value={settings.cover_image || ''}
-            onChange={e => set('cover_image', e.target.value)}
-            placeholder="https://... oder Supabase URL"
-            style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }}
-          />
-        </Field>
+
+        {/* Upload-Zone */}
+        <div
+          onPaste={handleCoverPaste}
+          onDragOver={e => { e.preventDefault(); setCoverDragOver(true) }}
+          onDragLeave={() => setCoverDragOver(false)}
+          onDrop={e => { e.preventDefault(); setCoverDragOver(false); uploadCoverImage(e.dataTransfer.files[0]) }}
+          onClick={() => coverRef.current?.click()}
+          tabIndex={0}
+          style={{
+            border: `2px dashed ${coverDragOver ? 'var(--red)' : 'var(--line)'}`,
+            borderRadius: 12, padding: '20px 16px', textAlign: 'center',
+            cursor: 'pointer', transition: 'border-color .15s',
+            background: coverDragOver ? '#fff1f2' : 'transparent',
+            outline: 'none',
+          }}
+        >
+          {uploadingCover ? (
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>Lädt hoch …</span>
+          ) : settings.cover_image ? (
+            <img src={settings.cover_image} alt="Deckblatt-Vorschau"
+              style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 8 }} />
+          ) : (
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>
+              Klicken, Datei hierher ziehen oder Bild einfügen (Strg+V)
+            </span>
+          )}
+        </div>
+
+        <input ref={coverRef} type="file" accept="image/*" style={{ display: 'none' }}
+          onChange={e => uploadCoverImage(e.target.files[0])} />
+
         {settings.cover_image && (
-          <img src={settings.cover_image} alt="Deckblatt-Vorschau"
-            style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 10,
-              marginTop: 8, border: '1px solid var(--line)' }} />
+          <button
+            onClick={() => set('cover_image', '')}
+            style={{ marginTop: 8, fontSize: 12, color: 'var(--red)', background: 'none',
+              border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            Foto entfernen
+          </button>
         )}
       </div>
 
