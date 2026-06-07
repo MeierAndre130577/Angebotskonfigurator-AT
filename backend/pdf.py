@@ -202,7 +202,7 @@ def draw_cover(c: canvas.Canvas, data: dict):
     C_FOOTER_BG = colors.HexColor('#E2E2E2')
 
     FOOTER_H = 88
-    SPLIT_X  = W * 0.565   # ~336pt – Grenze linke/rechte Spalte
+    SPLIT_X  = W * 0.645   # ~384pt – Grenze linke/rechte Spalte (genug Platz für ANGEBOT)
 
     # ── 1. Weißer Seitenhintergrund ───────────────────────────────────────────
     c.setFillColor(colors.white)
@@ -258,36 +258,16 @@ def draw_cover(c: canvas.Canvas, data: dict):
     c.setFillColor(colors.white)
     c.rect(0, FOOTER_H, SPLIT_X, H - FOOTER_H, fill=1, stroke=0)
 
-    # ── 4. Sanfte S-Kurve an der Grenze (dekorativ, kein Clip nötig) ─────────
-    # Die S-Kurve wölbt sich leicht ins Bild und schafft einen eleganten Übergang
-    c.saveState()
-    CURVE_BULGE = 28   # wie weit die Kurve ins Bild ragt (pt)
-    c.setFillColor(colors.white)
-    p_curve = c.beginPath()
-    p_curve.moveTo(SPLIT_X, H)
-    p_curve.curveTo(SPLIT_X + CURVE_BULGE, H * 0.72,
-                    SPLIT_X - CURVE_BULGE, H * 0.28,
-                    SPLIT_X, FOOTER_H)
-    p_curve.lineTo(SPLIT_X - 1, FOOTER_H)
-    p_curve.lineTo(SPLIT_X - 1, H)
-    p_curve.close()
-    c.drawPath(p_curve, fill=1, stroke=0)
-    # Weißer Strich auf der Kurve für schärfere Optik
-    c.setStrokeColor(colors.white)
-    c.setLineWidth(5)
-    p_stroke = c.beginPath()
-    p_stroke.moveTo(SPLIT_X, H)
-    p_stroke.curveTo(SPLIT_X + CURVE_BULGE, H * 0.72,
-                     SPLIT_X - CURVE_BULGE, H * 0.28,
-                     SPLIT_X, FOOTER_H)
-    c.drawPath(p_stroke, fill=0, stroke=1)
-    c.restoreState()
+    # ── 4. Dezente Trennlinie (sauber, keine Kurve) ───────────────────────────
+    c.setStrokeColor(colors.HexColor('#DDDDDD'))
+    c.setLineWidth(0.8)
+    c.line(SPLIT_X, FOOTER_H, SPLIT_X, H)
 
     # ── 5. Logo oben links ────────────────────────────────────────────────────
     c.saveState()
     LOGO_X    = 35
-    LOGO_MAX  = 60    # maximale Logo-Höhe in pt
-    LOGO_Y    = H - LOGO_MAX - 32
+    LOGO_MAX  = 56    # maximale Logo-Höhe in pt
+    LOGO_Y    = H - LOGO_MAX - 40   # 40pt vom oberen Seitenrand
 
     logo_url = provider.get('logo_image') or ''
     logo_img = fetch_image(logo_url) if logo_url else None
@@ -368,19 +348,18 @@ def draw_cover(c: canvas.Canvas, data: dict):
             c.setLineWidth(0.4)
             c.line(BOX_X + 12, sep_y, BOX_X + BOX_W - 12, sep_y)
 
-    # ── 7. ANGEBOT + Untertitel (oberhalb der Info-Box) ───────────────────────
-    TITLE_BOTTOM = BOX_Y + BOX_H + 65   # 65pt über Kasten-Oberkante → 29pt Luft zwischen Untertitel und Box
+    # ── 7. ANGEBOT + Untertitel (oben, direkt unter Logo) ────────────────────
     c.setFillColor(C_DARK)
     c.setFont('Times-Roman', 62)
-    c.drawString(BOX_X, TITLE_BOTTOM, 'ANGEBOT')
+    c.drawString(BOX_X, H - 185, 'ANGEBOT')
 
     c.setStrokeColor(C_RED)
     c.setLineWidth(2.5)
-    c.line(BOX_X, TITLE_BOTTOM - 14, BOX_X + 58, TITLE_BOTTOM - 14)
+    c.line(BOX_X, H - 202, BOX_X + 58, H - 202)
 
     c.setFont('Helvetica', 12)
     c.setFillColor(C_DARK)
-    c.drawString(BOX_X, TITLE_BOTTOM - 36, 'Maßgeschneiderte Lösung für Ihr Vorhaben')
+    c.drawString(BOX_X, H - 226, 'Maßgeschneiderte Lösung für Ihr Vorhaben')
 
     # ── Fußzeile (wird als letztes gezeichnet → liegt garantiert oben) ───────
     c.setFillColor(C_FOOTER_BG)
