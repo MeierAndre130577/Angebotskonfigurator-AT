@@ -103,113 +103,262 @@ def make_image(img_data: io.BytesIO, max_w: float, max_h: float) -> RLImage | No
         except Exception:
             return None
 
-# ── Deckblatt – Komplett Weiß ─────────────────────────────────────────────────
+# ── Deckblatt – Neues Design ──────────────────────────────────────────────────
 
 def draw_cover(c: canvas.Canvas, data: dict):
     """
-    Deckblatt: Vollbild-Foto, dunkler Verlauf von unten, Text zentriert weiß.
-    Kein roter Seitenstreifen auf dem Deckblatt.
+    Deckblatt nach neuem Design:
+    - Weißer Hintergrund
+    - Graues Dreieck-Dekor oben rechts
+    - Bogen-Foto rechts (aus Einstellungen: cover_image)
+    - Logo oben links (aus Einstellungen: logo_image)
+    - 'ANGEBOT' in Serif-Schrift, groß, links
+    - Rote Trennlinie
+    - Info-Box mit Angebotsdaten (abgerundet, mit Schatten)
+    - Graue Fußzeile mit Firmendaten
     """
     project  = data.get('project')  or {}
     provider = data.get('provider') or {}
 
-    # ── Deckblatt-Foto ────────────────────────────────────────────────────────
-    cover_url = (provider.get('cover_image') or
-                 project.get('coverImage') or
-                 data.get('cover_image') or '')
+    C_RED       = colors.HexColor('#E30613')
+    C_DARK      = colors.HexColor('#1D1D1B')
+    C_GRAY_DARK = colors.HexColor('#555555')
+    C_GRAY_LINE = colors.HexColor('#E0E0E0')
+    C_GRAY_TRI  = colors.HexColor('#D0D0D0')
+    C_FOOTER_BG = colors.HexColor('#E2E2E2')
+    C_ICON_BG   = colors.HexColor('#F2F2F2')
 
+    FOOTER_H = 88   # Höhe der Fußzeile in pt
+
+    # ── Weißer Hintergrund ────────────────────────────────────────────────────
+    c.setFillColor(colors.white)
+    c.rect(0, 0, W, H, fill=1, stroke=0)
+
+    # ── Graues Dreieck-Dekor oben rechts ─────────────────────────────────────
+    c.setFillColor(C_GRAY_TRI)
+    p = c.beginPath()
+    p.moveTo(W * 0.50, H)
+    p.lineTo(W, H)
+    p.lineTo(W, H * 0.70)
+    p.curveTo(W * 0.82, H * 0.84, W * 0.63, H * 0.93, W * 0.50, H)
+    p.close()
+    c.drawPath(p, fill=1, stroke=0)
+
+    # ── Bogen-Foto rechts ─────────────────────────────────────────────────────
+    # Bogen-Pfad: linke Grenze ist eine geschwungene Kurve
+    ARCH_TOP_X = W * 0.52    # ~309 pt – Startpunkt oben
+    ARCH_BOT_X = W * 0.61    # ~363 pt – Endpunkt unten
+    ARCH_BOT_Y = FOOTER_H + 2
+    ARCH_CP_X  = W * 0.44    # ~262 pt – Kontrollpunkt (am weitesten links)
+    ARCH_CP1_Y = H * 0.65
+    ARCH_CP2_Y = H * 0.35
+
+    cover_url = (provider.get('cover_image') or
+                 project.get('coverImage')   or
+                 data.get('cover_image')     or '')
     cover_img = fetch_image(cover_url) if cover_url else None
+
+    c.saveState()
+    p_arch = c.beginPath()
+    p_arch.moveTo(ARCH_TOP_X, H)
+    p_arch.lineTo(W, H)
+    p_arch.lineTo(W, ARCH_BOT_Y)
+    p_arch.lineTo(ARCH_BOT_X, ARCH_BOT_Y)
+    p_arch.curveTo(ARCH_CP_X, ARCH_CP2_Y,
+                   ARCH_CP_X, ARCH_CP1_Y,
+                   ARCH_TOP_X, H)
+    p_arch.close()
+    c.clipPath(p_arch, fill=1, stroke=0)
 
     if cover_img:
         try:
-            c.drawImage(cover_img, 0, 0, width=W, height=H,
-                       preserveAspectRatio=False)
+            cover_img.seek(0)
+            img_x = ARCH_CP_X - 10
+            img_w = W - img_x
+            img_h = H - ARCH_BOT_Y
+            c.drawImage(cover_img, img_x, ARCH_BOT_Y,
+                        width=img_w, height=img_h,
+                        preserveAspectRatio=False)
         except Exception:
-            cover_img = None
+            c.setFillColor(colors.HexColor('#CCCCCC'))
+            c.rect(ARCH_CP_X, ARCH_BOT_Y, W - ARCH_CP_X, H - ARCH_BOT_Y, fill=1, stroke=0)
+    else:
+        c.setFillColor(colors.HexColor('#CCCCCC'))
+        c.rect(ARCH_CP_X, ARCH_BOT_Y, W - ARCH_CP_X, H - ARCH_BOT_Y, fill=1, stroke=0)
 
-    if not cover_img:
-        # Fallback: dunkelgrauer Hintergrund
-        c.setFillColor(colors.HexColor('#2a2a2a'))
-        c.rect(0, 0, W, H, fill=1, stroke=0)
-        # Subtiles Muster
-        c.setFillColor(colors.HexColor('#333333'))
-        for y in range(0, int(H), 60):
-            c.rect(0, y, W, 30, fill=1, stroke=0)
+    c.restoreState()
 
-    # ── Dunkler Verlauf von unten ─────────────────────────────────────────────
-    # Simuliert mit mehreren halbtransparenten Rechtecken (ReportLab hat keinen echten Gradient)
-    gradient_h = H * 0.62  # Verlauf über untere 62% der Seite
-    steps      = 32
-    for i in range(steps):
-        alpha = (i / steps) ** 1.6  # weiche Kurve
-        c.setFillColor(colors.HexColor('#0d0d0d'))
-        c.setFillAlpha(alpha * 0.92)
-        strip_h = gradient_h / steps
-        c.rect(0, i * strip_h, W, strip_h + 1, fill=1, stroke=0)
-    c.setFillAlpha(1.0)
+    # Weißer Rand entlang der Bogenkurve
+    c.saveState()
+    c.setStrokeColor(colors.white)
+    c.setLineWidth(7)
+    p_border = c.beginPath()
+    p_border.moveTo(ARCH_TOP_X, H)
+    p_border.curveTo(ARCH_CP_X, ARCH_CP1_Y,
+                     ARCH_CP_X, ARCH_CP2_Y,
+                     ARCH_BOT_X, ARCH_BOT_Y)
+    c.drawPath(p_border, fill=0, stroke=1)
+    c.restoreState()
 
-    # ── Inhalt zentriert ─────────────────────────────────────────────────────
-    cx = W / 2          # horizontale Mitte
-    cy_start = H * 0.48 # Texte beginnen auf halber Höhe
+    # ── Logo oben links ───────────────────────────────────────────────────────
+    LOGO_X    = 35
+    LOGO_Y    = H - 128   # Oberkante Logo ca. 30mm vom Seitenrand
+    LOGO_SIZE = 66         # pt ≈ 23mm
 
-    # Logo oben im Textbereich
-    if os.path.exists(LOGO_PATH):
+    logo_url = provider.get('logo_image') or ''
+    logo_img = fetch_image(logo_url) if logo_url else None
+
+    if logo_img:
         try:
-            logo_size = 20*mm
-            c.drawImage(LOGO_PATH,
-                       cx - logo_size/2, cy_start + 28*mm,
-                       width=logo_size, height=logo_size,
-                       preserveAspectRatio=True, mask='auto')
+            logo_img.seek(0)
+            from PIL import Image as PILImage
+            pil = PILImage.open(logo_img)
+            pw, ph = pil.size
+            dpi = 96
+            pw_pt = pw / dpi * 72
+            ph_pt = ph / dpi * 72
+            scale = min(1.0, LOGO_SIZE / pw_pt, LOGO_SIZE / ph_pt)
+            fw = pw_pt * scale
+            fh = ph_pt * scale
+            logo_img.seek(0)
+            c.drawImage(logo_img,
+                        LOGO_X, LOGO_Y + (LOGO_SIZE - fh) / 2,
+                        width=fw, height=fh,
+                        preserveAspectRatio=True, mask='auto')
         except Exception:
-            pass
+            # Fallback: rotes Quadrat mit LOGO-Text
+            c.setFillColor(C_RED)
+            c.rect(LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE, fill=1, stroke=0)
+            c.setFillColor(colors.white)
+            c.setFont('Helvetica-Bold', 11)
+            c.drawCentredString(LOGO_X + LOGO_SIZE / 2, LOGO_Y + LOGO_SIZE / 2 - 4, 'LOGO')
+    else:
+        # Kein Logo konfiguriert: rotes Platzhalter-Quadrat
+        c.setFillColor(C_RED)
+        c.rect(LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE, fill=1, stroke=0)
+        c.setFillColor(colors.white)
+        c.setFont('Helvetica-Bold', 11)
+        c.drawCentredString(LOGO_X + LOGO_SIZE / 2, LOGO_Y + LOGO_SIZE / 2 - 4, 'LOGO')
 
-    # Firmenname
-    c.setFillColor(colors.HexColor('#e4e4e7'))
-    c.setFont('Helvetica', 9)
-    c.drawCentredString(cx, cy_start + 20*mm,
-                        provider.get('company', 'Sielaff Austria GmbH'))
+    # ── „ANGEBOT" Titel ───────────────────────────────────────────────────────
+    c.setFillColor(C_DARK)
+    c.setFont('Times-Roman', 68)
+    c.drawString(35, H - 270, 'ANGEBOT')
 
-    # Dünne rote Trennlinie
-    c.setStrokeColor(RED)
-    c.setLineWidth(1.5)
-    c.line(cx - 22*mm, cy_start + 16*mm, cx + 22*mm, cy_start + 16*mm)
+    # Kurze rote Linie unter Titel
+    c.setStrokeColor(C_RED)
+    c.setLineWidth(2.5)
+    c.line(35, H - 290, 92, H - 290)
 
-    # Kundenname – groß
-    c.setFillColor(WHITE)
-    customer  = project.get('customer', '')
-    font_size = 28 if len(customer) <= 20 else 22 if len(customer) <= 28 else 17
-    c.setFont('Helvetica-Bold', font_size)
-    c.drawCentredString(cx, cy_start + 4*mm, customer)
-
-    # Projektname
-    proj_name = project.get('project', '')
+    # Untertitel
     c.setFont('Helvetica', 13)
-    c.setFillColor(colors.HexColor('#d4d4d8'))
-    c.drawCentredString(cx, cy_start - 8*mm, proj_name)
+    c.setFillColor(C_DARK)
+    c.drawString(35, H - 322, 'Maßgeschneiderte Lösung für Ihr Vorhaben')
 
-    # Trennlinie
-    c.setStrokeColor(colors.HexColor('#71717a'))
+    # ── Info-Box ──────────────────────────────────────────────────────────────
+    BOX_X = 35
+    BOX_W = 418
+    ROW_H = 38
+
+    rows = [
+        ('Angebotsnummer', project.get('offerNo',  '')),
+        ('Datum',          project.get('date',      '')),
+        ('Kunde',          project.get('customer',  '')),
+        ('Projekt',        project.get('project',   '')),
+        ('Ansprechpartner',project.get('contact',   '')),
+        ('Gültig bis',     project.get('valid',     '')),
+        ('Version',        project.get('version',   '1.0')),
+    ]
+    BOX_H = ROW_H * len(rows) + 16
+    BOX_Y = FOOTER_H + 12   # direkt über der Fußzeile
+
+    # Schatten (versetztes graues Rechteck)
+    c.setFillColor(colors.HexColor('#DADADA'))
+    c.roundRect(BOX_X + 4, BOX_Y - 5, BOX_W, BOX_H, 10, fill=1, stroke=0)
+
+    # Weißer Kasten
+    c.setFillColor(colors.white)
+    c.roundRect(BOX_X, BOX_Y, BOX_W, BOX_H, 10, fill=1, stroke=0)
+
+    for i, (label, value) in enumerate(rows):
+        # Vertikale Mitte der Zeile
+        row_y = BOX_Y + BOX_H - 8 - (i + 1) * ROW_H + ROW_H * 0.30
+
+        # Icon-Platzhalter (grauer Kreis)
+        c.setFillColor(C_ICON_BG)
+        c.circle(BOX_X + 22, row_y + 9, 10, fill=1, stroke=0)
+
+        # Label (fett)
+        c.setFont('Helvetica-Bold', 9)
+        c.setFillColor(C_DARK)
+        c.drawString(BOX_X + 42, row_y + 5, label)
+
+        # Wert – lange Texte kürzen
+        val_str = str(value)[:50]
+        c.setFont('Helvetica', 9)
+        c.setFillColor(C_GRAY_DARK)
+        c.drawString(BOX_X + 172, row_y + 5, val_str)
+
+        # Trennlinie (außer letzte Zeile)
+        if i < len(rows) - 1:
+            sep_y = BOX_Y + BOX_H - 8 - (i + 1) * ROW_H
+            c.setStrokeColor(C_GRAY_LINE)
+            c.setLineWidth(0.4)
+            c.line(BOX_X + 14, sep_y, BOX_X + BOX_W - 14, sep_y)
+
+    # ── Fußzeile ──────────────────────────────────────────────────────────────
+    c.setFillColor(C_FOOTER_BG)
+    c.rect(0, 0, W, FOOTER_H, fill=1, stroke=0)
+
+    # Vertikale Trenner
+    c.setStrokeColor(colors.HexColor('#BBBBBB'))
     c.setLineWidth(0.5)
-    line_w = min(60*mm, W * 0.4)
-    c.line(cx - line_w/2, cy_start - 14*mm, cx + line_w/2, cy_start - 14*mm)
+    c.line(75, 14, 75, FOOTER_H - 14)
+    sep2_x = W * 0.51
+    c.line(sep2_x, 14, sep2_x, FOOTER_H - 14)
 
-    # Angebotsnummer + Datum
-    c.setFillColor(colors.HexColor('#a1a1aa'))
-    c.setFont('Helvetica', 8)
-    c.drawCentredString(cx, cy_start - 22*mm,
-                        f"Angebot {project.get('offerNo', '')}  ·  {project.get('date', '')}")
+    # Gebäude-Icon (einfache Linien)
+    bx, by = 22, FOOTER_H - 62
+    c.setStrokeColor(colors.HexColor('#888888'))
+    c.setLineWidth(1)
+    c.rect(bx, by, 30, 40, fill=0, stroke=1)
+    c.rect(bx + 10, by, 10, 15, fill=0, stroke=1)
+    c.line(bx + 4, by + 26, bx + 10, by + 26)
+    c.line(bx + 20, by + 26, bx + 26, by + 26)
 
-    # Gültig bis
+    # Firmendaten (linke Spalte)
+    c.setFont('Helvetica-Bold', 8)
+    c.setFillColor(C_DARK)
+    c.drawString(84, FOOTER_H - 22, provider.get('company', ''))
     c.setFont('Helvetica', 7.5)
-    c.setFillColor(colors.HexColor('#71717a'))
-    c.drawCentredString(cx, cy_start - 29*mm,
-                        f"Gültig bis: {project.get('valid', '')}")
+    c.setFillColor(C_GRAY_DARK)
+    addr = provider.get('address', '')
+    # Adresse ggf. auf zwei Zeilen aufteilen
+    if ',' in addr:
+        parts = addr.split(',', 1)
+        c.drawString(84, FOOTER_H - 34, parts[0].strip() + ',')
+        c.drawString(84, FOOTER_H - 46, parts[1].strip())
+    else:
+        c.drawString(84, FOOTER_H - 34, addr)
 
-    # Adresse ganz unten (kein roter Balken)
-    c.setFillColor(colors.HexColor('#71717a'))
-    c.setFont('Helvetica', 6.5)
-    addr = f"{provider.get('company','')}  ·  {provider.get('address','')}  ·  {provider.get('email','')}  ·  {provider.get('phone','')}"
-    c.drawCentredString(cx, 5*mm, addr)
+    # Kontakt (mittlere Spalte)
+    col2_x = sep2_x + 12
+    c.setFont('Helvetica', 7.5)
+    c.setFillColor(C_GRAY_DARK)
+    c.drawString(col2_x, FOOTER_H - 22, provider.get('phone',   ''))
+    c.drawString(col2_x, FOOTER_H - 34, provider.get('email',   ''))
+    c.drawString(col2_x, FOOTER_H - 46, provider.get('website', ''))
+
+    # Slogan rechts
+    slogan = 'Kompetent. Klar. Verlässlich.'
+    c.setFont('Helvetica-Bold', 9)
+    c.setFillColor(C_DARK)
+    c.drawRightString(W - 25, FOOTER_H - 28, slogan)
+    # Rote Linie unter Slogan
+    slogan_w = c.stringWidth(slogan, 'Helvetica-Bold', 9)
+    c.setStrokeColor(C_RED)
+    c.setLineWidth(1.5)
+    c.line(W - 25 - slogan_w, FOOTER_H - 35, W - 25, FOOTER_H - 35)
 
     c.showPage()
 
@@ -343,6 +492,7 @@ def generate_design_pdf(data: dict) -> dict:
         'address': s.get('address', provider.get('address','')),
         'email':   s.get('email',   provider.get('email','')),
         'phone':   s.get('phone',   provider.get('phone','')),
+        'website': s.get('website', provider.get('website','')),
     }
     if s.get('legal_notice') and not legal:
         legal = s['legal_notice']
@@ -379,9 +529,11 @@ def generate_design_pdf(data: dict) -> dict:
             all_attachments.append(a)
 
     # ── Deckblatt ─────────────────────────────────────────────────────────────
-    # Cover-Foto aus Einstellungen einfügen
+    # Cover-Foto und Logo aus Einstellungen einfügen
     if s.get('cover_image'):
         provider = {**provider, 'cover_image': s['cover_image']}
+    if s.get('logo_image'):
+        provider = {**provider, 'logo_image': s['logo_image']}
     cover_buf = io.BytesIO()
     c_cover   = canvas.Canvas(cover_buf, pagesize=A4)
     draw_cover(c_cover, {**data, 'provider': provider})
