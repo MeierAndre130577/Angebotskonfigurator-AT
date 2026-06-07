@@ -38,8 +38,10 @@ def _get_pdf_settings():
         import db as _db
         s = _db.get_settings()
         if not s: return {}
+        print(f"[settings] cover_image={s.get('cover_image','')!r}  logo_image={s.get('logo_image','')!r}")
         return s
-    except Exception:
+    except Exception as e:
+        print(f"[settings] Fehler beim Laden: {e}")
         return {}
 
 EXPORT_DIR = os.path.join(os.path.dirname(__file__), 'exports')
@@ -53,20 +55,41 @@ def money(n):
         return "€ 0,00"
 
 def fetch_image(url: str) -> io.BytesIO | None:
-    if not url: return None
-    # Lokale Uploads (/uploads/...) direkt vom Dateisystem lesen
+    if not url:
+        return None
+
+    print(f"[fetch_image] URL: {url!r}")
+
+    # ── Lokale Uploads (/uploads/...) ─────────────────────────────────────────
     if url.startswith('/uploads/'):
-        local_path = os.path.join(os.path.dirname(__file__), url.lstrip('/').replace('/', os.sep))
+        local_path = os.path.join(
+            os.path.dirname(__file__),
+            url.lstrip('/').replace('/', os.sep)
+        )
+        print(f"[fetch_image] lokaler Pfad: {local_path!r}, existiert: {os.path.exists(local_path)}")
         if os.path.exists(local_path):
             with open(local_path, 'rb') as f:
                 return io.BytesIO(f.read())
         return None
+
+    # ── Remote URL (Supabase oder extern) ─────────────────────────────────────
     try:
-        r = httpx.get(url, timeout=10, follow_redirects=True)
+        headers = {}
+        # Supabase-URLs ggf. mit Service-Key authentifizieren
+        supabase_url = os.environ.get('SUPABASE_URL', '')
+        service_key  = os.environ.get('SUPABASE_SERVICE_KEY', '')
+        if supabase_url and service_key and supabase_url in url:
+            headers['Authorization'] = f'Bearer {service_key}'
+
+        r = httpx.get(url, timeout=15, follow_redirects=True, headers=headers)
+        print(f"[fetch_image] HTTP {r.status_code} für {url!r}")
         if r.status_code == 200:
             return io.BytesIO(r.content)
-    except Exception:
-        pass
+        else:
+            print(f"[fetch_image] Fehler-Body: {r.text[:200]}")
+    except Exception as e:
+        print(f"[fetch_image] Exception: {e}")
+
     return None
 
 def make_image(img_data: io.BytesIO, max_w: float, max_h: float) -> RLImage | None:
@@ -321,8 +344,8 @@ def draw_cover(c: canvas.Canvas, data: dict):
         ('layers', 'Version',        project.get('version',    '1.0')),
     ]
     BOX_H = ROW_H * len(rows) + 14
-    # Box mittig zwischen Untertitel und Fußzeile positionieren
-    BOX_Y = FOOTER_H + 110
+    # Box: Oberkante bei ca. 42% von oben → 488pt vom Seitenrand
+    BOX_Y = H - 350 - BOX_H   # ~350pt vom oberen Rand bis Kasten-Oberkante
 
     # Schatten (versetztes graues Rechteck)
     c.setFillColor(colors.HexColor('#DADADA'))
