@@ -226,11 +226,14 @@ def draw_cover(c: canvas.Canvas, data: dict):
     p.close()
     c.drawPath(p, fill=1, stroke=0)
 
-    # ── 3. Cover-Bild (OHNE clipPath – weißer Maske danach) ──────────────────
+    # ── 3+4. Cover-Bild + weiße Bogen-Maske ─────────────────────────────────
+    # saveState/restoreState isoliert den Farbzustand des Bildes von späterem Text
     cover_url = (provider.get('cover_image') or
                  project.get('coverImage')   or
                  data.get('cover_image')     or '')
     cover_img = fetch_image(cover_url) if cover_url else None
+
+    c.saveState()   # ← Farbzustand einfrieren, bevor Bild gezeichnet wird
 
     if cover_img:
         try:
@@ -258,12 +261,10 @@ def draw_cover(c: canvas.Canvas, data: dict):
             # Bild per PIL auf exaktes Seitenverhältnis zuschneiden (kein Overflow)
             img_ratio = img_px_w / img_px_h
             if img_ratio > target_ratio:
-                # Bild zu breit → Breite kürzen
                 new_w = int(img_px_h * target_ratio)
                 offset_x = (img_px_w - new_w) // 2
                 pil = pil.crop((offset_x, 0, offset_x + new_w, img_px_h))
             else:
-                # Bild zu hoch → Höhe kürzen
                 new_h = int(img_px_w / target_ratio)
                 offset_y = (img_px_h - new_h) // 2
                 pil = pil.crop((0, offset_y, img_px_w, offset_y + new_h))
@@ -271,7 +272,6 @@ def draw_cover(c: canvas.Canvas, data: dict):
             img_buf = io.BytesIO()
             pil.save(img_buf, format='JPEG', quality=88)
             img_buf.seek(0)
-            # Exakt in Zielbereich zeichnen – kein Overflow mehr möglich
             c.drawImage(ImageReader(img_buf), target_x, target_y,
                         width=target_w, height=target_h)
         except Exception as e:
@@ -282,8 +282,7 @@ def draw_cover(c: canvas.Canvas, data: dict):
         c.setFillColor(colors.HexColor('#CCCCCC'))
         c.rect(ARCH_CP_X, FOOTER_H, W - ARCH_CP_X, H - FOOTER_H, fill=1, stroke=0)
 
-    # ── 4. Weiße Bogen-Maske: linke Seite des Bildes überdecken ─────────────
-    # Verhindert dass das Bild in den Textbereich ragt – kein clipPath nötig
+    # Weiße Bogen-Maske INNERHALB desselben saveState-Blocks
     c.setFillColor(colors.white)
     p_mask = c.beginPath()
     p_mask.moveTo(0, H)
@@ -294,6 +293,8 @@ def draw_cover(c: canvas.Canvas, data: dict):
     p_mask.lineTo(0, FOOTER_H)
     p_mask.close()
     c.drawPath(p_mask, fill=1, stroke=0)
+
+    c.restoreState()  # ← Farbzustand wiederherstellen – ab hier sauberer Zustand
 
     # ── 5. Weißer Rand entlang der Bogenkurve ────────────────────────────────
     c.setStrokeColor(colors.white)
@@ -379,7 +380,7 @@ def draw_cover(c: canvas.Canvas, data: dict):
     ]
     BOX_H = ROW_H * len(rows) + 14
     # Box: ca. 50pt unter dem Untertitel (Untertitel bei H-260 = 260pt vom oben)
-    BOX_Y = H - 315 - BOX_H   # 315pt vom oberen Rand → 55pt Abstand zum Untertitel
+    BOX_Y = H - 278 - BOX_H   # 278pt vom oberen Rand → 28pt Abstand zum Untertitel (der bei 250pt liegt)
 
     # Schatten (versetztes graues Rechteck)
     c.setFillColor(colors.HexColor('#DADADA'))
@@ -401,15 +402,15 @@ def draw_cover(c: canvas.Canvas, data: dict):
         # Icon zeichnen
         _draw_icon(c, ICON_CX, ICON_CY, icon_kind)
 
-        # Label (fett)
-        c.setFont('Helvetica-Bold', 8.5)
-        c.setFillColor(C_DARK)
+        # Label (fett) – explizit schwarz setzen
+        c.setFont('Helvetica-Bold', 9)
+        c.setFillColor(colors.black)
         c.drawString(BOX_X + 38, row_center_y - 3, label)
 
-        # Wert
+        # Wert – explizit schwarz setzen (verhindert Farbzustand-Artefakte)
         val_str = str(value)[:50]
-        c.setFont('Helvetica', 8.5)
-        c.setFillColor(C_GRAY_DARK)
+        c.setFont('Helvetica', 9)
+        c.setFillColor(colors.black)
         c.drawString(BOX_X + 165, row_center_y - 3, val_str)
 
         # Trennlinie (außer letzte Zeile)
