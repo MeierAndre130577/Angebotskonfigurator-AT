@@ -183,64 +183,47 @@ def _draw_icon(c: canvas.Canvas, cx: float, cy: float, kind: str):
 
 def draw_cover(c: canvas.Canvas, data: dict):
     """
-    Deckblatt nach neuem Design (KEIN clipPath – weiße Maske stattdessen):
-    - Weißer Hintergrund
-    - Bogen-Foto rechts: wird ohne Clipping gezeichnet, linke Seite mit weißer
-      Bezier-Maske überdeckt → kein PDF-Rendering-Artefakt
-    - Logo oben links, ANGEBOT, Untertitel, Info-Box, Fußzeile
+    Deckblatt v4 – einfacher, robuster Ansatz:
+    - Linke Spalte (weiß): Logo oben, ANGEBOT + Info-Box unten verankert
+    - Rechte Spalte: Bild als einfaches Rechteck, kein Clip, kein Overflow
+    - Sanfte S-Kurve an der Grenze als dekoratives Element
+    - Funktioniert auf ALLEN PDF-Viewern identisch
     """
+    from PIL import Image as PILImage
+
     project  = data.get('project')  or {}
     provider = data.get('provider') or {}
 
-    C_RED       = colors.HexColor('#E30613')
-    C_DARK      = colors.HexColor('#1D1D1B')
-    C_GRAY_DARK = colors.HexColor('#2A2A2A')
+    C_RED      = colors.HexColor('#E30613')
+    C_DARK     = colors.HexColor('#1D1D1B')
     C_GRAY_LINE = colors.HexColor('#E0E0E0')
-    C_GRAY_TRI  = colors.HexColor('#D0D0D0')
+    C_ICON_BG  = colors.HexColor('#F2F2F2')
     C_FOOTER_BG = colors.HexColor('#E2E2E2')
-    C_ICON_BG   = colors.HexColor('#F2F2F2')
 
-    FOOTER_H = 88   # Höhe der Fußzeile in pt
+    FOOTER_H = 88
+    SPLIT_X  = W * 0.565   # ~336pt – Grenze linke/rechte Spalte
 
-    # Bogen-Geometrie
-    # ANGEBOT in Times-Roman 60pt endet bei ca. x=318pt → ARCH_CP_X muss > 330pt sein
-    ARCH_TOP_X = W * 0.66    # ~393 pt – wo Kurve oben beginnt
-    ARCH_CP_X  = W * 0.61    # ~363 pt – linkster Punkt der Kurve (Sicherheitsabstand zu ANGEBOT)
-    ARCH_BOT_X = W * 0.73    # ~435 pt – wo Kurve unten endet
-    ARCH_CP1_Y = H * 0.65
-    ARCH_CP2_Y = H * 0.35
-
-    from PIL import Image as PILImage
-
-    # ── 1. Weißer Hintergrund ─────────────────────────────────────────────────
+    # ── 1. Weißer Seitenhintergrund ───────────────────────────────────────────
     c.setFillColor(colors.white)
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
-    # ── 2. Graues Dreieck-Dekor oben rechts ──────────────────────────────────
-    c.setFillColor(C_GRAY_TRI)
-    p = c.beginPath()
-    p.moveTo(W * 0.62, H)
-    p.lineTo(W, H)
-    p.lineTo(W, H * 0.72)
-    p.curveTo(W * 0.86, H * 0.87, W * 0.73, H * 0.95, W * 0.62, H)
-    p.close()
-    c.drawPath(p, fill=1, stroke=0)
-
-    # ── 3+4. Cover-Bild + weiße Bogen-Maske ─────────────────────────────────
-    # saveState/restoreState isoliert den Farbzustand des Bildes von späterem Text
+    # ── 2. Cover-Bild (rechte Spalte, PIL-Zuschnitt auf exaktes Verhältnis) ──
     cover_url = (provider.get('cover_image') or
                  project.get('coverImage')   or
                  data.get('cover_image')     or '')
     cover_img = fetch_image(cover_url) if cover_url else None
 
-    c.saveState()   # ← Farbzustand einfrieren, bevor Bild gezeichnet wird
+    IMG_X = SPLIT_X
+    IMG_Y = FOOTER_H
+    IMG_W = W - SPLIT_X       # ~259pt
+    IMG_H = H - FOOTER_H      # ~754pt
 
+    c.saveState()
     if cover_img:
         try:
             cover_img.seek(0)
-            cover_bytes = cover_img.read()
-            pil = PILImage.open(io.BytesIO(cover_bytes))
-            # Alpha entfernen → sauberes JPEG (verhindert Compositing-Artefakte)
+            raw = cover_img.read()
+            pil = PILImage.open(io.BytesIO(raw))
             if pil.mode in ('RGBA', 'LA', 'P'):
                 bg = PILImage.new('RGB', pil.size, (255, 255, 255))
                 src = pil.convert('RGBA') if pil.mode == 'P' else pil
@@ -248,127 +231,101 @@ def draw_cover(c: canvas.Canvas, data: dict):
                 pil = bg
             elif pil.mode != 'RGB':
                 pil = pil.convert('RGB')
-
-            img_px_w, img_px_h = pil.size
-
-            # Zielbereich: rechte Seite ab ARCH_CP_X, über gesamte Höhe (ohne Fußzeile)
-            target_x = ARCH_CP_X
-            target_y = FOOTER_H
-            target_w = W - target_x
-            target_h = H - target_y
-            target_ratio = target_w / target_h
-
-            # Bild per PIL auf exaktes Seitenverhältnis zuschneiden (kein Overflow)
-            img_ratio = img_px_w / img_px_h
-            if img_ratio > target_ratio:
-                new_w = int(img_px_h * target_ratio)
-                offset_x = (img_px_w - new_w) // 2
-                pil = pil.crop((offset_x, 0, offset_x + new_w, img_px_h))
+            pw, ph = pil.size
+            r = IMG_W / IMG_H
+            if (pw / ph) > r:
+                nw = int(ph * r)
+                pil = pil.crop(((pw - nw) // 2, 0, (pw + nw) // 2, ph))
             else:
-                new_h = int(img_px_w / target_ratio)
-                offset_y = (img_px_h - new_h) // 2
-                pil = pil.crop((0, offset_y, img_px_w, offset_y + new_h))
-
-            img_buf = io.BytesIO()
-            pil.save(img_buf, format='JPEG', quality=88)
-            img_buf.seek(0)
-            c.drawImage(ImageReader(img_buf), target_x, target_y,
-                        width=target_w, height=target_h)
+                nh = int(pw / r)
+                pil = pil.crop((0, (ph - nh) // 2, pw, (ph + nh) // 2))
+            buf = io.BytesIO()
+            pil.save(buf, 'JPEG', quality=88)
+            buf.seek(0)
+            c.drawImage(ImageReader(buf), IMG_X, IMG_Y, width=IMG_W, height=IMG_H)
+            print(f"[draw_cover] Bild gezeichnet: {IMG_W:.0f}x{IMG_H:.0f}pt bei ({IMG_X:.0f},{IMG_Y:.0f})")
         except Exception as e:
             print(f"[draw_cover] Bildfehler: {e}")
             c.setFillColor(colors.HexColor('#CCCCCC'))
-            c.rect(ARCH_CP_X, FOOTER_H, W - ARCH_CP_X, H - FOOTER_H, fill=1, stroke=0)
+            c.rect(IMG_X, IMG_Y, IMG_W, IMG_H, fill=1, stroke=0)
     else:
         c.setFillColor(colors.HexColor('#CCCCCC'))
-        c.rect(ARCH_CP_X, FOOTER_H, W - ARCH_CP_X, H - FOOTER_H, fill=1, stroke=0)
+        c.rect(IMG_X, IMG_Y, IMG_W, IMG_H, fill=1, stroke=0)
+    c.restoreState()
 
-    # Weiße Bogen-Maske INNERHALB desselben saveState-Blocks
+    # ── 3. Weiße linke Spalte (über dem Bild – garantiert kein Überlauf) ─────
     c.setFillColor(colors.white)
-    p_mask = c.beginPath()
-    p_mask.moveTo(0, H)
-    p_mask.lineTo(ARCH_TOP_X, H)
-    p_mask.curveTo(ARCH_CP_X, ARCH_CP1_Y,
-                   ARCH_CP_X, ARCH_CP2_Y,
-                   ARCH_BOT_X, FOOTER_H)
-    p_mask.lineTo(0, FOOTER_H)
-    p_mask.close()
-    c.drawPath(p_mask, fill=1, stroke=0)
+    c.rect(0, FOOTER_H, SPLIT_X, H - FOOTER_H, fill=1, stroke=0)
 
-    c.restoreState()  # ← Farbzustand wiederherstellen – ab hier sauberer Zustand
-
-    # ── 5. Weißer Rand entlang der Bogenkurve ────────────────────────────────
+    # ── 4. Sanfte S-Kurve an der Grenze (dekorativ, kein Clip nötig) ─────────
+    # Die S-Kurve wölbt sich leicht ins Bild und schafft einen eleganten Übergang
+    c.saveState()
+    CURVE_BULGE = 28   # wie weit die Kurve ins Bild ragt (pt)
+    c.setFillColor(colors.white)
+    p_curve = c.beginPath()
+    p_curve.moveTo(SPLIT_X, H)
+    p_curve.curveTo(SPLIT_X + CURVE_BULGE, H * 0.72,
+                    SPLIT_X - CURVE_BULGE, H * 0.28,
+                    SPLIT_X, FOOTER_H)
+    p_curve.lineTo(SPLIT_X - 1, FOOTER_H)
+    p_curve.lineTo(SPLIT_X - 1, H)
+    p_curve.close()
+    c.drawPath(p_curve, fill=1, stroke=0)
+    # Weißer Strich auf der Kurve für schärfere Optik
     c.setStrokeColor(colors.white)
-    c.setLineWidth(7)
-    p_border = c.beginPath()
-    p_border.moveTo(ARCH_TOP_X, H)
-    p_border.curveTo(ARCH_CP_X, ARCH_CP1_Y,
-                     ARCH_CP_X, ARCH_CP2_Y,
-                     ARCH_BOT_X, FOOTER_H)
-    c.drawPath(p_border, fill=0, stroke=1)
+    c.setLineWidth(5)
+    p_stroke = c.beginPath()
+    p_stroke.moveTo(SPLIT_X, H)
+    p_stroke.curveTo(SPLIT_X + CURVE_BULGE, H * 0.72,
+                     SPLIT_X - CURVE_BULGE, H * 0.28,
+                     SPLIT_X, FOOTER_H)
+    c.drawPath(p_stroke, fill=0, stroke=1)
+    c.restoreState()
 
-    # ── Logo oben links ───────────────────────────────────────────────────────
+    # ── 5. Logo oben links ────────────────────────────────────────────────────
+    c.saveState()
     LOGO_X    = 35
-    LOGO_SIZE = 56         # pt ≈ 20mm
-    LOGO_Y    = H - LOGO_SIZE - 38   # ~38pt vom oberen Rand
+    LOGO_MAX  = 60    # maximale Logo-Höhe in pt
+    LOGO_Y    = H - LOGO_MAX - 32
 
     logo_url = provider.get('logo_image') or ''
     logo_img = fetch_image(logo_url) if logo_url else None
 
     if logo_img:
         try:
-            # Größe via PIL ermitteln (PIL liest Stream, daher eigene Kopie)
             logo_img.seek(0)
             logo_bytes = logo_img.read()
-            from PIL import Image as PILImage
-            pil = PILImage.open(io.BytesIO(logo_bytes))
-            pw, ph = pil.size
-            dpi = 96
-            pw_pt = pw / dpi * 72
-            ph_pt = ph / dpi * 72
-            scale = min(1.0, LOGO_SIZE / pw_pt, LOGO_SIZE / ph_pt)
-            fw = pw_pt * scale
-            fh = ph_pt * scale
-            # Frischen BytesIO für ImageReader übergeben
+            pil_l = PILImage.open(io.BytesIO(logo_bytes))
+            lw, lh = pil_l.size
+            lw_pt = lw / 96 * 72
+            lh_pt = lh / 96 * 72
+            scale_l = min(1.0, LOGO_MAX / lw_pt, LOGO_MAX / lh_pt)
+            fw = lw_pt * scale_l
+            fh = lh_pt * scale_l
             c.drawImage(ImageReader(io.BytesIO(logo_bytes)),
-                        LOGO_X, LOGO_Y + (LOGO_SIZE - fh) / 2,
+                        LOGO_X, LOGO_Y + (LOGO_MAX - fh) / 2,
                         width=fw, height=fh,
                         preserveAspectRatio=True, mask='auto')
-            print(f"[draw_cover] Logo gezeichnet: {fw:.0f}x{fh:.0f}pt")
+            print(f"[draw_cover] Logo: {fw:.0f}x{fh:.0f}pt")
         except Exception as e:
-            print(f"[draw_cover] logo drawImage Fehler: {e}")
+            print(f"[draw_cover] Logo-Fehler: {e}")
             c.setFillColor(C_RED)
-            c.rect(LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE, fill=1, stroke=0)
+            c.rect(LOGO_X, LOGO_Y, LOGO_MAX, LOGO_MAX, fill=1, stroke=0)
             c.setFillColor(colors.white)
             c.setFont('Helvetica-Bold', 10)
-            c.drawCentredString(LOGO_X + LOGO_SIZE / 2, LOGO_Y + LOGO_SIZE / 2 - 3, 'LOGO')
+            c.drawCentredString(LOGO_X + LOGO_MAX / 2, LOGO_Y + LOGO_MAX / 2 - 3, 'LOGO')
     else:
-        # Kein Logo: roter Platzhalter
         c.setFillColor(C_RED)
-        c.rect(LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE, fill=1, stroke=0)
+        c.rect(LOGO_X, LOGO_Y, LOGO_MAX, LOGO_MAX, fill=1, stroke=0)
         c.setFillColor(colors.white)
         c.setFont('Helvetica-Bold', 10)
-        c.drawCentredString(LOGO_X + LOGO_SIZE / 2, LOGO_Y + LOGO_SIZE / 2 - 3, 'LOGO')
+        c.drawCentredString(LOGO_X + LOGO_MAX / 2, LOGO_Y + LOGO_MAX / 2 - 3, 'LOGO')
+    c.restoreState()
 
-    # ── „ANGEBOT" Titel ───────────────────────────────────────────────────────
-    c.setFillColor(C_DARK)
-    c.setFont('Times-Roman', 60)
-    c.drawString(35, H - 210, 'ANGEBOT')
-
-    # Kurze rote Linie unter Titel
-    c.setStrokeColor(C_RED)
-    c.setLineWidth(2.5)
-    c.line(35, H - 225, 90, H - 225)
-
-    # Untertitel
-    c.setFont('Helvetica', 12)
-    c.setFillColor(C_DARK)
-    c.drawString(35, H - 250, 'Maßgeschneiderte Lösung für Ihr Vorhaben')
-
-    # ── Info-Box ──────────────────────────────────────────────────────────────
+    # ── 6. Info-Box (am unteren Rand der linken Spalte verankert) ────────────
     BOX_X = 35
-    BOX_W = 390   # ~138mm – geht bis ca. 70% der Seitenbreite, wie in der Vorlage
-    ROW_H = 28   # kompakte Zeilenhöhe
-
+    BOX_W = int(SPLIT_X) - 50   # endet kurz vor der Kurve
+    ROW_H = 36
     rows = [
         ('doc',    'Angebotsnummer', project.get('offerNo',   '')),
         ('cal',    'Datum',          project.get('date',       '')),
@@ -378,47 +335,51 @@ def draw_cover(c: canvas.Canvas, data: dict):
         ('clock',  'Gültig bis',     project.get('valid',      '')),
         ('layers', 'Version',        project.get('version',    '1.0')),
     ]
-    BOX_H = ROW_H * len(rows) + 14
-    # Box: ca. 50pt unter dem Untertitel (Untertitel bei H-260 = 260pt vom oben)
-    BOX_Y = H - 278 - BOX_H   # 278pt vom oberen Rand → 28pt Abstand zum Untertitel (der bei 250pt liegt)
+    BOX_H = ROW_H * len(rows) + 16
+    BOX_Y = FOOTER_H + 35   # 35pt Abstand zur Fußzeile
 
-    # Schatten (versetztes graues Rechteck)
+    # Schatten
     c.setFillColor(colors.HexColor('#DADADA'))
-    c.roundRect(BOX_X + 4, BOX_Y - 5, BOX_W, BOX_H, 10, fill=1, stroke=0)
-
+    c.roundRect(BOX_X + 4, BOX_Y - 5, BOX_W, BOX_H, 8, fill=1, stroke=0)
     # Weißer Kasten
     c.setFillColor(colors.white)
-    c.roundRect(BOX_X, BOX_Y, BOX_W, BOX_H, 10, fill=1, stroke=0)
+    c.roundRect(BOX_X, BOX_Y, BOX_W, BOX_H, 8, fill=1, stroke=0)
 
     for i, (icon_kind, label, value) in enumerate(rows):
-        row_center_y = BOX_Y + BOX_H - 7 - (i + 1) * ROW_H + ROW_H * 0.5
-
-        # Icon-Kreis (hellgrauer Hintergrund)
+        row_cy = BOX_Y + BOX_H - 8 - (i + 1) * ROW_H + ROW_H * 0.5
         ICON_CX = BOX_X + 20
-        ICON_CY = row_center_y
+
         c.setFillColor(C_ICON_BG)
-        c.circle(ICON_CX, ICON_CY, 9, fill=1, stroke=0)
+        c.circle(ICON_CX, row_cy, 9, fill=1, stroke=0)
+        _draw_icon(c, ICON_CX, row_cy, icon_kind)
 
-        # Icon zeichnen
-        _draw_icon(c, ICON_CX, ICON_CY, icon_kind)
-
-        # Label (fett) – explizit schwarz setzen
         c.setFont('Helvetica-Bold', 9)
         c.setFillColor(colors.black)
-        c.drawString(BOX_X + 38, row_center_y - 3, label)
+        c.drawString(BOX_X + 38, row_cy - 3, label)
 
-        # Wert – explizit schwarz setzen (verhindert Farbzustand-Artefakte)
-        val_str = str(value)[:50]
         c.setFont('Helvetica', 9)
         c.setFillColor(colors.black)
-        c.drawString(BOX_X + 165, row_center_y - 3, val_str)
+        c.drawString(BOX_X + 158, row_cy - 3, str(value)[:45])
 
-        # Trennlinie (außer letzte Zeile)
         if i < len(rows) - 1:
-            sep_y = BOX_Y + BOX_H - 7 - (i + 1) * ROW_H
+            sep_y = BOX_Y + BOX_H - 8 - (i + 1) * ROW_H
             c.setStrokeColor(C_GRAY_LINE)
             c.setLineWidth(0.4)
             c.line(BOX_X + 12, sep_y, BOX_X + BOX_W - 12, sep_y)
+
+    # ── 7. ANGEBOT + Untertitel (oberhalb der Info-Box) ───────────────────────
+    TITLE_BOTTOM = BOX_Y + BOX_H + 65   # 65pt über Kasten-Oberkante → 29pt Luft zwischen Untertitel und Box
+    c.setFillColor(C_DARK)
+    c.setFont('Times-Roman', 62)
+    c.drawString(BOX_X, TITLE_BOTTOM, 'ANGEBOT')
+
+    c.setStrokeColor(C_RED)
+    c.setLineWidth(2.5)
+    c.line(BOX_X, TITLE_BOTTOM - 14, BOX_X + 58, TITLE_BOTTOM - 14)
+
+    c.setFont('Helvetica', 12)
+    c.setFillColor(C_DARK)
+    c.drawString(BOX_X, TITLE_BOTTOM - 36, 'Maßgeschneiderte Lösung für Ihr Vorhaben')
 
     # ── Fußzeile (wird als letztes gezeichnet → liegt garantiert oben) ───────
     c.setFillColor(C_FOOTER_BG)
