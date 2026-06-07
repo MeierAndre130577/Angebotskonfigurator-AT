@@ -54,6 +54,13 @@ def money(n):
 
 def fetch_image(url: str) -> io.BytesIO | None:
     if not url: return None
+    # Lokale Uploads (/uploads/...) direkt vom Dateisystem lesen
+    if url.startswith('/uploads/'):
+        local_path = os.path.join(os.path.dirname(__file__), url.lstrip('/').replace('/', os.sep))
+        if os.path.exists(local_path):
+            with open(local_path, 'rb') as f:
+                return io.BytesIO(f.read())
+        return None
     try:
         r = httpx.get(url, timeout=10, follow_redirects=True)
         if r.status_code == 200:
