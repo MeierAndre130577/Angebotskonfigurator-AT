@@ -103,6 +103,58 @@ def make_image(img_data: io.BytesIO, max_w: float, max_h: float) -> RLImage | No
         except Exception:
             return None
 
+# ── Icon-Zeichner für Info-Box ────────────────────────────────────────────────
+
+def _draw_icon(c: canvas.Canvas, cx: float, cy: float, kind: str):
+    """
+    Zeichnet ein einfaches Linien-Icon zentriert bei (cx, cy).
+    kind: 'doc' | 'cal' | 'person' | 'brief' | 'clock' | 'layers'
+    """
+    c.setStrokeColor(colors.HexColor('#888888'))
+    c.setFillColor(colors.HexColor('#888888'))
+    c.setLineWidth(0.9)
+    r = 5  # halbe Icon-Größe in pt
+
+    if kind == 'doc':
+        # Dokument: Rechteck mit Ecke + Linien
+        c.rect(cx - r + 1, cy - r, r * 2 - 2, r * 2, fill=0, stroke=1)
+        for dy in (2, -1, -4):
+            c.line(cx - r + 3, cy + dy, cx + r - 2, cy + dy)
+
+    elif kind == 'cal':
+        # Kalender: Rechteck + Gitterlinien + Bügelchen
+        c.rect(cx - r, cy - r, r * 2, r * 2, fill=0, stroke=1)
+        c.line(cx - r, cy + 1, cx + r, cy + 1)          # horizontale Trennlinie
+        c.line(cx - 2, cy + r, cx - 2, cy + r + 3)       # linker Bügel
+        c.line(cx + 2, cy + r, cx + 2, cy + r + 3)       # rechter Bügel
+
+    elif kind == 'person':
+        # Person: Kreis (Kopf) + Halbbogen (Körper)
+        c.circle(cx, cy + 2, 3.0, fill=0, stroke=1)
+        p = c.beginPath()
+        p.moveTo(cx - r, cy - r)
+        p.curveTo(cx - r, cy - 1, cx + r, cy - 1, cx + r, cy - r)
+        c.drawPath(p, fill=0, stroke=1)
+
+    elif kind == 'brief':
+        # Aktentasche: Rechteck + Griff oben mittig
+        c.rect(cx - r, cy - r, r * 2, r * 2 - 1, fill=0, stroke=1)
+        c.rect(cx - 3, cy + r - 3, 6, 3, fill=0, stroke=1)   # Griff
+        c.line(cx - r, cy, cx + r, cy)                         # mittlere Linie
+
+    elif kind == 'clock':
+        # Uhr: Kreis + Zeiger
+        c.circle(cx, cy, r + 0.5, fill=0, stroke=1)
+        c.line(cx, cy, cx, cy + r - 1)       # Stundenzeiger (oben)
+        c.line(cx, cy, cx + r - 1, cy)       # Minutenzeiger (rechts)
+
+    elif kind == 'layers':
+        # Ebenen: drei versetzte Rechtecke
+        for k, dy in enumerate((-3, 0, 3)):
+            off = abs(dy)
+            c.rect(cx - r + off, cy + dy - 1, (r - off) * 2, 2, fill=1, stroke=0)
+
+
 # ── Deckblatt – Neues Design ──────────────────────────────────────────────────
 
 def draw_cover(c: canvas.Canvas, data: dict):
@@ -202,8 +254,8 @@ def draw_cover(c: canvas.Canvas, data: dict):
 
     # ── Logo oben links ───────────────────────────────────────────────────────
     LOGO_X    = 35
-    LOGO_Y    = H - 128   # Oberkante Logo ca. 30mm vom Seitenrand
-    LOGO_SIZE = 66         # pt ≈ 23mm
+    LOGO_SIZE = 56         # pt ≈ 20mm
+    LOGO_Y    = H - LOGO_SIZE - 38   # ~38pt vom oberen Rand
 
     logo_url = provider.get('logo_image') or ''
     logo_img = fetch_image(logo_url) if logo_url else None
@@ -226,51 +278,51 @@ def draw_cover(c: canvas.Canvas, data: dict):
                         width=fw, height=fh,
                         preserveAspectRatio=True, mask='auto')
         except Exception:
-            # Fallback: rotes Quadrat mit LOGO-Text
             c.setFillColor(C_RED)
             c.rect(LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE, fill=1, stroke=0)
             c.setFillColor(colors.white)
-            c.setFont('Helvetica-Bold', 11)
-            c.drawCentredString(LOGO_X + LOGO_SIZE / 2, LOGO_Y + LOGO_SIZE / 2 - 4, 'LOGO')
+            c.setFont('Helvetica-Bold', 10)
+            c.drawCentredString(LOGO_X + LOGO_SIZE / 2, LOGO_Y + LOGO_SIZE / 2 - 3, 'LOGO')
     else:
-        # Kein Logo konfiguriert: rotes Platzhalter-Quadrat
+        # Kein Logo: roter Platzhalter
         c.setFillColor(C_RED)
         c.rect(LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE, fill=1, stroke=0)
         c.setFillColor(colors.white)
-        c.setFont('Helvetica-Bold', 11)
-        c.drawCentredString(LOGO_X + LOGO_SIZE / 2, LOGO_Y + LOGO_SIZE / 2 - 4, 'LOGO')
+        c.setFont('Helvetica-Bold', 10)
+        c.drawCentredString(LOGO_X + LOGO_SIZE / 2, LOGO_Y + LOGO_SIZE / 2 - 3, 'LOGO')
 
     # ── „ANGEBOT" Titel ───────────────────────────────────────────────────────
     c.setFillColor(C_DARK)
     c.setFont('Times-Roman', 68)
-    c.drawString(35, H - 270, 'ANGEBOT')
+    c.drawString(35, H - 215, 'ANGEBOT')
 
     # Kurze rote Linie unter Titel
     c.setStrokeColor(C_RED)
     c.setLineWidth(2.5)
-    c.line(35, H - 290, 92, H - 290)
+    c.line(35, H - 233, 90, H - 233)
 
     # Untertitel
     c.setFont('Helvetica', 13)
     c.setFillColor(C_DARK)
-    c.drawString(35, H - 322, 'Maßgeschneiderte Lösung für Ihr Vorhaben')
+    c.drawString(35, H - 260, 'Maßgeschneiderte Lösung für Ihr Vorhaben')
 
     # ── Info-Box ──────────────────────────────────────────────────────────────
     BOX_X = 35
     BOX_W = 418
-    ROW_H = 38
+    ROW_H = 28   # kompakte Zeilenhöhe
 
     rows = [
-        ('Angebotsnummer', project.get('offerNo',  '')),
-        ('Datum',          project.get('date',      '')),
-        ('Kunde',          project.get('customer',  '')),
-        ('Projekt',        project.get('project',   '')),
-        ('Ansprechpartner',project.get('contact',   '')),
-        ('Gültig bis',     project.get('valid',     '')),
-        ('Version',        project.get('version',   '1.0')),
+        ('doc',    'Angebotsnummer', project.get('offerNo',   '')),
+        ('cal',    'Datum',          project.get('date',       '')),
+        ('person', 'Kunde',          project.get('customer',   '')),
+        ('brief',  'Projekt',        project.get('project',    '')),
+        ('person', 'Ansprechpartner',project.get('contact',    '')),
+        ('clock',  'Gültig bis',     project.get('valid',      '')),
+        ('layers', 'Version',        project.get('version',    '1.0')),
     ]
-    BOX_H = ROW_H * len(rows) + 16
-    BOX_Y = FOOTER_H + 12   # direkt über der Fußzeile
+    BOX_H = ROW_H * len(rows) + 14
+    # Box mittig zwischen Untertitel und Fußzeile positionieren
+    BOX_Y = FOOTER_H + 110
 
     # Schatten (versetztes graues Rechteck)
     c.setFillColor(colors.HexColor('#DADADA'))
@@ -280,31 +332,35 @@ def draw_cover(c: canvas.Canvas, data: dict):
     c.setFillColor(colors.white)
     c.roundRect(BOX_X, BOX_Y, BOX_W, BOX_H, 10, fill=1, stroke=0)
 
-    for i, (label, value) in enumerate(rows):
-        # Vertikale Mitte der Zeile
-        row_y = BOX_Y + BOX_H - 8 - (i + 1) * ROW_H + ROW_H * 0.30
+    for i, (icon_kind, label, value) in enumerate(rows):
+        row_center_y = BOX_Y + BOX_H - 7 - (i + 1) * ROW_H + ROW_H * 0.5
 
-        # Icon-Platzhalter (grauer Kreis)
+        # Icon-Kreis (hellgrauer Hintergrund)
+        ICON_CX = BOX_X + 20
+        ICON_CY = row_center_y
         c.setFillColor(C_ICON_BG)
-        c.circle(BOX_X + 22, row_y + 9, 10, fill=1, stroke=0)
+        c.circle(ICON_CX, ICON_CY, 9, fill=1, stroke=0)
+
+        # Icon zeichnen
+        _draw_icon(c, ICON_CX, ICON_CY, icon_kind)
 
         # Label (fett)
-        c.setFont('Helvetica-Bold', 9)
+        c.setFont('Helvetica-Bold', 8.5)
         c.setFillColor(C_DARK)
-        c.drawString(BOX_X + 42, row_y + 5, label)
+        c.drawString(BOX_X + 38, row_center_y - 3, label)
 
-        # Wert – lange Texte kürzen
+        # Wert
         val_str = str(value)[:50]
-        c.setFont('Helvetica', 9)
+        c.setFont('Helvetica', 8.5)
         c.setFillColor(C_GRAY_DARK)
-        c.drawString(BOX_X + 172, row_y + 5, val_str)
+        c.drawString(BOX_X + 165, row_center_y - 3, val_str)
 
         # Trennlinie (außer letzte Zeile)
         if i < len(rows) - 1:
-            sep_y = BOX_Y + BOX_H - 8 - (i + 1) * ROW_H
+            sep_y = BOX_Y + BOX_H - 7 - (i + 1) * ROW_H
             c.setStrokeColor(C_GRAY_LINE)
             c.setLineWidth(0.4)
-            c.line(BOX_X + 14, sep_y, BOX_X + BOX_W - 14, sep_y)
+            c.line(BOX_X + 12, sep_y, BOX_X + BOX_W - 12, sep_y)
 
     # ── Fußzeile ──────────────────────────────────────────────────────────────
     c.setFillColor(C_FOOTER_BG)
