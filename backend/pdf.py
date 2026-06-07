@@ -11,6 +11,7 @@ import downloads as _dl
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
                                  TableStyle, PageBreak, Image as RLImage, KeepTogether)
@@ -251,10 +252,11 @@ def draw_cover(c: canvas.Canvas, data: dict):
             img_x = ARCH_CP_X - 10
             img_w = W - img_x
             img_h = H - ARCH_BOT_Y
-            c.drawImage(cover_img, img_x, ARCH_BOT_Y,
+            c.drawImage(ImageReader(cover_img), img_x, ARCH_BOT_Y,
                         width=img_w, height=img_h,
                         preserveAspectRatio=False)
-        except Exception:
+        except Exception as e:
+            print(f"[draw_cover] cover drawImage Fehler: {e}")
             c.setFillColor(colors.HexColor('#CCCCCC'))
             c.rect(ARCH_CP_X, ARCH_BOT_Y, W - ARCH_CP_X, H - ARCH_BOT_Y, fill=1, stroke=0)
     else:
@@ -285,9 +287,11 @@ def draw_cover(c: canvas.Canvas, data: dict):
 
     if logo_img:
         try:
+            # Größe via PIL ermitteln (PIL liest Stream, daher eigene Kopie)
             logo_img.seek(0)
+            logo_bytes = logo_img.read()
             from PIL import Image as PILImage
-            pil = PILImage.open(logo_img)
+            pil = PILImage.open(io.BytesIO(logo_bytes))
             pw, ph = pil.size
             dpi = 96
             pw_pt = pw / dpi * 72
@@ -295,12 +299,14 @@ def draw_cover(c: canvas.Canvas, data: dict):
             scale = min(1.0, LOGO_SIZE / pw_pt, LOGO_SIZE / ph_pt)
             fw = pw_pt * scale
             fh = ph_pt * scale
-            logo_img.seek(0)
-            c.drawImage(logo_img,
+            # Frischen BytesIO für ImageReader übergeben
+            c.drawImage(ImageReader(io.BytesIO(logo_bytes)),
                         LOGO_X, LOGO_Y + (LOGO_SIZE - fh) / 2,
                         width=fw, height=fh,
                         preserveAspectRatio=True, mask='auto')
-        except Exception:
+            print(f"[draw_cover] Logo gezeichnet: {fw:.0f}x{fh:.0f}pt")
+        except Exception as e:
+            print(f"[draw_cover] logo drawImage Fehler: {e}")
             c.setFillColor(C_RED)
             c.rect(LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE, fill=1, stroke=0)
             c.setFillColor(colors.white)
