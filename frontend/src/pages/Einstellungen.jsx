@@ -18,6 +18,8 @@ const DEFAULTS = {
   phone:     '0676/6570301',
   // AGB
   legal_notice: 'Die ausgewiesenen Preise sind Nettopreise und verstehen sich zuzüglich der gesetzlichen Mehrwertsteuer. Die Distribution entscheidet Sielaff Austria GmbH.',
+  // Deckblatt
+  cover_image: '',
   // Pflichtanlagen
   mandatory_documents: [],
   // E-Mail Vorlage
@@ -163,6 +165,27 @@ export default function Einstellungen() {
         <button className="btn btn-red" onClick={save} disabled={saving}>
           {saving ? '⏳ Speichert …' : '💾 Speichern'}
         </button>
+      </div>
+
+      {/* ── Deckblatt-Foto ──────────────────────────────────────────────────── */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-title">🖼️ Deckblatt-Foto</div>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+          Vollbild-Foto das auf dem Deckblatt erscheint. URL zu einem Bild (Supabase, externer Link etc.)
+        </p>
+        <Field label="Foto-URL">
+          <input
+            value={settings.cover_image || ''}
+            onChange={e => set('cover_image', e.target.value)}
+            placeholder="https://... oder Supabase URL"
+            style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }}
+          />
+        </Field>
+        {settings.cover_image && (
+          <img src={settings.cover_image} alt="Deckblatt-Vorschau"
+            style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 10,
+              marginTop: 8, border: '1px solid var(--line)' }} />
+        )}
       </div>
 
       {/* ── PDF Layout ─────────────────────────────────────────────────────── */}

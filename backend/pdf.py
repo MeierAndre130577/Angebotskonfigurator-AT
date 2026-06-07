@@ -99,123 +99,113 @@ def make_image(img_data: io.BytesIO, max_w: float, max_h: float) -> RLImage | No
 # ── Deckblatt – Komplett Weiß ─────────────────────────────────────────────────
 
 def draw_cover(c: canvas.Canvas, data: dict):
+    """
+    Deckblatt: Vollbild-Foto, dunkler Verlauf von unten, Text zentriert weiß.
+    Kein roter Seitenstreifen auf dem Deckblatt.
+    """
     project  = data.get('project')  or {}
     provider = data.get('provider') or {}
-    offer    = data.get('offer')    or []
 
-    # Weißer Hintergrund
-    c.setFillColor(WHITE)
-    c.rect(0, 0, W, H, fill=1, stroke=0)
+    # ── Deckblatt-Foto ────────────────────────────────────────────────────────
+    cover_url = (provider.get('cover_image') or
+                 project.get('coverImage') or
+                 data.get('cover_image') or '')
 
-    # Roter Streifen links (schmal, 5mm)
-    c.setFillColor(RED)
-    c.rect(0, 0, 5*mm, H, fill=1, stroke=0)
+    cover_img = fetch_image(cover_url) if cover_url else None
 
-    # ── Logo + Firmenname oben ────────────────────────────────────────────────
-    logo_x = 18*mm
-    logo_y = H - 30*mm
+    if cover_img:
+        try:
+            c.drawImage(cover_img, 0, 0, width=W, height=H,
+                       preserveAspectRatio=False)
+        except Exception:
+            cover_img = None
+
+    if not cover_img:
+        # Fallback: dunkelgrauer Hintergrund
+        c.setFillColor(colors.HexColor('#2a2a2a'))
+        c.rect(0, 0, W, H, fill=1, stroke=0)
+        # Subtiles Muster
+        c.setFillColor(colors.HexColor('#333333'))
+        for y in range(0, int(H), 60):
+            c.rect(0, y, W, 30, fill=1, stroke=0)
+
+    # ── Dunkler Verlauf von unten ─────────────────────────────────────────────
+    # Simuliert mit mehreren halbtransparenten Rechtecken (ReportLab hat keinen echten Gradient)
+    gradient_h = H * 0.62  # Verlauf über untere 62% der Seite
+    steps      = 32
+    for i in range(steps):
+        alpha = (i / steps) ** 1.6  # weiche Kurve
+        c.setFillColor(colors.HexColor('#0d0d0d'))
+        c.setFillAlpha(alpha * 0.92)
+        strip_h = gradient_h / steps
+        c.rect(0, i * strip_h, W, strip_h + 1, fill=1, stroke=0)
+    c.setFillAlpha(1.0)
+
+    # ── Inhalt zentriert ─────────────────────────────────────────────────────
+    cx = W / 2          # horizontale Mitte
+    cy_start = H * 0.48 # Texte beginnen auf halber Höhe
+
+    # Logo oben im Textbereich
     if os.path.exists(LOGO_PATH):
         try:
-            c.drawImage(LOGO_PATH, logo_x, logo_y,
-                       width=22*mm, height=22*mm,
+            logo_size = 20*mm
+            c.drawImage(LOGO_PATH,
+                       cx - logo_size/2, cy_start + 28*mm,
+                       width=logo_size, height=logo_size,
                        preserveAspectRatio=True, mask='auto')
         except Exception:
             pass
 
-    c.setFillColor(DARK)
-    c.setFont('Helvetica-Bold', 11)
-    c.drawString(logo_x + 26*mm, logo_y + 12*mm, provider.get('company', 'Sielaff Austria GmbH'))
-    c.setFont('Helvetica', 8)
-    c.setFillColor(MUTED)
-    c.drawString(logo_x + 26*mm, logo_y + 5*mm, provider.get('address', ''))
+    # Firmenname
+    c.setFillColor(colors.HexColor('#e4e4e7'))
+    c.setFont('Helvetica', 9)
+    c.drawCentredString(cx, cy_start + 20*mm,
+                        provider.get('company', 'Sielaff Austria GmbH'))
 
-    # Trennlinie unter Header
-    c.setStrokeColor(LINE)
-    c.setLineWidth(0.5)
-    c.line(18*mm, H - 36*mm, W - 15*mm, H - 36*mm)
+    # Dünne rote Trennlinie
+    c.setStrokeColor(RED)
+    c.setLineWidth(1.5)
+    c.line(cx - 22*mm, cy_start + 16*mm, cx + 22*mm, cy_start + 16*mm)
 
-    # ── Foto rechts ───────────────────────────────────────────────────────────
-    cover_url = project.get('coverImage', '')
-    if not cover_url:
-        for item in offer:
-            if item.get('image_path'):
-                cover_url = item['image_path']
-                break
-
-    img_x = W / 2
-    img_y = H / 2 - 5*mm
-    img_w = W / 2 - 15*mm
-    img_h = H / 2 - 35*mm
-
-    cover_img = fetch_image(cover_url)
-    if cover_img:
-        try:
-            c.drawImage(cover_img, img_x, img_y, width=img_w, height=img_h,
-                       preserveAspectRatio=False)
-            c.setStrokeColor(LINE)
-            c.setLineWidth(0.5)
-            c.rect(img_x, img_y, img_w, img_h, fill=0, stroke=1)
-        except Exception:
-            c.setFillColor(BG)
-            c.rect(img_x, img_y, img_w, img_h, fill=1, stroke=0)
-    else:
-        c.setFillColor(BG)
-        c.rect(img_x, img_y, img_w, img_h, fill=1, stroke=0)
-        c.setFillColor(MUTED)
-        c.setFont('Helvetica', 9)
-        c.drawCentredString(img_x + img_w/2, img_y + img_h/2, 'Produktfoto wird in der Konfiguration festgelegt')
-
-    # ── Hauptinhalt links ─────────────────────────────────────────────────────
-    cx = 18*mm
-    cy = H / 2 + 28*mm
-
-    # "ANGEBOT" Label
-    c.setFillColor(RED)
-    c.setFont('Helvetica-Bold', 7)
-    c.drawString(cx, cy, 'ANGEBOT')
-    c.rect(cx, cy - 2*mm, 16*mm, 0.8*mm, fill=1, stroke=0)
-
-    # Kundenname
-    c.setFillColor(DARK)
-    font_size = 24 if len(project.get('customer','')) <= 22 else 18
+    # Kundenname – groß
+    c.setFillColor(WHITE)
+    customer  = project.get('customer', '')
+    font_size = 28 if len(customer) <= 20 else 22 if len(customer) <= 28 else 17
     c.setFont('Helvetica-Bold', font_size)
-    c.drawString(cx, cy - 13*mm, project.get('customer', ''))
+    c.drawCentredString(cx, cy_start + 4*mm, customer)
 
     # Projektname
-    c.setFillColor(MUTED)
-    c.setFont('Helvetica', 12)
-    c.drawString(cx, cy - 21*mm, project.get('project', ''))
+    proj_name = project.get('project', '')
+    c.setFont('Helvetica', 13)
+    c.setFillColor(colors.HexColor('#d4d4d8'))
+    c.drawCentredString(cx, cy_start - 8*mm, proj_name)
 
     # Trennlinie
-    c.setStrokeColor(LINE)
+    c.setStrokeColor(colors.HexColor('#71717a'))
     c.setLineWidth(0.5)
-    c.line(cx, cy - 27*mm, W/2 - 10*mm, cy - 27*mm)
+    line_w = min(60*mm, W * 0.4)
+    c.line(cx - line_w/2, cy_start - 14*mm, cx + line_w/2, cy_start - 14*mm)
 
-    # Detail-Felder
-    def detail(label, value, y):
-        c.setFillColor(MUTED)
-        c.setFont('Helvetica', 7)
-        c.drawString(cx, y + 4*mm, label.upper())
-        c.setFillColor(DARK)
-        c.setFont('Helvetica-Bold', 9)
-        c.drawString(cx, y, value or '—')
+    # Angebotsnummer + Datum
+    c.setFillColor(colors.HexColor('#a1a1aa'))
+    c.setFont('Helvetica', 8)
+    c.drawCentredString(cx, cy_start - 22*mm,
+                        f"Angebot {project.get('offerNo', '')}  ·  {project.get('date', '')}")
 
-    detail('Angebotsnummer', project.get('offerNo',''),      cy - 37*mm)
-    detail('Datum',          project.get('date',''),          cy - 49*mm)
-    detail('Gültig bis',     project.get('valid',''),         cy - 61*mm)
-    detail('Ansprechpartner',project.get('contact',''),       cy - 73*mm)
-    detail('E-Mail',         project.get('customerEmail',''), cy - 85*mm)
-
-    # ── Footer ────────────────────────────────────────────────────────────────
-    c.setStrokeColor(LINE)
-    c.setLineWidth(0.5)
-    c.line(18*mm, 28*mm, W - 15*mm, 28*mm)
-    c.setFillColor(MUTED)
+    # Gültig bis
     c.setFont('Helvetica', 7.5)
-    footer = f"{provider.get('company','')}  ·  {provider.get('address','')}  ·  {provider.get('email','')}  ·  {provider.get('phone','')}"
-    c.drawString(18*mm, 20*mm, footer)
+    c.setFillColor(colors.HexColor('#71717a'))
+    c.drawCentredString(cx, cy_start - 29*mm,
+                        f"Gültig bis: {project.get('valid', '')}")
+
+    # Adresse ganz unten (kein roter Balken)
+    c.setFillColor(colors.HexColor('#71717a'))
+    c.setFont('Helvetica', 6.5)
+    addr = f"{provider.get('company','')}  ·  {provider.get('address','')}  ·  {provider.get('email','')}  ·  {provider.get('phone','')}"
+    c.drawCentredString(cx, 5*mm, addr)
 
     c.showPage()
+
 
 # ── Kopf- und Fußzeile Canvas ─────────────────────────────────────────────────
 
@@ -382,9 +372,12 @@ def generate_design_pdf(data: dict) -> dict:
             all_attachments.append(a)
 
     # ── Deckblatt ─────────────────────────────────────────────────────────────
+    # Cover-Foto aus Einstellungen einfügen
+    if s.get('cover_image'):
+        provider = {**provider, 'cover_image': s['cover_image']}
     cover_buf = io.BytesIO()
     c_cover   = canvas.Canvas(cover_buf, pagesize=A4)
-    draw_cover(c_cover, data)
+    draw_cover(c_cover, {**data, 'provider': provider})
     c_cover.save()
     cover_buf.seek(0)
 
