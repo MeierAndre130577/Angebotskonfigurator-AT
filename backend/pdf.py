@@ -194,10 +194,11 @@ def draw_cover(c: canvas.Canvas, data: dict):
     project  = data.get('project')  or {}
     provider = data.get('provider') or {}
 
-    C_RED      = colors.HexColor('#E30613')
-    C_DARK     = colors.HexColor('#1D1D1B')
+    C_RED       = colors.HexColor('#E30613')
+    C_DARK      = colors.HexColor('#1D1D1B')
+    C_GRAY_DARK = colors.HexColor('#555555')
     C_GRAY_LINE = colors.HexColor('#E0E0E0')
-    C_ICON_BG  = colors.HexColor('#F2F2F2')
+    C_ICON_BG   = colors.HexColor('#F2F2F2')
     C_FOOTER_BG = colors.HexColor('#E2E2E2')
 
     FOOTER_H = 88
