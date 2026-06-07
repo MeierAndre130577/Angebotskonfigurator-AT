@@ -411,26 +411,56 @@ export default function Bibliothek() {
             In der Schnellerfassung kannst du eine Vorlage auswählen um nur relevante Optionen zu sehen.
           </p>
 
-          {/* Neue Vorlage */}
-          <div className="row" style={{ marginBottom: 16, gap: 8 }}>
-            <input
-              value={newTplName}
-              onChange={e => setNewTplName(e.target.value)}
-              placeholder="Vorlagenname z.B. Weinmesse"
-              style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px', fontSize: 13 }}
-            />
-            <button className="btn btn-red" style={{ flex: 'none' }}
-              onClick={() => {
-                if (!newTplName.trim()) return
-                // Alle aktuell gefilterten/sichtbaren Optionen speichern
-                const ids = filtered.map(o => o.id)
-                if (ids.length === 0) { alert('Keine Optionen in der aktuellen Ansicht'); return }
-                saveTemplate({ id: crypto.randomUUID(), name: newTplName.trim(), option_ids: ids })
-                setNewTplName('')
-                showToast(`Vorlage "${newTplName.trim()}" mit ${ids.length} Optionen gespeichert ✓`)
-              }}>
-              ＋ Aus aktueller Ansicht ({filtered.length})
-            </button>
+          {/* Neue Vorlage – manuelle Auswahl */}
+          <div style={{ marginBottom: 16 }}>
+            <div className="row" style={{ gap: 8, marginBottom: 12 }}>
+              <input
+                value={newTplName}
+                onChange={e => setNewTplName(e.target.value)}
+                placeholder="Vorlagenname z.B. Weinmesse"
+                style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px', fontSize: 13 }}
+              />
+              <button className="btn btn-red" style={{ flex: 'none' }}
+                onClick={() => {
+                  if (!newTplName.trim()) { showToast('Bitte Namen eingeben'); return }
+                  const checked = Array.from(document.querySelectorAll('.tpl-checkbox:checked')).map(el => el.value)
+                  if (checked.length === 0) { showToast('Bitte mindestens eine Option wählen'); return }
+                  saveTemplate({ id: crypto.randomUUID(), name: newTplName.trim(), option_ids: checked })
+                  setNewTplName('')
+                  showToast(`Vorlage "${newTplName.trim()}" mit ${checked.length} Optionen gespeichert ✓`)
+                }}>
+                ＋ Vorlage speichern
+              </button>
+            </div>
+
+            {/* Optionen-Auswahl für neue Vorlage */}
+            <div style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', maxHeight: 260, overflowY: 'auto' }}>
+              {Object.entries(
+                items.reduce((acc, o) => {
+                  const cl = o.cluster || 'Sonstiges'
+                  acc[cl] = acc[cl] || []
+                  acc[cl].push(o)
+                  return acc
+                }, {})
+              ).map(([cl, opts]) => (
+                <div key={cl}>
+                  <div style={{ padding: '6px 12px', background: 'var(--bg)', fontSize: 10,
+                    fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--muted)' }}>
+                    {cl}
+                  </div>
+                  {opts.map(o => (
+                    <label key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '7px 12px', borderBottom: '1px solid var(--line)', cursor: 'pointer',
+                      fontSize: 13 }}>
+                      <input type="checkbox" className="tpl-checkbox" value={o.id}
+                        style={{ width: 16, height: 16, accentColor: 'var(--red)', cursor: 'pointer' }} />
+                      <span style={{ flex: 1 }}>{o.name}</span>
+                      <span style={{ fontSize: 11, color: 'var(--muted)' }}>{o.cluster}</span>
+                    </label>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Vorlagen Liste */}
