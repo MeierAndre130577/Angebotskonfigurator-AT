@@ -183,11 +183,11 @@ def _draw_icon(c: canvas.Canvas, cx: float, cy: float, kind: str):
 
 def draw_cover(c: canvas.Canvas, data: dict):
     """
-    Deckblatt v4 – einfacher, robuster Ansatz:
-    - Linke Spalte (weiß): Logo oben, ANGEBOT + Info-Box unten verankert
-    - Rechte Spalte: Bild als einfaches Rechteck, kein Clip, kein Overflow
-    - Sanfte S-Kurve an der Grenze als dekoratives Element
-    - Funktioniert auf ALLEN PDF-Viewern identisch
+    Deckblatt Variante B – Eleganter Bogen:
+    - Bild rechts, hinter einer geschwungenen Bézier-Kurve
+    - Weiße Bezier-Maske (kein clipPath) deckt linken Bereich ab
+    - Logo + ANGEBOT oben links, Info-Box unten links verankert
+    - ARCH_CP_X = 378pt  >  ANGEBOT-Ende ~338pt  → kein Überlauf
     """
     from PIL import Image as PILImage
 
@@ -202,22 +202,29 @@ def draw_cover(c: canvas.Canvas, data: dict):
     C_FOOTER_BG = colors.HexColor('#E2E2E2')
 
     FOOTER_H = 88
-    SPLIT_X  = W * 0.645   # ~384pt – Grenze linke/rechte Spalte (genug Platz für ANGEBOT)
+
+    # Bogen-Parameter (sorgfältig berechnet, kein Overlap mit Text)
+    ARCH_TOP_X = W * 0.700   # 416pt – Bogenbeginn oben rechts
+    ARCH_CP_X  = W * 0.635   # 378pt – linkster Punkt der Kurve (40pt Abstand zu ANGEBOT-Ende ~338pt)
+    ARCH_BOT_X = W * 0.770   # 458pt – Bogenende unten rechts
+    ARCH_CP1_Y = H * 0.650   # 547pt – oberer Kontrollpunkt
+    ARCH_CP2_Y = H * 0.350   # 295pt – unterer Kontrollpunkt
+
+    # Bild-Zielbereich: ab ARCH_CP_X (linkster Bogenpunkt)
+    IMG_X = ARCH_CP_X         # 378pt
+    IMG_Y = FOOTER_H          # 88pt
+    IMG_W = W - ARCH_CP_X     # 217pt
+    IMG_H = H - FOOTER_H      # 754pt
 
     # ── 1. Weißer Seitenhintergrund ───────────────────────────────────────────
     c.setFillColor(colors.white)
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
-    # ── 2. Cover-Bild (rechte Spalte, PIL-Zuschnitt auf exaktes Verhältnis) ──
+    # ── 2. Cover-Bild (PIL-Zuschnitt auf exaktes Seitenverhältnis) ───────────
     cover_url = (provider.get('cover_image') or
                  project.get('coverImage')   or
                  data.get('cover_image')     or '')
     cover_img = fetch_image(cover_url) if cover_url else None
-
-    IMG_X = SPLIT_X
-    IMG_Y = FOOTER_H
-    IMG_W = W - SPLIT_X       # ~259pt
-    IMG_H = H - FOOTER_H      # ~754pt
 
     c.saveState()
     if cover_img:
@@ -233,41 +240,55 @@ def draw_cover(c: canvas.Canvas, data: dict):
             elif pil.mode != 'RGB':
                 pil = pil.convert('RGB')
             pw, ph = pil.size
-            r = IMG_W / IMG_H
-            if (pw / ph) > r:
-                nw = int(ph * r)
+            ratio = IMG_W / IMG_H
+            if (pw / ph) > ratio:
+                nw = int(ph * ratio)
                 pil = pil.crop(((pw - nw) // 2, 0, (pw + nw) // 2, ph))
             else:
-                nh = int(pw / r)
+                nh = int(pw / ratio)
                 pil = pil.crop((0, (ph - nh) // 2, pw, (ph + nh) // 2))
             buf = io.BytesIO()
             pil.save(buf, 'JPEG', quality=88)
             buf.seek(0)
             c.drawImage(ImageReader(buf), IMG_X, IMG_Y, width=IMG_W, height=IMG_H)
-            print(f"[draw_cover] Bild gezeichnet: {IMG_W:.0f}x{IMG_H:.0f}pt bei ({IMG_X:.0f},{IMG_Y:.0f})")
+            print(f'[draw_cover] Bild: {IMG_W:.0f}x{IMG_H:.0f}pt @ ({IMG_X:.0f},{IMG_Y:.0f})')
         except Exception as e:
-            print(f"[draw_cover] Bildfehler: {e}")
+            print(f'[draw_cover] Bild-Fehler: {e}')
             c.setFillColor(colors.HexColor('#CCCCCC'))
             c.rect(IMG_X, IMG_Y, IMG_W, IMG_H, fill=1, stroke=0)
     else:
         c.setFillColor(colors.HexColor('#CCCCCC'))
         c.rect(IMG_X, IMG_Y, IMG_W, IMG_H, fill=1, stroke=0)
-    c.restoreState()
 
-    # ── 3. Weiße linke Spalte (über dem Bild – garantiert kein Überlauf) ─────
+    # ── 3. Weiße Bogen-Maske (linker Bereich, über dem Bild) ─────────────────
     c.setFillColor(colors.white)
-    c.rect(0, FOOTER_H, SPLIT_X, H - FOOTER_H, fill=1, stroke=0)
+    p_mask = c.beginPath()
+    p_mask.moveTo(0, H)
+    p_mask.lineTo(ARCH_TOP_X, H)
+    p_mask.curveTo(ARCH_CP_X, ARCH_CP1_Y,
+                   ARCH_CP_X, ARCH_CP2_Y,
+                   ARCH_BOT_X, FOOTER_H)
+    p_mask.lineTo(0, FOOTER_H)
+    p_mask.close()
+    c.drawPath(p_mask, fill=1, stroke=0)
 
-    # ── 4. Dezente Trennlinie (sauber, keine Kurve) ───────────────────────────
-    c.setStrokeColor(colors.HexColor('#DDDDDD'))
-    c.setLineWidth(0.8)
-    c.line(SPLIT_X, FOOTER_H, SPLIT_X, H)
+    c.restoreState()  # Farbzustand sauber zurücksetzen
+
+    # ── 4. Weißer Bogenstrich (schärft die Bildkante) ─────────────────────────
+    c.setStrokeColor(colors.white)
+    c.setLineWidth(4)
+    p_border = c.beginPath()
+    p_border.moveTo(ARCH_TOP_X, H)
+    p_border.curveTo(ARCH_CP_X, ARCH_CP1_Y,
+                     ARCH_CP_X, ARCH_CP2_Y,
+                     ARCH_BOT_X, FOOTER_H)
+    c.drawPath(p_border, fill=0, stroke=1)
 
     # ── 5. Logo oben links ────────────────────────────────────────────────────
     c.saveState()
-    LOGO_X    = 35
-    LOGO_MAX  = 56    # maximale Logo-Höhe in pt
-    LOGO_Y    = H - LOGO_MAX - 40   # 40pt vom oberen Seitenrand
+    LOGO_X   = 35
+    LOGO_MAX = 56
+    LOGO_Y   = H - LOGO_MAX - 40
 
     logo_url = provider.get('logo_image') or ''
     logo_img = fetch_image(logo_url) if logo_url else None
@@ -275,21 +296,18 @@ def draw_cover(c: canvas.Canvas, data: dict):
     if logo_img:
         try:
             logo_img.seek(0)
-            logo_bytes = logo_img.read()
-            pil_l = PILImage.open(io.BytesIO(logo_bytes))
+            lb = logo_img.read()
+            pil_l = PILImage.open(io.BytesIO(lb))
             lw, lh = pil_l.size
-            lw_pt = lw / 96 * 72
-            lh_pt = lh / 96 * 72
-            scale_l = min(1.0, LOGO_MAX / lw_pt, LOGO_MAX / lh_pt)
-            fw = lw_pt * scale_l
-            fh = lh_pt * scale_l
-            c.drawImage(ImageReader(io.BytesIO(logo_bytes)),
+            sc = min(1.0, LOGO_MAX / (lw / 96 * 72), LOGO_MAX / (lh / 96 * 72))
+            fw = lw / 96 * 72 * sc
+            fh = lh / 96 * 72 * sc
+            c.drawImage(ImageReader(io.BytesIO(lb)),
                         LOGO_X, LOGO_Y + (LOGO_MAX - fh) / 2,
                         width=fw, height=fh,
                         preserveAspectRatio=True, mask='auto')
-            print(f"[draw_cover] Logo: {fw:.0f}x{fh:.0f}pt")
         except Exception as e:
-            print(f"[draw_cover] Logo-Fehler: {e}")
+            print(f'[draw_cover] Logo-Fehler: {e}')
             c.setFillColor(C_RED)
             c.rect(LOGO_X, LOGO_Y, LOGO_MAX, LOGO_MAX, fill=1, stroke=0)
             c.setFillColor(colors.white)
@@ -303,9 +321,23 @@ def draw_cover(c: canvas.Canvas, data: dict):
         c.drawCentredString(LOGO_X + LOGO_MAX / 2, LOGO_Y + LOGO_MAX / 2 - 3, 'LOGO')
     c.restoreState()
 
-    # ── 6. Info-Box (am unteren Rand der linken Spalte verankert) ────────────
+    # ── 6. ANGEBOT + Untertitel (oben links, unter Logo) ─────────────────────
+    # Times-Roman 62pt → Breite ≈ 303pt → endet bei x≈338pt < ARCH_CP_X=378pt ✓
+    c.setFillColor(C_DARK)
+    c.setFont('Times-Roman', 62)
+    c.drawString(35, H - 185, 'ANGEBOT')
+
+    c.setStrokeColor(C_RED)
+    c.setLineWidth(2.5)
+    c.line(35, H - 202, 93, H - 202)
+
+    c.setFont('Helvetica', 12)
+    c.setFillColor(C_DARK)
+    c.drawString(35, H - 226, 'Maßgeschneiderte Lösung für Ihr Vorhaben')
+
+    # ── 7. Info-Box (am unteren Rand der linken Spalte verankert) ────────────
     BOX_X = 35
-    BOX_W = int(SPLIT_X) - 50   # endet kurz vor der Kurve
+    BOX_W = 350   # endet bei ~385pt, liegt sicher im weißen Bereich
     ROW_H = 36
     rows = [
         ('doc',    'Angebotsnummer', project.get('offerNo',   '')),
@@ -316,8 +348,8 @@ def draw_cover(c: canvas.Canvas, data: dict):
         ('clock',  'Gültig bis',     project.get('valid',      '')),
         ('layers', 'Version',        project.get('version',    '1.0')),
     ]
-    BOX_H = ROW_H * len(rows) + 16
-    BOX_Y = FOOTER_H + 35   # 35pt Abstand zur Fußzeile
+    BOX_H = ROW_H * len(rows) + 16   # = 268pt
+    BOX_Y = FOOTER_H + 35            # 35pt über der Fußzeile
 
     # Schatten
     c.setFillColor(colors.HexColor('#DADADA'))
@@ -347,19 +379,6 @@ def draw_cover(c: canvas.Canvas, data: dict):
             c.setStrokeColor(C_GRAY_LINE)
             c.setLineWidth(0.4)
             c.line(BOX_X + 12, sep_y, BOX_X + BOX_W - 12, sep_y)
-
-    # ── 7. ANGEBOT + Untertitel (oben, direkt unter Logo) ────────────────────
-    c.setFillColor(C_DARK)
-    c.setFont('Times-Roman', 62)
-    c.drawString(BOX_X, H - 185, 'ANGEBOT')
-
-    c.setStrokeColor(C_RED)
-    c.setLineWidth(2.5)
-    c.line(BOX_X, H - 202, BOX_X + 58, H - 202)
-
-    c.setFont('Helvetica', 12)
-    c.setFillColor(C_DARK)
-    c.drawString(BOX_X, H - 226, 'Maßgeschneiderte Lösung für Ihr Vorhaben')
 
     # ── Fußzeile (wird als letztes gezeichnet → liegt garantiert oben) ───────
     c.setFillColor(C_FOOTER_BG)
