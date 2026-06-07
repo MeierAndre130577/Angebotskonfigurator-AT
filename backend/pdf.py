@@ -249,12 +249,31 @@ def draw_cover(c: canvas.Canvas, data: dict):
     if cover_img:
         try:
             cover_img.seek(0)
-            img_x = ARCH_CP_X - 10
-            img_w = W - img_x
-            img_h = H - ARCH_BOT_Y
-            c.drawImage(ImageReader(cover_img), img_x, ARCH_BOT_Y,
-                        width=img_w, height=img_h,
-                        preserveAspectRatio=False)
+            cover_bytes = cover_img.read()
+            from PIL import Image as PILImage
+            pil = PILImage.open(io.BytesIO(cover_bytes))
+            img_px_w, img_px_h = pil.size
+
+            # Zielbereich (sichtbarer Arch-Bereich)
+            target_x = ARCH_CP_X
+            target_y = ARCH_BOT_Y
+            target_w = W - target_x
+            target_h = H - target_y
+
+            # "Cover": Verhältnis erhalten, Bereich vollständig füllen (überstehend abschneiden)
+            scale_w = target_w / img_px_w
+            scale_h = target_h / img_px_h
+            scale   = max(scale_w, scale_h)          # füllen, nicht strecken
+
+            draw_w  = img_px_w * scale
+            draw_h  = img_px_h * scale
+
+            # Bild zentrieren (Überhang wird durch Clip abgeschnitten)
+            draw_x  = target_x - (draw_w - target_w) / 2
+            draw_y  = target_y - (draw_h - target_h) / 2
+
+            c.drawImage(ImageReader(io.BytesIO(cover_bytes)),
+                        draw_x, draw_y, width=draw_w, height=draw_h)
         except Exception as e:
             print(f"[draw_cover] cover drawImage Fehler: {e}")
             c.setFillColor(colors.HexColor('#CCCCCC'))
@@ -264,6 +283,9 @@ def draw_cover(c: canvas.Canvas, data: dict):
         c.rect(ARCH_CP_X, ARCH_BOT_Y, W - ARCH_CP_X, H - ARCH_BOT_Y, fill=1, stroke=0)
 
     c.restoreState()
+    # Sauberen Zustand sicherstellen
+    c.setFillAlpha(1.0)
+    c.setFillColor(colors.white)
 
     # Weißer Rand entlang der Bogenkurve
     c.saveState()
@@ -337,7 +359,7 @@ def draw_cover(c: canvas.Canvas, data: dict):
 
     # ── Info-Box ──────────────────────────────────────────────────────────────
     BOX_X = 35
-    BOX_W = 418
+    BOX_W = 390   # ~138mm – geht bis ca. 70% der Seitenbreite, wie in der Vorlage
     ROW_H = 28   # kompakte Zeilenhöhe
 
     rows = [

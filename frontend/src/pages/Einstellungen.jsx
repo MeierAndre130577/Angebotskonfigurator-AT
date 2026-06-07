@@ -246,8 +246,11 @@ export default function Einstellungen() {
       {/* ── Deckblatt-Foto ──────────────────────────────────────────────────── */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-title">🖼️ Deckblatt-Foto</div>
-        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
-          Vollbild-Foto das auf dem Deckblatt erscheint. Datei hochladen, Drag & Drop oder Bild einfügen (Strg+V).
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
+          Hochformat-Foto für die rechte Seite des Deckblatts. Datei hochladen, Drag & Drop oder Bild einfügen (Strg+V).
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--red)', marginBottom: 12, fontWeight: 600 }}>
+          📐 Ideale Größe: <strong>1200 × 1800 px</strong> (Hochformat 2:3) · mind. 800 × 1200 px · JPG oder PNG
         </p>
 
         {/* Upload-Zone */}
@@ -295,8 +298,11 @@ export default function Einstellungen() {
       {/* ── Logo ──────────────────────────────────────────────────────────── */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-title">🏷️ Logo (Deckblatt oben links)</div>
-        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
           Ihr Firmenlogo für das Deckblatt. Datei hochladen, Drag & Drop oder Bild einfügen (Strg+V).
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--red)', marginBottom: 12, fontWeight: 600 }}>
+          📐 Ideale Größe: <strong>300 × 300 px</strong> (quadratisch) · PNG mit transparentem Hintergrund empfohlen
         </p>
 
         <div
