@@ -194,7 +194,7 @@ def draw_cover(c: canvas.Canvas, data: dict):
 
     C_RED       = colors.HexColor('#E30613')
     C_DARK      = colors.HexColor('#1D1D1B')
-    C_GRAY_DARK = colors.HexColor('#555555')
+    C_GRAY_DARK = colors.HexColor('#2A2A2A')
     C_GRAY_LINE = colors.HexColor('#E0E0E0')
     C_GRAY_TRI  = colors.HexColor('#D0D0D0')
     C_FOOTER_BG = colors.HexColor('#E2E2E2')
@@ -253,19 +253,27 @@ def draw_cover(c: canvas.Canvas, data: dict):
             target_y = FOOTER_H
             target_w = W - target_x
             target_h = H - target_y
+            target_ratio = target_w / target_h
 
-            # Cover-Skalierung: Bereich füllen, Verhältnis erhalten
-            scale   = max(target_w / img_px_w, target_h / img_px_h)
-            draw_w  = img_px_w * scale
-            draw_h  = img_px_h * scale
-            draw_x  = target_x - (draw_w - target_w) / 2
-            draw_y  = target_y - (draw_h - target_h) / 2
+            # Bild per PIL auf exaktes Seitenverhältnis zuschneiden (kein Overflow)
+            img_ratio = img_px_w / img_px_h
+            if img_ratio > target_ratio:
+                # Bild zu breit → Breite kürzen
+                new_w = int(img_px_h * target_ratio)
+                offset_x = (img_px_w - new_w) // 2
+                pil = pil.crop((offset_x, 0, offset_x + new_w, img_px_h))
+            else:
+                # Bild zu hoch → Höhe kürzen
+                new_h = int(img_px_w / target_ratio)
+                offset_y = (img_px_h - new_h) // 2
+                pil = pil.crop((0, offset_y, img_px_w, offset_y + new_h))
 
             img_buf = io.BytesIO()
             pil.save(img_buf, format='JPEG', quality=88)
             img_buf.seek(0)
-            c.drawImage(ImageReader(img_buf), draw_x, draw_y,
-                        width=draw_w, height=draw_h)
+            # Exakt in Zielbereich zeichnen – kein Overflow mehr möglich
+            c.drawImage(ImageReader(img_buf), target_x, target_y,
+                        width=target_w, height=target_h)
         except Exception as e:
             print(f"[draw_cover] Bildfehler: {e}")
             c.setFillColor(colors.HexColor('#CCCCCC'))
@@ -370,8 +378,8 @@ def draw_cover(c: canvas.Canvas, data: dict):
         ('layers', 'Version',        project.get('version',    '1.0')),
     ]
     BOX_H = ROW_H * len(rows) + 14
-    # Box: Oberkante bei ca. 42% von oben → 488pt vom Seitenrand
-    BOX_Y = H - 350 - BOX_H   # ~350pt vom oberen Rand bis Kasten-Oberkante
+    # Box: ca. 50pt unter dem Untertitel (Untertitel bei H-260 = 260pt vom oben)
+    BOX_Y = H - 315 - BOX_H   # 315pt vom oberen Rand → 55pt Abstand zum Untertitel
 
     # Schatten (versetztes graues Rechteck)
     c.setFillColor(colors.HexColor('#DADADA'))
