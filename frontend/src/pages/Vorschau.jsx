@@ -29,6 +29,11 @@ export default function Vorschau() {
   const [copied, setCopied]           = useState(false)
   const [loadingLatest, setLoadingLatest] = useState(false)
   const [settings, setSettings]           = useState(null)
+  const [emailModal, setEmailModal]       = useState(false)
+  const [emailTo, setEmailTo]             = useState('')
+  const [emailHtml, setEmailHtml]         = useState('')
+  const [emailSending, setEmailSending]   = useState(false)
+  const [emailError, setEmailError]       = useState('')
 
   useEffect(() => {
     fetch(`${BASE}/settings`).then(r => r.json()).then(setSettings).catch(() => {})
@@ -76,54 +81,52 @@ export default function Vorschau() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  function buildMailtoLink(pdfUrl) {
-    const s    = settings || {}
-    const proj = offerData?.project || {}
-
-    const rep = (tpl) => (tpl || '')
-      .replace(/{{kunde}}/g,          proj.customer  || '')
-      .replace(/{{ansprechpartner}}/g, proj.contact   || proj.customer || '')
-      .replace(/{{angebotsnummer}}/g,  proj.offerNo   || '')
-      .replace(/{{projekt}}/g,         proj.project   || '')
-      .replace(/{{datum}}/g,           proj.date      || '')
-      .replace(/{{gueltigBis}}/g,      proj.valid     || '')
-      .replace(/{{downloadLink}}/g,    packageUrl     || '')
-      .replace(/{{anbieter}}/g,        s.company      || 'Sielaff Austria GmbH')
-
-    const to      = proj.customerEmail || ''
-    const subject = rep(s.email_subject || 'Angebot {{angebotsnummer}} – {{projekt}} für {{kunde}}')
-    const body    = rep(s.email_body ||
-`Sehr geehrte(r) {{ansprechpartner}},
-
-Angebot: {{angebotsnummer}}
-Projekt: {{projekt}}
-Gültig bis: {{gueltigBis}}
-
-Download: {{downloadLink}}
-
-Mit freundlichen Grüßen
-{{anbieter}}`)
-
-    // Firefox: mailto URL darf max ~2000 Zeichen haben
-    const raw = `mailto:${to}?subject=${subject}&body=${body}`
-    if (raw.length <= 1800) return raw
-
-    // Zu lang: nur Betreff + gekürzter Body
-    const shortBody = rep(
-`Angebot {{angebotsnummer}} für {{kunde}}
-Download: {{downloadLink}}
-
-Mit freundlichen Grüßen, {{anbieter}}`
-    )
-    return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(shortBody)}`
+  async function openEmailModal() {
+    setEmailError('')
+    setEmailHtml('')
+    setEmailTo(offerData?.project?.customerEmail || '')
+    setEmailModal(true)
+    try {
+      const res = await fetch(`${BASE}/email/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project:      offerData?.project || {},
+          download_url: packageUrl || ''
+        })
+      })
+      if (!res.ok) throw new Error('Vorschau-Fehler ' + res.status)
+      const html = await res.text()
+      setEmailHtml(html)
+    } catch (e) {
+      setEmailError('Vorschau konnte nicht geladen werden: ' + e.message)
+    }
   }
 
-  function handleSendEmail() {
-    // E-Mail-Client öffnen
-    const link = buildMailtoLink(pdfUrl)
-    const a = document.createElement('a')
-    a.href = link
-    a.click()
+  async function sendEmail() {
+    if (!emailTo.trim()) { setEmailError('Bitte E-Mail-Adresse eingeben'); return }
+    setEmailSending(true); setEmailError('')
+    try {
+      const res = await fetch(`${BASE}/email/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to:           emailTo.trim(),
+          project:      offerData?.project || {},
+          download_url: packageUrl || ''
+        })
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || `Fehler ${res.status}`)
+      }
+      setEmailModal(false)
+      showToast('✅ E-Mail gesendet!')
+    } catch (e) {
+      setEmailError('Fehler: ' + e.message)
+    } finally {
+      setEmailSending(false)
+    }
   }
 
   async function doLoad(no) {
@@ -315,13 +318,11 @@ Mit freundlichen Grüßen, {{anbieter}}`
                   </button>
                 )}
 
-                {/* 4. E-Mail schreiben */}
-                <a href={buildMailtoLink(pdfUrl)}
-                  className="btn btn-lg"
-                  style={{ justifyContent: 'center', background: 'var(--dark)', color: 'white',
-                    border: 'none', textDecoration: 'none' }}>
-                  ✉️ E-Mail schreiben
-                </a>
+                {/* 4. E-Mail senden */}
+                <button className="btn btn-lg" onClick={openEmailModal}
+                  style={{ justifyContent: 'center', background: 'var(--dark)', color: 'white', border: 'none' }}>
+                  ✉️ E-Mail senden
+                </button>
 
                 {/* 5. QR-Code anzeigen */}
                 {packageUrl && (
@@ -361,6 +362,82 @@ Mit freundlichen Grüßen, {{anbieter}}`
           <p className="muted small">Gib eine Angebotsnummer ein oder wähle ein Angebot aus der Übersicht.</p>
         </div>
       )}
+
+      {/* ── E-Mail Modal ─────────────────────────────────────────────────────── */}
+      {emailModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, padding: 16
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 16, width: '100%', maxWidth: 680,
+            maxHeight: '92vh', display: 'flex', flexDirection: 'column',
+            boxShadow: '0 12px 48px rgba(0,0,0,.25)'
+          }}>
+
+            {/* Titelzeile */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 20px', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
+              <h3 style={{ margin: 0, fontSize: 16 }}>✉️ E-Mail Vorschau &amp; Senden</h3>
+              <button onClick={() => setEmailModal(false)}
+                style={{ border: 'none', background: 'none', cursor: 'pointer',
+                  fontSize: 20, color: 'var(--muted)', lineHeight: 1 }}>✕</button>
+            </div>
+
+            {/* Empfänger */}
+            <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
+              <label style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>
+                Empfänger
+              </label>
+              <input
+                type="email" value={emailTo}
+                onChange={e => setEmailTo(e.target.value)}
+                placeholder="kunde@firma.com"
+                style={{ width: '100%', border: '1px solid var(--line)', borderRadius: 8,
+                  padding: '9px 12px', fontSize: 14, boxSizing: 'border-box' }}
+              />
+            </div>
+
+            {/* Vorschau-Bereich */}
+            <div style={{ flex: 1, overflow: 'hidden', padding: '12px 20px', minHeight: 0 }}>
+              {!emailHtml && !emailError && (
+                <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--muted)', fontSize: 13 }}>
+                  ⏳ Vorschau wird geladen …
+                </div>
+              )}
+              {emailError && (
+                <div style={{ color: 'var(--red)', fontSize: 13, padding: '8px 0' }}>⚠ {emailError}</div>
+              )}
+              {emailHtml && (
+                <iframe
+                  srcDoc={emailHtml}
+                  title="E-Mail Vorschau"
+                  style={{ width: '100%', height: '100%', minHeight: 360, border: '1px solid var(--line)',
+                    borderRadius: 8, background: '#fff', display: 'block' }}
+                  sandbox="allow-same-origin"
+                />
+              )}
+            </div>
+
+            {/* Buttons */}
+            <div style={{ padding: '12px 20px', borderTop: '1px solid var(--line)',
+              display: 'flex', gap: 10, justifyContent: 'flex-end', flexShrink: 0 }}>
+              <button className="btn btn-lg" onClick={() => setEmailModal(false)}
+                style={{ minWidth: 110 }}>
+                Abbrechen
+              </button>
+              <button className="btn btn-red btn-lg" onClick={sendEmail}
+                disabled={emailSending || !emailHtml}
+                style={{ minWidth: 160 }}>
+                {emailSending ? '⏳ Wird gesendet …' : '📤 E-Mail senden'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

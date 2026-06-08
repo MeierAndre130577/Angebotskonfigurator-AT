@@ -39,6 +39,12 @@ Bei Fragen stehen wir Ihnen gerne zur Verfügung.
 
 Mit freundlichen Grüßen
 {{anbieter}}`,
+  // SMTP
+  smtp_host:      '',
+  smtp_port:      587,
+  smtp_user:      '',
+  smtp_pass:      '',
+  smtp_from_name: '',
 }
 
 function Field({ label, hint, children }) {
@@ -539,6 +545,48 @@ export default function Einstellungen() {
           <textarea value={settings.email_body || ''} onChange={e => set('email_body', e.target.value)}
             style={{ minHeight: 180, border: '1px solid var(--line)', borderRadius: 10,
               padding: '10px 14px', fontSize: 12, lineHeight: 1.6, fontFamily: 'var(--font-mono)' }} />
+        </Field>
+      </div>
+
+      {/* ── SMTP Konfiguration ───────────────────────────────────────────────── */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-title">🔒 SMTP – E-Mail Versand</div>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
+          Zugangsdaten für den E-Mail-Versand vom Server (z.&nbsp;B. Gmail, Posteo, Office 365).
+          Die Daten werden verschlüsselt gespeichert und nie im Code hinterlegt.
+        </p>
+
+        <div className="grid2">
+          <Field label="SMTP Server (Host)" hint="z. B. smtp.gmail.com oder smtp.posteo.de">
+            <input value={settings.smtp_host || ''} onChange={e => set('smtp_host', e.target.value)}
+              placeholder="smtp.gmail.com"
+              style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }} />
+          </Field>
+          <Field label="Port" hint="587 (STARTTLS) oder 465 (SSL)">
+            <input type="number" value={settings.smtp_port || 587}
+              onChange={e => set('smtp_port', Number(e.target.value))}
+              min={1} max={65535}
+              style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13, width: 120 }} />
+          </Field>
+        </div>
+
+        <div className="grid2">
+          <Field label="Benutzername / E-Mail" hint="Meist die vollständige E-Mail-Adresse">
+            <input value={settings.smtp_user || ''} onChange={e => set('smtp_user', e.target.value)}
+              placeholder="absender@firma.com"
+              style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }} />
+          </Field>
+          <Field label="Passwort / App-Passwort" hint="Bei Gmail: App-spezifisches Passwort verwenden">
+            <input type="password" value={settings.smtp_pass || ''} onChange={e => set('smtp_pass', e.target.value)}
+              placeholder="••••••••"
+              style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }} />
+          </Field>
+        </div>
+
+        <Field label="Absendername" hint="Erscheint als Name im Posteingang des Empfängers">
+          <input value={settings.smtp_from_name || ''} onChange={e => set('smtp_from_name', e.target.value)}
+            placeholder={settings.company || 'Sielaff Austria GmbH'}
+            style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13, maxWidth: 340 }} />
         </Field>
       </div>
 

@@ -3,7 +3,7 @@ Angebotskonfigurator – FastAPI Backend
 Sielaff Austria GmbH
 """
 
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -485,6 +485,237 @@ def get_settings():
 @app.post("/api/settings")
 def save_settings(data: dict):
     return db.save_settings(data)
+
+
+# ── E-Mail ─────────────────────────────────────────────────────────────────────
+
+def _build_email_html(payload: dict) -> str:
+    """Erstellt HTML-E-Mail aus Angebotsdaten + gespeicherten Settings."""
+    import base64
+    import downloads as _dl
+
+    s         = db.get_settings()
+    proj      = payload.get('project', {}) or {}
+
+    company    = s.get('company',  'Sielaff Austria GmbH')
+    address    = s.get('address',  '')
+    phone      = s.get('phone',    '')
+    email_addr = s.get('email',    '')
+    website    = s.get('website',  '')
+    dl_url     = payload.get('download_url', '')
+
+    def rep(tpl):
+        return (tpl or '') \
+            .replace('{{kunde}}',          proj.get('customer', '')) \
+            .replace('{{ansprechpartner}}', proj.get('contact', '') or proj.get('customer', '')) \
+            .replace('{{angebotsnummer}}',  proj.get('offerNo', '')) \
+            .replace('{{projekt}}',         proj.get('project', '')) \
+            .replace('{{datum}}',           proj.get('date', '')) \
+            .replace('{{gueltigBis}}',      proj.get('valid', '')) \
+            .replace('{{downloadLink}}',    dl_url) \
+            .replace('{{anbieter}}',        company)
+
+    body_text = rep(s.get('email_body', ''))
+    body_html = ''.join(
+        f'<p style="margin:0 0 12px">{ln if ln.strip() else "&nbsp;"}</p>'
+        for ln in body_text.split('\n')
+    )
+
+    # QR-Code als base64 einbetten
+    qr_section = ''
+    if dl_url:
+        try:
+            qr_buf = _dl.generate_qr_code(dl_url)
+            if qr_buf:
+                qr_b64 = base64.b64encode(qr_buf.getvalue()).decode()
+                qr_section = f'''
+      <tr>
+        <td style="padding:0 32px 28px;text-align:center">
+          <img src="data:image/png;base64,{qr_b64}"
+               alt="QR-Code" width="150" height="150"
+               style="border:1px solid #e0e0e0;border-radius:10px;padding:10px"/>
+          <p style="font-size:11px;color:#999;margin:8px 0 0;font-family:Arial,sans-serif">
+            QR-Code scannen zum Download aller Dokumente
+          </p>
+        </td>
+      </tr>'''
+        except Exception as ex:
+            print(f'[email] QR Fehler: {ex}')
+
+    # Download-Button
+    dl_btn = ''
+    if dl_url:
+        dl_btn = f'''
+      <tr>
+        <td style="padding:0 32px 28px;text-align:center">
+          <a href="{dl_url}"
+             style="display:inline-block;background:#E30613;color:#ffffff;
+                    text-decoration:none;padding:14px 36px;border-radius:8px;
+                    font-weight:bold;font-size:15px;font-family:Arial,sans-serif">
+            &#128229;&nbsp; Jetzt herunterladen
+          </a>
+        </td>
+      </tr>'''
+
+    # Info-Tabelle
+    info_rows = ''
+    for label, key in [('Angebotsnummer', 'offerNo'), ('Datum', 'date'),
+                       ('Gültig bis', 'valid'), ('Projekt', 'project'), ('Kunde', 'customer')]:
+        val = proj.get(key, '')
+        if val:
+            info_rows += (
+                f'<tr><td style="color:#999;padding:6px 10px;width:140px;'
+                f'font-family:Arial,sans-serif">{label}</td>'
+                f'<td style="padding:6px 10px;font-weight:bold;'
+                f'font-family:Arial,sans-serif">{val}</td></tr>'
+            )
+
+    info_section = ''
+    if info_rows:
+        info_section = f'''
+      <tr>
+        <td style="padding:0 32px 28px">
+          <table width="100%" cellpadding="0" cellspacing="0"
+                 style="background:#f7f7f7;border-radius:8px;font-size:13px;
+                        border-collapse:collapse">
+            {info_rows}
+          </table>
+        </td>
+      </tr>'''
+
+    # Footer
+    parts = [company]
+    if address:    parts.append(address)
+    if phone:      parts.append(f'Tel. {phone}')
+    if email_addr: parts.append(email_addr)
+    if website:    parts.append(website)
+    footer_text = ' &nbsp;&middot;&nbsp; '.join(parts)
+
+    RED = '#E30613'
+
+    return f'''<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Angebot</title>
+</head>
+<body style="margin:0;padding:0;background:#eeeeee;font-family:Arial,Helvetica,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0"
+       style="background:#eeeeee;padding:32px 0;border-collapse:collapse">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0"
+           style="background:#ffffff;border-radius:12px;overflow:hidden;
+                  box-shadow:0 4px 24px rgba(0,0,0,.10);border-collapse:collapse">
+
+      <!-- Header -->
+      <tr>
+        <td style="background:{RED};padding:28px 32px">
+          <span style="font-size:22px;font-weight:bold;color:#ffffff;
+                       font-family:Arial,sans-serif;letter-spacing:0.5px">
+            {company}
+          </span>
+        </td>
+      </tr>
+
+      <!-- Body -->
+      <tr>
+        <td style="padding:32px 32px 20px;color:#222222;font-size:14px;
+                   line-height:1.7;font-family:Arial,sans-serif">
+          {body_html}
+        </td>
+      </tr>
+
+      {dl_btn}
+      {qr_section}
+      {info_section}
+
+      <!-- Footer -->
+      <tr>
+        <td style="background:#f7f7f7;padding:18px 32px;
+                   border-top:3px solid {RED};
+                   font-size:11px;color:#999999;
+                   font-family:Arial,sans-serif;text-align:center">
+          {footer_text}
+        </td>
+      </tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>'''
+
+
+@app.post("/api/email/preview")
+async def email_preview_endpoint(request: Request):
+    from fastapi.responses import HTMLResponse
+    payload = await request.json()
+    html = _build_email_html(payload)
+    return HTMLResponse(content=html)
+
+
+@app.post("/api/email/send")
+async def email_send_endpoint(request: Request):
+    import smtplib, ssl
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+
+    payload = await request.json()
+    s       = db.get_settings()
+
+    smtp_host = (s.get('smtp_host', '') or '').strip()
+    smtp_port = int(s.get('smtp_port', 587) or 587)
+    smtp_user = (s.get('smtp_user', '') or '').strip()
+    smtp_pass = (s.get('smtp_pass', '') or '').strip()
+    from_name = (s.get('smtp_from_name', '') or s.get('company', '') or 'Sielaff Austria').strip()
+
+    if not smtp_host or not smtp_user or not smtp_pass:
+        raise HTTPException(status_code=400,
+            detail="SMTP nicht konfiguriert. Bitte in Einstellungen → SMTP hinterlegen.")
+
+    to_addr = (payload.get('to', '') or '').strip()
+    if not to_addr:
+        raise HTTPException(status_code=400,
+            detail="Keine Empfänger-E-Mail-Adresse angegeben.")
+
+    proj        = payload.get('project', {}) or {}
+    company     = s.get('company', 'Sielaff Austria GmbH')
+    subject_tpl = s.get('email_subject', 'Angebot {{angebotsnummer}} für {{kunde}}')
+    dl_url      = payload.get('download_url', '')
+
+    def rep(t):
+        return (t or '') \
+            .replace('{{kunde}}',          proj.get('customer', '')) \
+            .replace('{{ansprechpartner}}', proj.get('contact', '') or proj.get('customer', '')) \
+            .replace('{{angebotsnummer}}',  proj.get('offerNo', '')) \
+            .replace('{{projekt}}',         proj.get('project', '')) \
+            .replace('{{datum}}',           proj.get('date', '')) \
+            .replace('{{gueltigBis}}',      proj.get('valid', '')) \
+            .replace('{{downloadLink}}',    dl_url) \
+            .replace('{{anbieter}}',        company)
+
+    subject = rep(subject_tpl)
+    html    = _build_email_html(payload)
+
+    msg            = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From']    = f"{from_name} <{smtp_user}>"
+    msg['To']      = to_addr
+    msg.attach(MIMEText(html, 'html', 'utf-8'))
+
+    try:
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as srv:
+            srv.ehlo()
+            srv.starttls(context=ctx)
+            srv.login(smtp_user, smtp_pass)
+            srv.send_message(msg)
+        return {"ok": True}
+    except Exception as ex:
+        print(f"[email/send] Fehler: {ex}")
+        raise HTTPException(status_code=500,
+            detail=f"E-Mail konnte nicht gesendet werden: {ex}")
 
 
 from fastapi.responses import FileResponse
