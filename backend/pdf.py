@@ -131,96 +131,146 @@ def make_image(img_data: io.BytesIO, max_w: float, max_h: float) -> RLImage | No
 
 def _draw_icon(c: canvas.Canvas, cx: float, cy: float, kind: str):
     """
-    Zeichnet ein einfaches Linien-Icon zentriert bei (cx, cy).
-    kind: 'doc' | 'cal' | 'person' | 'brief' | 'clock' | 'layers'
+    Zeichnet ein Linien-Icon zentriert bei (cx, cy) in Rot.
+    kind: 'doc' | 'cal' | 'company' | 'brief' | 'badge' | 'clock' | 'tag'
     """
-    c.setStrokeColor(colors.HexColor('#888888'))
-    c.setFillColor(colors.HexColor('#888888'))
+    C_RED = colors.HexColor('#E30613')
+    c.setStrokeColor(C_RED)
+    c.setFillColor(C_RED)
     c.setLineWidth(0.9)
-    r = 5  # halbe Icon-Größe in pt
 
     if kind == 'doc':
-        # Dokument: Rechteck mit Ecke + Linien
-        c.rect(cx - r + 1, cy - r, r * 2 - 2, r * 2, fill=0, stroke=1)
-        for dy in (2, -1, -4):
-            c.line(cx - r + 3, cy + dy, cx + r - 2, cy + dy)
+        # Dokument mit Eselsohr oben rechts + drei Zeilen
+        c.setFillColor(colors.HexColor('#FAEAEA'))
+        pts = [(cx-5, cy-7), (cx+2, cy-7), (cx+5, cy-4),
+               (cx+5, cy+7), (cx-5, cy+7)]
+        path = c.beginPath()
+        path.moveTo(*pts[0])
+        for pt in pts[1:]: path.lineTo(*pt)
+        path.close()
+        c.drawPath(path, fill=1, stroke=0)
+        c.setStrokeColor(C_RED)
+        path2 = c.beginPath()
+        path2.moveTo(*pts[0])
+        for pt in pts[1:]: path2.lineTo(*pt)
+        path2.close()
+        c.drawPath(path2, fill=0, stroke=1)
+        # Eselsohr
+        c.line(cx+2, cy-7, cx+2, cy-4)
+        c.line(cx+2, cy-4, cx+5, cy-4)
+        # Textzeilen
+        for dy in (cy+3, cy, cy-2):
+            c.line(cx-3, dy, cx+3, dy)
 
     elif kind == 'cal':
-        # Kalender: Rechteck + Gitterlinien + Bügelchen
-        c.rect(cx - r, cy - r, r * 2, r * 2, fill=0, stroke=1)
-        c.line(cx - r, cy + 1, cx + r, cy + 1)          # horizontale Trennlinie
-        c.line(cx - 2, cy + r, cx - 2, cy + r + 3)       # linker Bügel
-        c.line(cx + 2, cy + r, cx + 2, cy + r + 3)       # rechter Bügel
+        # Kalender: Rechteck + Trennlinie + Bügelchen + Punkte
+        c.rect(cx-6, cy-6, 12, 12, fill=0, stroke=1)
+        c.line(cx-6, cy-1, cx+6, cy-1)
+        c.line(cx-3, cy+7, cx-3, cy+5)
+        c.line(cx+3, cy+7, cx+3, cy+5)
+        # Kalenderblatt-Punkte
+        for dx in (-2, 2):
+            for dy in (cy-3, cy-6):
+                c.circle(cx+dx, dy+1, 1, fill=1, stroke=0)
 
-    elif kind == 'person':
-        # Person: Kreis (Kopf) + Halbbogen (Körper)
-        c.circle(cx, cy + 2, 3.0, fill=0, stroke=1)
-        p = c.beginPath()
-        p.moveTo(cx - r, cy - r)
-        p.curveTo(cx - r, cy - 1, cx + r, cy - 1, cx + r, cy - r)
-        c.drawPath(p, fill=0, stroke=1)
+    elif kind == 'company':
+        # Gebäude: Hauptkörper + Dach + Tür + Fenster
+        c.rect(cx-6, cy-7, 12, 11, fill=0, stroke=1)
+        # Dach-Dreieck
+        path = c.beginPath()
+        path.moveTo(cx-7, cy+4)
+        path.lineTo(cx,   cy+9)
+        path.lineTo(cx+7, cy+4)
+        c.drawPath(path, fill=0, stroke=1)
+        # Tür
+        c.rect(cx-2, cy-7, 4, 5, fill=0, stroke=1)
+        # Fenster
+        c.rect(cx-5, cy-1, 3, 3, fill=0, stroke=1)
+        c.rect(cx+2, cy-1, 3, 3, fill=0, stroke=1)
 
     elif kind == 'brief':
-        # Aktentasche: Rechteck + Griff oben mittig
-        c.rect(cx - r, cy - r, r * 2, r * 2 - 1, fill=0, stroke=1)
-        c.rect(cx - 3, cy + r - 3, 6, 3, fill=0, stroke=1)   # Griff
-        c.line(cx - r, cy, cx + r, cy)                         # mittlere Linie
+        # Aktenkoffer: Koffer-Körper + Griff + mittlere Linie + Schloss
+        c.roundRect(cx-6, cy-6, 12, 11, 1, fill=0, stroke=1)
+        # Griff (Bogen oben)
+        path = c.beginPath()
+        path.moveTo(cx-3, cy+5)
+        path.curveTo(cx-3, cy+9, cx+3, cy+9, cx+3, cy+5)
+        c.drawPath(path, fill=0, stroke=1)
+        c.line(cx-6, cy, cx+6, cy)
+        c.circle(cx, cy+2, 1.5, fill=1, stroke=0)
+
+    elif kind == 'badge':
+        # Ausweis: Karte + Kopf-Silhouette
+        c.roundRect(cx-6, cy-7, 12, 13, 1.5, fill=0, stroke=1)
+        # Kopf
+        c.circle(cx, cy+2, 2.5, fill=0, stroke=1)
+        # Schultern
+        path = c.beginPath()
+        path.moveTo(cx-5, cy-5)
+        path.curveTo(cx-5, cy-1, cx+5, cy-1, cx+5, cy-5)
+        c.drawPath(path, fill=0, stroke=1)
 
     elif kind == 'clock':
-        # Uhr: Kreis + Zeiger
-        c.circle(cx, cy, r + 0.5, fill=0, stroke=1)
-        c.line(cx, cy, cx, cy + r - 1)       # Stundenzeiger (oben)
-        c.line(cx, cy, cx + r - 1, cy)       # Minutenzeiger (rechts)
+        # Uhr: Kreis + zwei Zeiger + Mittelpunkt
+        c.circle(cx, cy, 7, fill=0, stroke=1)
+        c.line(cx, cy, cx, cy+5)        # Stundenzeiger
+        c.line(cx, cy, cx+4, cy+2)     # Minutenzeiger
+        c.circle(cx, cy, 1, fill=1, stroke=0)
 
-    elif kind == 'layers':
-        # Ebenen: drei versetzte Rechtecke
-        for k, dy in enumerate((-3, 0, 3)):
-            off = abs(dy)
-            c.rect(cx - r + off, cy + dy - 1, (r - off) * 2, 2, fill=1, stroke=0)
+    elif kind == 'tag':
+        # Preisschild: Fünfeck + Loch
+        path = c.beginPath()
+        path.moveTo(cx-6, cy-5)
+        path.lineTo(cx+2, cy-5)
+        path.lineTo(cx+7, cy)
+        path.lineTo(cx+2, cy+5)
+        path.lineTo(cx-6, cy+5)
+        path.close()
+        c.drawPath(path, fill=0, stroke=1)
+        c.circle(cx-3, cy, 1.5, fill=1, stroke=0)
 
 
-# ── Deckblatt – Neues Design ──────────────────────────────────────────────────
+# ── Deckblatt – Diagonaler Schnitt ───────────────────────────────────────────
 
 def draw_cover(c: canvas.Canvas, data: dict):
     """
-    Deckblatt Variante B – Eleganter Bogen:
-    - Bild rechts, hinter einer geschwungenen Bézier-Kurve
-    - Weiße Bezier-Maske (kein clipPath) deckt linken Bereich ab
-    - Logo + ANGEBOT oben links, Info-Box unten links verankert
-    - ARCH_CP_X = 378pt  >  ANGEBOT-Ende ~338pt  → kein Überlauf
+    Deckblatt – Diagonaler Schnitt:
+    - Weißer linker Bereich / Foto rechts / rote Akzentlinie
+    - Logo + ANGEBOT oben links
+    - Info-Box vertikal zentriert, kein Rahmen, mit Icons
+    - Fußzeile: 2 Spalten mit Icons (Gebäude | Briefumschlag)
     """
     from PIL import Image as PILImage
 
     project  = data.get('project')  or {}
     provider = data.get('provider') or {}
 
-    C_RED       = colors.HexColor('#E30613')
-    C_DARK      = colors.HexColor('#1D1D1B')
-    C_GRAY_DARK = colors.HexColor('#555555')
-    C_GRAY_LINE = colors.HexColor('#E0E0E0')
-    C_ICON_BG   = colors.HexColor('#F2F2F2')
-    C_FOOTER_BG = colors.HexColor('#E2E2E2')
+    C_RED    = colors.HexColor('#E30613')
+    C_DARK   = colors.HexColor('#1D1D1B')
+    C_MUTED  = colors.HexColor('#5A5A5A')
+    C_FOOTER = colors.HexColor('#E8E8E8')
+    C_ICON   = colors.HexColor('#FAEAEA')
+    C_SHADOW = colors.HexColor('#C8C8C8')
 
-    FOOTER_H = 88
+    FOOTER_H   = 72
+    MARGIN     = 38
+    LOGO_SIZE  = 52
 
-    # Bogen-Parameter (sorgfältig berechnet, kein Overlap mit Text)
-    ARCH_TOP_X = W * 0.700   # 416pt – Bogenbeginn oben rechts
-    ARCH_CP_X  = W * 0.635   # 378pt – linkster Punkt der Kurve (40pt Abstand zu ANGEBOT-Ende ~338pt)
-    ARCH_BOT_X = W * 0.770   # 458pt – Bogenende unten rechts
-    ARCH_CP1_Y = H * 0.650   # 547pt – oberer Kontrollpunkt
-    ARCH_CP2_Y = H * 0.350   # 295pt – unterer Kontrollpunkt
+    # Diagonale: oben bei x=DIAG_TOP (y=H), unten bei x=DIAG_BOT (y=FOOTER_H)
+    DIAG_TOP = 375.0
+    DIAG_BOT = 490.0
 
-    # Bild-Zielbereich: ab ARCH_CP_X (linkster Bogenpunkt)
-    IMG_X = ARCH_CP_X         # 378pt
-    IMG_Y = FOOTER_H          # 88pt
-    IMG_W = W - ARCH_CP_X     # 217pt
-    IMG_H = H - FOOTER_H      # 754pt
+    # Foto-Bereich: ab DIAG_TOP mit etwas Überlapp nach links
+    IMG_X = DIAG_TOP - 10
+    IMG_Y = FOOTER_H
+    IMG_W = W - IMG_X
+    IMG_H = H - FOOTER_H
 
-    # ── 1. Weißer Seitenhintergrund ───────────────────────────────────────────
+    # ── 1. Weißer Hintergrund ─────────────────────────────────────────────────
     c.setFillColor(colors.white)
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
-    # ── 2. Cover-Bild (PIL-Zuschnitt auf exaktes Seitenverhältnis) ───────────
+    # ── 2. Cover-Foto (rechte Seite) ─────────────────────────────────────────
     cover_url = (provider.get('cover_image') or
                  project.get('coverImage')   or
                  data.get('cover_image')     or '')
@@ -251,192 +301,200 @@ def draw_cover(c: canvas.Canvas, data: dict):
             pil.save(buf, 'JPEG', quality=88)
             buf.seek(0)
             c.drawImage(ImageReader(buf), IMG_X, IMG_Y, width=IMG_W, height=IMG_H)
-            print(f'[draw_cover] Bild: {IMG_W:.0f}x{IMG_H:.0f}pt @ ({IMG_X:.0f},{IMG_Y:.0f})')
         except Exception as e:
             print(f'[draw_cover] Bild-Fehler: {e}')
-            c.setFillColor(colors.HexColor('#CCCCCC'))
+            c.setFillColor(colors.HexColor('#AABBCC'))
             c.rect(IMG_X, IMG_Y, IMG_W, IMG_H, fill=1, stroke=0)
     else:
-        c.setFillColor(colors.HexColor('#CCCCCC'))
+        c.setFillColor(colors.HexColor('#AABBCC'))
         c.rect(IMG_X, IMG_Y, IMG_W, IMG_H, fill=1, stroke=0)
+    c.restoreState()
 
-    # ── 3. Weiße Bogen-Maske (linker Bereich, über dem Bild) ─────────────────
+    # ── 3. Weiße Trapez-Maske (linker Bereich) ───────────────────────────────
+    c.saveState()
     c.setFillColor(colors.white)
-    p_mask = c.beginPath()
-    p_mask.moveTo(0, H)
-    p_mask.lineTo(ARCH_TOP_X, H)
-    p_mask.curveTo(ARCH_CP_X, ARCH_CP1_Y,
-                   ARCH_CP_X, ARCH_CP2_Y,
-                   ARCH_BOT_X, FOOTER_H)
-    p_mask.lineTo(0, FOOTER_H)
-    p_mask.close()
-    c.drawPath(p_mask, fill=1, stroke=0)
+    mask = c.beginPath()
+    mask.moveTo(0, H)
+    mask.lineTo(DIAG_TOP, H)
+    mask.lineTo(DIAG_BOT, FOOTER_H)
+    mask.lineTo(0, FOOTER_H)
+    mask.close()
+    c.drawPath(mask, fill=1, stroke=0)
+    c.restoreState()
 
-    c.restoreState()  # Farbzustand sauber zurücksetzen
-
-    # ── 4. Weißer Bogenstrich (schärft die Bildkante) ─────────────────────────
-    c.setStrokeColor(colors.white)
-    c.setLineWidth(4)
-    p_border = c.beginPath()
-    p_border.moveTo(ARCH_TOP_X, H)
-    p_border.curveTo(ARCH_CP_X, ARCH_CP1_Y,
-                     ARCH_CP_X, ARCH_CP2_Y,
-                     ARCH_BOT_X, FOOTER_H)
-    c.drawPath(p_border, fill=0, stroke=1)
+    # ── 4. Diagonale Akzentlinie (Schatten + Rot) ────────────────────────────
+    c.setStrokeColor(C_SHADOW)
+    c.setLineWidth(3)
+    c.line(DIAG_TOP + 4, H, DIAG_BOT + 4, FOOTER_H)
+    c.setStrokeColor(C_RED)
+    c.setLineWidth(3)
+    c.line(DIAG_TOP, H, DIAG_BOT, FOOTER_H)
 
     # ── 5. Logo oben links ────────────────────────────────────────────────────
-    c.saveState()
-    LOGO_X   = 35
-    LOGO_MAX = 56
-    LOGO_Y   = H - LOGO_MAX - 40
+    LOGO_X = MARGIN
+    LOGO_Y = H - 35 - LOGO_SIZE   # Unterkante des Logos
 
+    c.saveState()
     logo_url = provider.get('logo_image') or ''
     logo_img = fetch_image(logo_url) if logo_url else None
-
     if logo_img:
         try:
             logo_img.seek(0)
             lb = logo_img.read()
             pil_l = PILImage.open(io.BytesIO(lb))
             lw, lh = pil_l.size
-            sc = min(1.0, LOGO_MAX / (lw / 96 * 72), LOGO_MAX / (lh / 96 * 72))
+            sc = min(1.0, LOGO_SIZE / (lw / 96 * 72), LOGO_SIZE / (lh / 96 * 72))
             fw = lw / 96 * 72 * sc
             fh = lh / 96 * 72 * sc
             c.drawImage(ImageReader(io.BytesIO(lb)),
-                        LOGO_X, LOGO_Y + (LOGO_MAX - fh) / 2,
+                        LOGO_X, LOGO_Y + (LOGO_SIZE - fh) / 2,
                         width=fw, height=fh,
                         preserveAspectRatio=True, mask='auto')
         except Exception as e:
             print(f'[draw_cover] Logo-Fehler: {e}')
             c.setFillColor(C_RED)
-            c.rect(LOGO_X, LOGO_Y, LOGO_MAX, LOGO_MAX, fill=1, stroke=0)
+            c.rect(LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE, fill=1, stroke=0)
             c.setFillColor(colors.white)
             c.setFont('Helvetica-Bold', 10)
-            c.drawCentredString(LOGO_X + LOGO_MAX / 2, LOGO_Y + LOGO_MAX / 2 - 3, 'LOGO')
+            c.drawCentredString(LOGO_X + LOGO_SIZE/2, LOGO_Y + LOGO_SIZE/2 - 3, 'LOGO')
     else:
         c.setFillColor(C_RED)
-        c.rect(LOGO_X, LOGO_Y, LOGO_MAX, LOGO_MAX, fill=1, stroke=0)
+        c.rect(LOGO_X, LOGO_Y, LOGO_SIZE, LOGO_SIZE, fill=1, stroke=0)
         c.setFillColor(colors.white)
         c.setFont('Helvetica-Bold', 10)
-        c.drawCentredString(LOGO_X + LOGO_MAX / 2, LOGO_Y + LOGO_MAX / 2 - 3, 'LOGO')
+        c.drawCentredString(LOGO_X + LOGO_SIZE/2, LOGO_Y + LOGO_SIZE/2 - 3, 'LOGO')
     c.restoreState()
 
-    # ── 6. ANGEBOT + Untertitel (oben links, unter Logo) ─────────────────────
-    # Times-Roman 62pt → Breite ≈ 303pt → endet bei x≈338pt < ARCH_CP_X=378pt ✓
+    # ── 6. ANGEBOT + Dekorlinie + Untertitel ─────────────────────────────────
+    TITLE_BASE = LOGO_Y - 55        # Baseline des Titels (55pt unter Logo-Unterkante)
     c.setFillColor(C_DARK)
-    c.setFont('Times-Roman', 62)
-    c.drawString(35, H - 185, 'ANGEBOT')
+    c.setFont('Times-Roman', 58)
+    c.drawString(MARGIN, TITLE_BASE, 'ANGEBOT')
 
+    LINE_Y = TITLE_BASE - 14
     c.setStrokeColor(C_RED)
-    c.setLineWidth(2.5)
-    c.line(35, H - 202, 93, H - 202)
+    c.setLineWidth(2)
+    c.line(MARGIN, LINE_Y, MARGIN + 75, LINE_Y)
 
-    c.setFont('Helvetica', 12)
-    c.setFillColor(C_DARK)
-    c.drawString(35, H - 226, 'Maßgeschneiderte Lösung für Ihr Vorhaben')
+    SUB_Y = LINE_Y - 18
+    c.setFont('Helvetica', 11)
+    c.setFillColor(C_MUTED)
+    c.drawString(MARGIN, SUB_Y, 'Maßgeschneiderte Lösung für Ihr Vorhaben')
 
-    # ── 7. Info-Box (am unteren Rand der linken Spalte verankert) ────────────
-    BOX_X = 35
-    BOX_W = 350   # endet bei ~385pt, liegt sicher im weißen Bereich
-    ROW_H = 36
-    rows = [
-        ('doc',    'Angebotsnummer', project.get('offerNo',   '')),
-        ('cal',    'Datum',          project.get('date',       '')),
-        ('person', 'Kunde',          project.get('customer',   '')),
-        ('brief',  'Projekt',        project.get('project',    '')),
-        ('person', 'Ansprechpartner',project.get('contact',    '')),
-        ('clock',  'Gültig bis',     project.get('valid',      '')),
-        ('layers', 'Version',        project.get('version',    '1.0')),
+    # ── 7. Info-Box (vertikal zentriert, kein Rahmen) ─────────────────────────
+    BOX_X  = MARGIN
+    BOX_W  = 310
+    ROW_H  = 48
+    info_rows = [
+        ('doc',     'Angebotsnummer', project.get('offerNo',   '')),
+        ('cal',     'Datum',          project.get('date',       '')),
+        ('company', 'Kunde',          project.get('customer',   '')),
+        ('brief',   'Projekt',        project.get('project',    '')),
+        ('badge',   'Ansprechpartner',project.get('contact',    '')),
+        ('clock',   'Gültig bis',     project.get('valid',      '')),
+        ('tag',     'Version',        project.get('version',    '1.0')),
     ]
-    BOX_H = ROW_H * len(rows) + 16   # = 268pt
-    BOX_Y = FOOTER_H + 35            # 35pt über der Fußzeile
+    BOX_H = ROW_H * len(info_rows) + 20
 
-    # Schatten
-    c.setFillColor(colors.HexColor('#DADADA'))
-    c.roundRect(BOX_X + 4, BOX_Y - 5, BOX_W, BOX_H, 8, fill=1, stroke=0)
-    # Weißer Kasten
-    c.setFillColor(colors.white)
-    c.roundRect(BOX_X, BOX_Y, BOX_W, BOX_H, 8, fill=1, stroke=0)
+    # Vertikal zentriert zwischen Untertitel-Ende und Fußzeile
+    CONTENT_TOP = SUB_Y - 20
+    CONTENT_BOT = FOOTER_H + 10
+    BOX_Y = (CONTENT_TOP + CONTENT_BOT) / 2 - BOX_H / 2   # Unterkante der Box
 
-    for i, (icon_kind, label, value) in enumerate(rows):
-        row_cy = BOX_Y + BOX_H - 8 - (i + 1) * ROW_H + ROW_H * 0.5
-        ICON_CX = BOX_X + 20
+    ICON_CX = BOX_X + 18
+    for i, (icon_kind, label, value) in enumerate(info_rows):
+        # Zeile von oben: erste Zeile liegt oben
+        row_cy = BOX_Y + BOX_H - 20 - i * ROW_H - ROW_H / 2
 
-        c.setFillColor(C_ICON_BG)
-        c.circle(ICON_CX, row_cy, 9, fill=1, stroke=0)
+        # Icon-Kreis (hellrot + roter Rand)
+        c.setFillColor(C_ICON)
+        c.circle(ICON_CX, row_cy, 12, fill=1, stroke=0)
+        c.setStrokeColor(colors.HexColor('#E30613'))
+        c.setLineWidth(0.8)
+        c.circle(ICON_CX, row_cy, 12, fill=0, stroke=1)
         _draw_icon(c, ICON_CX, row_cy, icon_kind)
 
-        c.setFont('Helvetica-Bold', 9)
-        c.setFillColor(colors.black)
-        c.drawString(BOX_X + 38, row_cy - 3, label)
+        c.setFont('Helvetica-Bold', 10)
+        c.setFillColor(C_DARK)
+        c.drawString(BOX_X + 36, row_cy - 4, label)
 
-        c.setFont('Helvetica', 9)
-        c.setFillColor(colors.black)
-        c.drawString(BOX_X + 158, row_cy - 3, str(value)[:45])
+        c.setFont('Helvetica', 10)
+        c.setFillColor(C_DARK)
+        c.drawString(BOX_X + 162, row_cy - 4, str(value)[:40])
 
-        if i < len(rows) - 1:
-            sep_y = BOX_Y + BOX_H - 8 - (i + 1) * ROW_H
-            c.setStrokeColor(C_GRAY_LINE)
-            c.setLineWidth(0.4)
-            c.line(BOX_X + 12, sep_y, BOX_X + BOX_W - 12, sep_y)
-
-    # ── Fußzeile (wird als letztes gezeichnet → liegt garantiert oben) ───────
-    c.setFillColor(C_FOOTER_BG)
+    # ── 8. Fußzeile ───────────────────────────────────────────────────────────
+    c.setFillColor(C_FOOTER)
     c.rect(0, 0, W, FOOTER_H, fill=1, stroke=0)
-    # Trennlinie oben
-    c.setStrokeColor(colors.HexColor('#CCCCCC'))
-    c.setLineWidth(0.5)
+
+    # Rote Oberlinie
+    c.setStrokeColor(C_RED)
+    c.setLineWidth(2)
     c.line(0, FOOTER_H, W, FOOTER_H)
 
-    # Vertikale Trenner
-    c.setStrokeColor(colors.HexColor('#BBBBBB'))
+    # Mittlere Trennlinie
+    MID_X = W / 2
+    c.setStrokeColor(C_SHADOW)
     c.setLineWidth(0.5)
-    c.line(75, 14, 75, FOOTER_H - 14)
-    sep2_x = W * 0.51
-    c.line(sep2_x, 14, sep2_x, FOOTER_H - 14)
+    c.line(MID_X, 10, MID_X, FOOTER_H - 10)
 
-    # Gebäude-Icon (einfache Linien)
-    bx, by = 22, FOOTER_H - 62
-    c.setStrokeColor(colors.HexColor('#888888'))
-    c.setLineWidth(1)
-    c.rect(bx, by, 30, 40, fill=0, stroke=1)
-    c.rect(bx + 10, by, 10, 15, fill=0, stroke=1)
-    c.line(bx + 4, by + 26, bx + 10, by + 26)
-    c.line(bx + 20, by + 26, bx + 26, by + 26)
+    FTR_ICY = FOOTER_H / 2   # Icon vertikal zentriert
 
-    # Firmendaten (linke Spalte)
+    def _footer_icon(kind, icx, icy):
+        c.setStrokeColor(C_MUTED)
+        c.setFillColor(C_MUTED)
+        c.setLineWidth(0.8)
+        if kind == 'building':
+            c.rect(icx-9, icy-8, 18, 14, fill=0, stroke=1)
+            c.rect(icx-2, icy-8, 4,  7, fill=0, stroke=1)
+            c.rect(icx-7, icy-1, 4,  4, fill=0, stroke=1)
+            c.rect(icx+3, icy-1, 4,  4, fill=0, stroke=1)
+            roof = c.beginPath()
+            roof.moveTo(icx-10, icy+6)
+            roof.lineTo(icx,    icy+13)
+            roof.lineTo(icx+10, icy+6)
+            c.drawPath(roof, fill=0, stroke=1)
+        elif kind == 'envelope':
+            c.rect(icx-10, icy-7, 20, 14, fill=0, stroke=1)
+            flap = c.beginPath()
+            flap.moveTo(icx-10, icy+7)
+            flap.lineTo(icx,    icy-1)
+            flap.lineTo(icx+10, icy+7)
+            c.drawPath(flap, fill=0, stroke=1)
+
+    # Linke Spalte: Gebäude-Icon + Firma
+    CL_ICON = MARGIN + 9
+    CL_TEXT = MARGIN + 32
+    _footer_icon('building', CL_ICON, FTR_ICY)
+
     c.setFont('Helvetica-Bold', 8)
     c.setFillColor(C_DARK)
-    c.drawString(84, FOOTER_H - 22, provider.get('company', ''))
-    c.setFont('Helvetica', 7.5)
-    c.setFillColor(C_GRAY_DARK)
+    c.drawString(CL_TEXT, FOOTER_H - 18, provider.get('company', ''))
+    c.setFont('Helvetica', 7)
+    c.setFillColor(C_MUTED)
     addr = provider.get('address', '')
-    # Adresse ggf. auf zwei Zeilen aufteilen
     if ',' in addr:
         parts = addr.split(',', 1)
-        c.drawString(84, FOOTER_H - 34, parts[0].strip() + ',')
-        c.drawString(84, FOOTER_H - 46, parts[1].strip())
+        c.drawString(CL_TEXT, FOOTER_H - 28, parts[0].strip() + ',')
+        c.drawString(CL_TEXT, FOOTER_H - 38, parts[1].strip())
     else:
-        c.drawString(84, FOOTER_H - 34, addr)
+        c.drawString(CL_TEXT, FOOTER_H - 28, addr)
+    uid = provider.get('uid', '') or provider.get('UID', '')
+    if uid:
+        c.drawString(CL_TEXT, FOOTER_H - 50, f'UID: {uid}')
 
-    # Kontakt (mittlere Spalte)
-    col2_x = sep2_x + 12
-    c.setFont('Helvetica', 7.5)
-    c.setFillColor(C_GRAY_DARK)
-    c.drawString(col2_x, FOOTER_H - 22, provider.get('phone',   ''))
-    c.drawString(col2_x, FOOTER_H - 34, provider.get('email',   ''))
-    c.drawString(col2_x, FOOTER_H - 46, provider.get('website', ''))
+    # Rechte Spalte: Briefumschlag-Icon + Kontakt
+    CR_ICON = MID_X + 20 + 9
+    CR_TEXT = MID_X + 20 + 32
+    _footer_icon('envelope', CR_ICON, FTR_ICY)
 
-    # Slogan rechts
-    slogan = 'Kompetent. Klar. Verlässlich.'
-    c.setFont('Helvetica-Bold', 9)
+    c.setFont('Helvetica-Bold', 8)
     c.setFillColor(C_DARK)
-    c.drawRightString(W - 25, FOOTER_H - 28, slogan)
-    # Rote Linie unter Slogan
-    slogan_w = c.stringWidth(slogan, 'Helvetica-Bold', 9)
-    c.setStrokeColor(C_RED)
-    c.setLineWidth(1.5)
-    c.line(W - 25 - slogan_w, FOOTER_H - 35, W - 25, FOOTER_H - 35)
+    c.drawString(CR_TEXT, FOOTER_H - 18, 'Kontakt')
+    c.setFont('Helvetica', 7)
+    c.setFillColor(C_MUTED)
+    c.drawString(CR_TEXT, FOOTER_H - 28, f'Tel:   {provider.get("phone",   "")}')
+    c.drawString(CR_TEXT, FOOTER_H - 38, f'Mail:  {provider.get("email",   "")}')
+    c.drawString(CR_TEXT, FOOTER_H - 50, f'Web:   {provider.get("website", "")}')
 
     c.showPage()
 
