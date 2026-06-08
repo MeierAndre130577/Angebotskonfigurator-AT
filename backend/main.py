@@ -705,12 +705,29 @@ async def email_send_endpoint(request: Request):
     msg.attach(MIMEText(html, 'html', 'utf-8'))
 
     try:
+        import socket as _socket
+        # IPv4 erzwingen – verhindert ENETUNREACH auf Cloud-Servern (Render, etc.)
+        try:
+            ipv4 = _socket.getaddrinfo(smtp_host, smtp_port, _socket.AF_INET)[0][4][0]
+        except Exception:
+            ipv4 = smtp_host  # Fallback auf Hostname
+
         ctx = ssl.create_default_context()
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as srv:
-            srv.ehlo()
-            srv.starttls(context=ctx)
-            srv.login(smtp_user, smtp_pass)
-            srv.send_message(msg)
+
+        if smtp_port == 465:
+            # Direktes SSL (kein STARTTLS)
+            with smtplib.SMTP_SSL(ipv4, smtp_port, context=ctx, timeout=20) as srv:
+                srv.login(smtp_user, smtp_pass)
+                srv.send_message(msg)
+        else:
+            # STARTTLS (587 oder andere)
+            with smtplib.SMTP(ipv4, smtp_port, timeout=20) as srv:
+                srv.ehlo()
+                srv.starttls(context=ctx)
+                srv.ehlo()
+                srv.login(smtp_user, smtp_pass)
+                srv.send_message(msg)
+
         return {"ok": True}
     except Exception as ex:
         print(f"[email/send] Fehler: {ex}")
