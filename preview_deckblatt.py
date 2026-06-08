@@ -93,7 +93,7 @@ d.line([(p(DIAG_TOP), 0), (p(DIAG_BOT), fy(FOOTER_H))],
 # ── 4. Logo oben links ────────────────────────────────────────────────────────
 #    38pt vom Rand, 35pt vom oberen Rand
 LOGO_SIZE = p(52)
-LX = p(MARGIN)
+LX = p(MARGIN)      # buendig mit Footer-Icon und Texten
 LY = p(35)
 d.rectangle([LX, LY, LX+LOGO_SIZE, LY+LOGO_SIZE], fill=RED)
 d.text((LX+p(7), LY+p(17)), "LOGO", fill=WHITE, font=F_LABEL)
@@ -124,46 +124,104 @@ CONTENT_TOP = SUB_Y + p(20)          # Ende des Untertitels + kleiner Puffer
 CONTENT_BOT = fy(FOOTER_H) - p(10)  # direkt ueber Fusszeile
 BOX_TOP = CONTENT_TOP + (CONTENT_BOT - CONTENT_TOP - BOX_H) // 2
 
-# Kein Rahmen – Zeilen direkt auf weissem Hintergrund
-# Symbole fuer jede Zeile (einfache Formen)
-ICONS = ["#", "cal", "usr", "fldr", "usr", "clk", "tag"]
+# ── Icon-Zeichenfunktionen ────────────────────────────────────────────────────
+def icon_circle(cx, cy, r=12):
+    """Hintergrundkreis (hellrot)."""
+    d.ellipse([cx-p(r), cy-p(r), cx+p(r), cy+p(r)], fill=(250,235,235))
+    d.ellipse([cx-p(r), cy-p(r), cx+p(r), cy+p(r)], outline=RED, width=p(1))
 
+def icon_doc(cx, cy):
+    """Angebotsnummer: Dokument mit Eselsohr oben rechts + Zeilen."""
+    icon_circle(cx, cy)
+    # Dokument-Koerper
+    d.polygon([(cx-p(6),cy-p(8)),(cx+p(3),cy-p(8)),(cx+p(6),cy-p(5)),
+               (cx+p(6),cy+p(8)),(cx-p(6),cy+p(8))], outline=RED, width=p(1))
+    # Eselsohr
+    d.line([(cx+p(3),cy-p(8)),(cx+p(3),cy-p(5)),(cx+p(6),cy-p(5))], fill=RED, width=p(1))
+    # Textzeilen
+    for ly in [cy-p(1), cy+p(3), cy+p(6)]:
+        d.line([(cx-p(4),ly),(cx+p(3),ly)], fill=RED, width=p(1))
+
+def icon_calendar(cx, cy):
+    """Datum: Kalender."""
+    icon_circle(cx, cy)
+    d.rectangle([cx-p(7),cy-p(6),cx+p(7),cy+p(7)], outline=RED, width=p(1))
+    d.line([(cx-p(7),cy-p(2)),(cx+p(7),cy-p(2))], fill=RED, width=p(1))
+    d.line([(cx-p(3),cy-p(9)),(cx-p(3),cy-p(5))], fill=RED, width=p(1))
+    d.line([(cx+p(3),cy-p(9)),(cx+p(3),cy-p(5))], fill=RED, width=p(1))
+    # Kalenderblatt-Punkte (2x2)
+    for dx in [-p(3), p(2)]:
+        for dy in [p(1), p(5)]:
+            d.ellipse([cx+dx, cy+dy, cx+dx+p(2), cy+dy+p(2)], fill=RED)
+
+def icon_company(cx, cy):
+    """Kunde: Gebaeude-Silhouette."""
+    icon_circle(cx, cy)
+    # Hauptgebaeude
+    d.rectangle([cx-p(6),cy-p(3),cx+p(6),cy+p(7)], outline=RED, width=p(1))
+    # Dach / Dreieck
+    d.polygon([(cx-p(7),cy-p(3)),(cx,cy-p(9)),(cx+p(7),cy-p(3))], outline=RED, width=p(1))
+    # Tuer
+    d.rectangle([cx-p(2),cy+p(2),cx+p(2),cy+p(7)], outline=RED, width=p(1))
+    # Fenster
+    d.rectangle([cx-p(5),cy-p(1),cx-p(2),cy+p(2)], outline=RED, width=p(1))
+    d.rectangle([cx+p(2),cy-p(1),cx+p(5),cy+p(2)], outline=RED, width=p(1))
+
+def icon_briefcase(cx, cy):
+    """Projekt: Aktenkoffer."""
+    icon_circle(cx, cy)
+    # Koffer-Koerper
+    d.rounded_rectangle([cx-p(7),cy-p(4),cx+p(7),cy+p(7)], radius=p(1), outline=RED, width=p(1))
+    # Griff oben
+    d.arc([cx-p(3),cy-p(8),cx+p(3),cy-p(4)], start=0, end=180, fill=RED, width=p(1))
+    # Mittellinie
+    d.line([(cx-p(7),cy+p(1)),(cx+p(7),cy+p(1))], fill=RED, width=p(1))
+    # Schloss-Punkt
+    d.ellipse([cx-p(2),cy-p(2),cx+p(2),cy+p(2)], outline=RED, width=p(1))
+
+def icon_badge(cx, cy):
+    """Ansprechpartner: Ausweiskarte mit Person."""
+    icon_circle(cx, cy)
+    # Karte
+    d.rounded_rectangle([cx-p(7),cy-p(7),cx+p(7),cy+p(7)], radius=p(2), outline=RED, width=p(1))
+    # Kopf
+    d.ellipse([cx-p(3),cy-p(6),cx+p(3),cy-p(1)], outline=RED, width=p(1))
+    # Schultern
+    d.arc([cx-p(6),cy-p(2),cx+p(6),cy+p(8)], start=0, end=180, fill=RED, width=p(1))
+
+def icon_clock(cx, cy):
+    """Gueltig bis: Uhr."""
+    icon_circle(cx, cy)
+    d.ellipse([cx-p(7),cy-p(7),cx+p(7),cy+p(7)], outline=RED, width=p(1))
+    d.line([(cx,cy),(cx,cy-p(5))], fill=RED, width=p(2))   # Stundenzeiger
+    d.line([(cx,cy),(cx+p(4),cy+p(2))], fill=RED, width=p(2))  # Minutenzeiger
+    d.ellipse([cx-p(1),cy-p(1),cx+p(1),cy+p(1)], fill=RED)
+
+def icon_tag(cx, cy):
+    """Version: Preisschild / Tag."""
+    icon_circle(cx, cy)
+    # Tag-Form (fuenf-eckig: Rechteck + Spitze rechts)
+    d.polygon([
+        (cx-p(6), cy-p(5)),
+        (cx+p(2), cy-p(5)),
+        (cx+p(7), cy),
+        (cx+p(2), cy+p(5)),
+        (cx-p(6), cy+p(5)),
+    ], outline=RED, width=p(1))
+    # Loch links
+    d.ellipse([cx-p(5),cy-p(2),cx-p(1),cy+p(2)], outline=RED, width=p(1))
+
+ICON_FNS = [icon_doc, icon_calendar, icon_company,
+            icon_briefcase, icon_badge, icon_clock, icon_tag]
+
+# ── Zeilen zeichnen ───────────────────────────────────────────────────────────
 for i, (lbl, val) in enumerate(rows):
     row_top = BOX_TOP + i * ROW_H
     rcy     = row_top + ROW_H // 2
     cx      = BX + p(18)
 
-    # Farbiger Icon-Kreis (roter Akzent)
-    d.ellipse([cx-p(12), rcy-p(12), cx+p(12), rcy+p(12)], fill=(250, 235, 235))
-    d.ellipse([cx-p(12), rcy-p(12), cx+p(12), rcy+p(12)], outline=RED, width=p(1))
+    ICON_FNS[i](cx, rcy)
 
-    # Verschiedene einfache Symbole
-    ic = ICONS[i]
-    if ic == "#":   # Angebotsnummer – Raster
-        for lx in [cx-p(4), cx+p(1)]:
-            d.line([(lx, rcy-p(6)),(lx, rcy+p(6))], fill=RED, width=p(1))
-        for ly in [rcy-p(2), rcy+p(3)]:
-            d.line([(cx-p(7), ly),(cx+p(7), ly)], fill=RED, width=p(1))
-    elif ic == "cal":  # Datum – Kalender
-        d.rectangle([cx-p(7),rcy-p(7),cx+p(7),rcy+p(6)], outline=RED, width=p(1))
-        d.line([(cx-p(7),rcy-p(3)),(cx+p(7),rcy-p(3))], fill=RED, width=p(1))
-        d.line([(cx-p(3),rcy-p(9)),(cx-p(3),rcy-p(6))], fill=RED, width=p(1))
-        d.line([(cx+p(3),rcy-p(9)),(cx+p(3),rcy-p(6))], fill=RED, width=p(1))
-    elif ic == "usr":  # Person
-        d.ellipse([cx-p(4),rcy-p(9),cx+p(4),rcy-p(1)], outline=RED, width=p(1))
-        d.arc([cx-p(8),rcy-p(2),cx+p(8),rcy+p(8)], start=0, end=180, fill=RED, width=p(1))
-    elif ic == "fldr":  # Ordner
-        d.rectangle([cx-p(7),rcy-p(4),cx+p(7),rcy+p(6)], outline=RED, width=p(1))
-        d.rectangle([cx-p(7),rcy-p(7),cx,rcy-p(4)], outline=RED, width=p(1))
-    elif ic == "clk":  # Uhr
-        d.ellipse([cx-p(8),rcy-p(8),cx+p(8),rcy+p(8)], outline=RED, width=p(1))
-        d.line([(cx,rcy),(cx+p(5),rcy-p(4))], fill=RED, width=p(1))
-        d.line([(cx,rcy),(cx,rcy-p(5))], fill=RED, width=p(1))
-    else:  # Tag/Version
-        d.rectangle([cx-p(6),rcy-p(6),cx+p(6),rcy+p(6)], outline=RED, width=p(1))
-        d.ellipse([cx+p(2),rcy-p(2),cx+p(6),rcy+p(2)], fill=RED)
-
-    # Label fett, Wert normal
     d.text((BX+p(36), rcy-p(7)), lbl,  fill=DARK, font=F_LABEL)
     d.text((BX+p(162), rcy-p(7)), val, fill=DARK, font=F_VAL)
 
@@ -179,19 +237,44 @@ MID = PW // 2
 # Trennlinie Mitte
 d.line([(MID, FY+p(10)),(MID, PH-p(10))], fill=(200,200,200), width=1)
 
-# Linke Spalte: Firma
-CL = p(20)
-d.text((CL, FY+p(10)), "Sielaff Austria GmbH",    fill=DARK,  font=F_FTR_H)
-d.text((CL, FY+p(22)), "Weissenbachweg 7",         fill=MUTED, font=F_FTR)
-d.text((CL, FY+p(32)), "AT-6067 Absam (Tirol)",    fill=MUTED, font=F_FTR)
-d.text((CL, FY+p(44)), "UID: ATU-XXXXXXXX",        fill=MUTED, font=F_FTR)
+# Hilfsfunktion: kleines Icon im Footer zeichnen
+def ftr_icon(kind, cx, cy):
+    """Zeichnet ein kleines Icon zentriert auf cx/cy."""
+    if kind == "building":
+        # Gebaeude: Rechteck + Tuer + Fenster
+        d.rectangle([cx-p(9), cy-p(8), cx+p(9), cy+p(9)], outline=MUTED, width=1)
+        d.rectangle([cx-p(3), cy+p(1), cx+p(3), cy+p(9)], outline=MUTED, width=1)
+        d.rectangle([cx-p(7), cy-p(6), cx-p(3), cy-p(2)], outline=MUTED, width=1)
+        d.rectangle([cx+p(3), cy-p(6), cx+p(7), cy-p(2)], outline=MUTED, width=1)
+        d.line([(cx-p(9), cy-p(10)),(cx, cy-p(15)),(cx+p(9), cy-p(10))], fill=MUTED, width=1)
+    elif kind == "phone":
+        # Briefumschlag
+        d.rectangle([cx-p(10), cy-p(7), cx+p(10), cy+p(7)], outline=MUTED, width=1)
+        # V-Falz oben
+        d.line([(cx-p(10), cy-p(7)), (cx, cy+p(1)), (cx+p(10), cy-p(7))], fill=MUTED, width=1)
 
-# Rechte Spalte: Kontakt
-CR = MID + p(20)
-d.text((CR, FY+p(10)), "Kontakt",                  fill=DARK,  font=F_FTR_H)
-d.text((CR, FY+p(22)), "Tel:   +43 676 6570301",   fill=MUTED, font=F_FTR)
-d.text((CR, FY+p(32)), "Mail:  info@at.sielaff.com",fill=MUTED, font=F_FTR)
-d.text((CR, FY+p(44)), "Web:   www.sielaff.at",    fill=MUTED, font=F_FTR)
+# ── Linke Spalte: Gebaeude-Icon + Firma ──────────────────────────────────────
+CL_ICON = p(MARGIN) + p(9)           # Icon-Mitte (buendig mit Logo und ANGEBOT-Rand)
+CL_TEXT = p(MARGIN) + p(32)          # Text beginnt rechts vom Icon (mehr Abstand)
+ICY     = FY + p(32)                 # Icon vertikal zentriert im Footer
+
+ftr_icon("building", CL_ICON, ICY)
+
+d.text((CL_TEXT, FY+p(10)), "Sielaff Austria GmbH",    fill=DARK,  font=F_FTR_H)
+d.text((CL_TEXT, FY+p(22)), "Weissenbachweg 7",         fill=MUTED, font=F_FTR)
+d.text((CL_TEXT, FY+p(32)), "AT-6067 Absam (Tirol)",    fill=MUTED, font=F_FTR)
+d.text((CL_TEXT, FY+p(44)), "UID: ATU-XXXXXXXX",        fill=MUTED, font=F_FTR)
+
+# ── Rechte Spalte: Telefon-Icon + Kontakt ────────────────────────────────────
+CR_ICON = MID + p(20) + p(9)
+CR_TEXT = MID + p(20) + p(32)
+
+ftr_icon("phone", CR_ICON, ICY)
+
+d.text((CR_TEXT, FY+p(10)), "Kontakt",                   fill=DARK,  font=F_FTR_H)
+d.text((CR_TEXT, FY+p(22)), "Tel:   +43 676 6570301",    fill=MUTED, font=F_FTR)
+d.text((CR_TEXT, FY+p(32)), "Mail:  info@at.sielaff.com",fill=MUTED, font=F_FTR)
+d.text((CR_TEXT, FY+p(44)), "Web:   www.sielaff.at",     fill=MUTED, font=F_FTR)
 
 # ── Speichern ─────────────────────────────────────────────────────────────────
 out = os.path.join(os.path.expanduser("~"), "deckblatt_vorschau.png")
