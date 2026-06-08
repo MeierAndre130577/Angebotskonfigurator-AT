@@ -148,20 +148,34 @@ def upsert_option(data: dict):
     if USE_SUPABASE:
         return _sb.table("options").upsert(data).execute().data
     # SQLite: documents als JSON-String
-    sqlite_data = {**data, "documents": json.dumps(docs), "active": 1 if data.get('active', True) else 0}
+    sqlite_data = {
+        **data,
+        "documents":     json.dumps(docs),
+        "active":        1 if data.get('active', True) else 0,
+        "price_editable": 1 if data.get('price_editable', False) else 0,
+        "price_hint":    data.get('price_hint', '') or '',
+    }
     conn = _get_conn()
+    # Spalten nachrüsten falls noch nicht vorhanden (Migration)
+    existing = {r[1] for r in conn.execute("PRAGMA table_info(options)").fetchall()}
+    if "price_editable" not in existing:
+        conn.execute("ALTER TABLE options ADD COLUMN price_editable INTEGER DEFAULT 0")
+    if "price_hint" not in existing:
+        conn.execute("ALTER TABLE options ADD COLUMN price_hint TEXT DEFAULT ''")
     conn.execute("""
         INSERT INTO options (id,cluster,name,display_type,short_text,long_text,
-            price,recurring,image_path,sort_order,documents,active)
+            price,recurring,image_path,sort_order,documents,active,price_editable,price_hint)
         VALUES (:id,:cluster,:name,:display_type,:short_text,:long_text,
-            :price,:recurring,:image_path,:sort_order,:documents,:active)
+            :price,:recurring,:image_path,:sort_order,:documents,:active,
+            :price_editable,:price_hint)
         ON CONFLICT(id) DO UPDATE SET
             cluster=excluded.cluster, name=excluded.name,
             display_type=excluded.display_type, short_text=excluded.short_text,
             long_text=excluded.long_text, price=excluded.price,
             recurring=excluded.recurring, image_path=excluded.image_path,
             sort_order=excluded.sort_order, documents=excluded.documents,
-            active=excluded.active
+            active=excluded.active, price_editable=excluded.price_editable,
+            price_hint=excluded.price_hint
     """, sqlite_data)
     conn.commit(); conn.close()
     return data

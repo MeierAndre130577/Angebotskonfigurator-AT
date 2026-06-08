@@ -103,6 +103,8 @@ class OptionIn(BaseModel):
     sort_order: Optional[int] = 0
     documents: Optional[list] = []
     active: Optional[bool] = True
+    price_editable: Optional[bool] = False
+    price_hint: Optional[str] = ""
 
 @app.get("/api/options")
 def list_options():
