@@ -41,6 +41,7 @@ Mit freundlichen Grüßen
 {{anbieter}}`,
   // Resend API
   resend_api_key: '',
+  resend_from:    '',
   // SMTP (Fallback)
   smtp_host:      '',
   smtp_port:      587,
@@ -569,9 +570,18 @@ export default function Einstellungen() {
             style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13,
               fontFamily: 'var(--font-mono)' }} />
         </Field>
-        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
-          Absenderadresse: wird aus dem Feld <b>Benutzername / E-Mail</b> im SMTP-Bereich unten übernommen.
-        </p>
+        <Field
+          label="Absender-E-Mail für Resend"
+          hint="Muss von einer in Resend verifizierten Domain sein – z. B. info@at.sielaff.com. Gmail/Googlemail geht NICHT.">
+          <input value={settings.resend_from || ''} onChange={e => set('resend_from', e.target.value)}
+            placeholder="info@at.sielaff.com"
+            style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }} />
+        </Field>
+        <div style={{ background: '#fff8e1', border: '1px solid #ffe082', borderRadius: 10,
+          padding: '10px 14px', fontSize: 12, color: '#795548', marginTop: 4 }}>
+          <b>Domain verifizieren:</b> Resend → <b>Domains</b> → Domain hinzufügen (z.&nbsp;B. <code>at.sielaff.com</code>)
+          → 3 DNS-Einträge beim Domain-Anbieter eintragen → fertig. Dauert ca. 5 Minuten.
+        </div>
       </div>
 
       {/* ── SMTP Konfiguration ───────────────────────────────────────────────── */}

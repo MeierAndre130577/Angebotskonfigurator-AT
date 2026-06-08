@@ -705,8 +705,15 @@ async def email_send_endpoint(request: Request):
     msg.attach(MIMEText(html, 'html', 'utf-8'))
 
     # ── Resend API (bevorzugt, funktioniert auch auf Cloud-Servern) ──────────
-    resend_key = (s.get('resend_api_key', '') or '').strip()
+    resend_key  = (s.get('resend_api_key', '') or '').strip()
+    resend_from = (s.get('resend_from',    '') or '').strip()
+
     if resend_key:
+        from_addr = resend_from or smtp_user
+        if not from_addr:
+            raise HTTPException(status_code=400,
+                detail="Bitte 'Absender-E-Mail für Resend' in den Einstellungen eintragen (muss eine verifizierte Domain sein, z. B. info@at.sielaff.com).")
+
         try:
             async with httpx.AsyncClient(timeout=20) as client:
                 resp = await client.post(
@@ -716,16 +723,19 @@ async def email_send_endpoint(request: Request):
                         'Content-Type':  'application/json',
                     },
                     json={
-                        'from':    f"{from_name} <{smtp_user}>",
-                        'to':      [to_addr],
-                        'subject': subject,
-                        'html':    html,
+                        'from':     f"{from_name} <{from_addr}>",
+                        'to':       [to_addr],
+                        'reply_to': smtp_user or from_addr,
+                        'subject':  subject,
+                        'html':     html,
                     }
                 )
             if resp.status_code in (200, 201):
                 return {"ok": True}
-            detail = resp.json().get('message', resp.text)
-            raise HTTPException(status_code=502, detail=f"Resend-Fehler: {detail}")
+            err_body = resp.json() if resp.headers.get('content-type','').startswith('application/json') else {}
+            detail   = err_body.get('message') or err_body.get('name') or resp.text
+            raise HTTPException(status_code=502,
+                detail=f"Resend-Fehler: {detail} → Domain verifizieren unter resend.com/domains")
         except HTTPException:
             raise
         except Exception as ex:
