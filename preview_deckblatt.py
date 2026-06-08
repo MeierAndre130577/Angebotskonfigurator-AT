@@ -1,215 +1,199 @@
 """
-Deckblatt-Vorschau Generator
-Erzeugt ein PNG-Bild das zeigt wie das Deckblatt aussehen wird.
-Keine Verbindung zum Backend nötig – reines Designtool.
+Deckblatt-Vorschau  –  Variante: Diagonaler Schnitt
+Weiss links / Foto rechts / rote Akzentlinie
 """
 from PIL import Image, ImageDraw, ImageFont
-import math, sys
+import os
 
-S = 2          # Auflösungs-Skalierung (2x = bessere Qualität)
-PW = 595 * S   # Seitenbreite in Pixeln
-PH = 842 * S   # Seitenhöhe in Pixeln
+S  = 2          # 2x Aufloesung
+PW = 595 * S
+PH = 842 * S
 
-def p(pt):     return int(pt * S)          # PDF-Punkte → Pixel
-def fy(y_pdf): return PH - p(y_pdf)        # PDF y (von unten) → PIL y (von oben)
+def p(pt):     return int(pt * S)
+def fy(y):     return PH - p(y)    # PDF-y (unten=0) -> PIL-y (oben=0)
 
 # ── Farben ────────────────────────────────────────────────────────────────────
 WHITE    = (255, 255, 255)
 RED      = (227,   6,  19)
 DARK     = ( 29,  29,  27)
-GRAY_TRI = (208, 208, 208)   # graues Dreieck oben rechts
-SHADOW   = (218, 218, 218)
+SHADOW   = (210, 210, 210)
 ICON_BG  = (242, 242, 242)
 LINE_C   = (224, 224, 224)
-FOOTER_C = (226, 226, 226)
-COVER_C  = (130, 160, 185)   # Platzhalter für Deckblatt-Foto (blaugrau)
-MUTED    = ( 85,  85,  85)
+FOOTER_C = (232, 232, 232)
+MUTED    = ( 90,  90,  90)
+PHOTO_D  = ( 52,  72,  92)   # dunkles Foto
+PHOTO_L  = ( 72,  96, 118)   # Gitter im Foto
 
-FOOTER_H = 88   # Fußzeilenhöhe in PDF-Punkten
+# ── Layout-Konstanten ─────────────────────────────────────────────────────────
+FOOTER_H  = 72          # Fusszeile hoeher = mehr Platz fuer Inhalt (PDF-pt)
+MARGIN    = 38          # linker Rand
 
-# ── Bogen-Parameter ───────────────────────────────────────────────────────────
-# Bild ~1/3 Seitenbreite (~200pt), Bogen mit 80pt Schwung (deutlich sichtbar)
-IMG_TOP_Y_PDF = 842 - 120   # Bild-Oberkante: 120pt vom oberen Seitenrand
-ARCH_TOP_X    = 595 * 0.870  # 518pt – Bogen beginnt weit rechts oben & unten
-ARCH_CP_X     = 595 * 0.595  # 354pt – linkster Punkt → 164pt Schwung!
-ARCH_BOT_X    = 595 * 0.870  # 518pt – symmetrisch unten
-ARCH_CP1_Y    = 842 * 0.780  # 657pt – sehr hoch → langer eleganter Einzug
-ARCH_CP2_Y    = 842 * 0.220  # 185pt – sehr tief → langer eleganter Ausstieg
+# Diagonale: oben bei x=DIAG_TOP, unten bei x=DIAG_BOT (PDF-pt)
+DIAG_TOP  = 375         # oben rechts von Textbereich
+DIAG_BOT  = 490         # unten weiter rechts -> dynamischer Schwung
 
 # ── Fonts ─────────────────────────────────────────────────────────────────────
 FD = "C:/Windows/Fonts/"
 try:
-    F_TITLE  = ImageFont.truetype(FD + "times.ttf",   p(62))
-    F_SUB    = ImageFont.truetype(FD + "arial.ttf",   p(12))
-    F_LABEL  = ImageFont.truetype(FD + "arialbd.ttf", p(11))
-    F_VAL    = ImageFont.truetype(FD + "arial.ttf",   p(11))
-    F_FTR_B  = ImageFont.truetype(FD + "arialbd.ttf", p(8))
+    F_TITLE  = ImageFont.truetype(FD + "times.ttf",   p(58))
+    F_SUB    = ImageFont.truetype(FD + "arial.ttf",   p(11))
+    F_LABEL  = ImageFont.truetype(FD + "arialbd.ttf", p(10))
+    F_VAL    = ImageFont.truetype(FD + "arial.ttf",   p(10))
+    F_FTR_H  = ImageFont.truetype(FD + "arialbd.ttf", p(8))
     F_FTR    = ImageFont.truetype(FD + "arial.ttf",   p(7))
-    F_SLOGAN = ImageFont.truetype(FD + "arialbd.ttf", p(9))
+    F_SLOGAN = ImageFont.truetype(FD + "arialbd.ttf", p(8))
 except Exception as e:
-    print(f"Font-Fehler (Fallback): {e}")
-    F_TITLE = F_SUB = F_LABEL = F_VAL = F_FTR_B = F_FTR = F_SLOGAN = ImageFont.load_default()
+    print(f"Font-Fehler: {e}")
+    F_TITLE = F_SUB = F_LABEL = F_VAL = F_FTR_H = F_FTR = F_SLOGAN = ImageFont.load_default()
 
-# ── Bezier-Kurve berechnen ────────────────────────────────────────────────────
-def cubic_bezier_pts(p0, p1, p2, p3, n=300):
-    """Gibt n+1 Punkte auf der kubischen Bézierkurve zurück."""
-    pts = []
-    for i in range(n + 1):
-        t = i / n
-        u = 1 - t
-        x = u**3*p0[0] + 3*u**2*t*p1[0] + 3*u*t**2*p2[0] + t**3*p3[0]
-        y = u**3*p0[1] + 3*u**2*t*p1[1] + 3*u*t**2*p2[1] + t**3*p3[1]
-        pts.append((int(x), int(y)))
-    return pts
-
-# PIL-Koordinaten der Bogenpunkte (y-Achse umgekehrt!)
-bp0 = (p(ARCH_TOP_X),  fy(IMG_TOP_Y_PDF))  # oben – Bogenbeginn bei Bild-Oberkante
-bp1 = (p(ARCH_CP_X),   fy(ARCH_CP1_Y))     # Kontrollpunkt oben
-bp2 = (p(ARCH_CP_X),   fy(ARCH_CP2_Y))     # Kontrollpunkt unten
-bp3 = (p(ARCH_BOT_X),  fy(FOOTER_H))       # unten – bei Fußzeile
-
-arch_curve = cubic_bezier_pts(bp0, bp1, bp2, bp3)
+# ── Info-Box Daten ────────────────────────────────────────────────────────────
+rows = [
+    ("Angebotsnummer", "ANG-2026-06-XXXXXX"),
+    ("Datum",          "7.6.2026"),
+    ("Kunde",          "Hubermueller GmbH"),
+    ("Projekt",        "Messegespraech"),
+    ("Ansprechpartner","Hans Huber"),
+    ("Gueltig bis",    "5.7.2026"),
+    ("Version",        "1.0"),
+]
 
 # ── Bild erzeugen ─────────────────────────────────────────────────────────────
 img = Image.new('RGB', (PW, PH), WHITE)
 d   = ImageDraw.Draw(img)
 
-# 1. Deckblatt-Foto Platzhalter – von ARCH_CP_X aus (breit, liegt hinter weißer Maske)
-d.rectangle([p(ARCH_CP_X), 0, PW, fy(FOOTER_H)], fill=COVER_C)
-# Gitterlinien
-for gx in range(p(ARCH_CP_X), PW, p(40)):
-    d.line([(gx, 0), (gx, fy(FOOTER_H))], fill=(120,150,175), width=1)
-for gy in range(0, fy(FOOTER_H), p(40)):
-    d.line([(p(ARCH_CP_X), gy), (PW, gy)], fill=(120,150,175), width=1)
-d.text((p(ARCH_TOP_X) + p(8), p(20)), "[ FOTO ]", fill=(200,220,235), font=F_LABEL)
+# ── 1. Foto-Hintergrund rechts ────────────────────────────────────────────────
+d.rectangle([p(DIAG_TOP), 0, PW, fy(FOOTER_H)], fill=PHOTO_D)
+step = p(50)
+for gx in range(p(DIAG_TOP), PW, step):
+    d.line([(gx,0),(gx,fy(FOOTER_H))], fill=PHOTO_L, width=1)
+for gy in range(0, fy(FOOTER_H), step):
+    d.line([(p(DIAG_TOP),gy),(PW,gy)], fill=PHOTO_L, width=1)
+# "FOTO"-Label mittig im Bildbereich
+foto_cx = (p(DIAG_TOP) + PW) // 2
+foto_cy = PH // 2
+d.text((foto_cx - p(20), foto_cy - p(6)), "[ FOTO ]", fill=(110,145,175), font=F_LABEL)
 
-# 2. Graues Dreieck oben rechts (dekorativ, über Bild-Oberkante)
-tri = [
-    (p(ARCH_TOP_X - 60), fy(842)),
-    (PW,                  fy(842)),
-    (PW,                  fy(IMG_TOP_Y_PDF + 20)),
+# ── 2. Weisses Trapez links ───────────────────────────────────────────────────
+white_poly = [
+    (0, 0),
+    (p(DIAG_TOP), 0),
+    (p(DIAG_BOT), fy(FOOTER_H)),
+    (0, fy(FOOTER_H)),
 ]
-d.polygon(tri, fill=GRAY_TRI)
+d.polygon(white_poly, fill=WHITE)
 
-# 3. Weiße Bogen-Maske (deckt linken Bereich ab – von ganz oben bis Fußzeile)
-mask_poly = (
-    [(0, 0)]                           # oben links Seite
-    + [(p(ARCH_TOP_X), 0)]             # oben rechts bis Bogenbeginn
-    + arch_curve                        # Bogen-Kurve
-    + [(p(ARCH_BOT_X), fy(FOOTER_H))]  # Bogenende unten
-    + [(0, fy(FOOTER_H))]              # links unten
-)
-d.polygon(mask_poly, fill=WHITE)
+# ── 3. Diagonale Akzentlinie ──────────────────────────────────────────────────
+# Schatten (leicht versetzt)
+d.line([(p(DIAG_TOP)+p(4), 0), (p(DIAG_BOT)+p(4), fy(FOOTER_H))],
+       fill=(190,190,190), width=p(3))
+# Rote Hauptlinie
+d.line([(p(DIAG_TOP), 0), (p(DIAG_BOT), fy(FOOTER_H))],
+       fill=RED, width=p(3))
 
-# Schatten hinter dem Bogen (dunkelgrau, leicht versetzt → Tiefenwirkung)
-for i in range(len(arch_curve) - 1):
-    d.line([(arch_curve[i][0]+p(3), arch_curve[i][1]),
-            (arch_curve[i+1][0]+p(3), arch_curve[i+1][1])],
-           fill=(180,180,180), width=p(5))
-# Weißer Bogen-Strich (scharfe Kante)
-for i in range(len(arch_curve) - 1):
-    d.line([arch_curve[i], arch_curve[i+1]], fill=WHITE, width=p(4))
+# ── 4. Logo oben links ────────────────────────────────────────────────────────
+#    38pt vom Rand, 35pt vom oberen Rand
+LOGO_SIZE = p(52)
+LX = p(MARGIN)
+LY = p(35)
+d.rectangle([LX, LY, LX+LOGO_SIZE, LY+LOGO_SIZE], fill=RED)
+d.text((LX+p(7), LY+p(17)), "LOGO", fill=WHITE, font=F_LABEL)
 
-# 4. Logo oben links (roter Platzhalter)
-LX, LY, LS = p(35), fy(842 - 40), p(56)
-d.rectangle([LX, LY, LX + LS, LY + LS], fill=RED)
-d.text((LX + p(6), LY + p(20)), "LOGO", fill=WHITE, font=F_LABEL)
+# ── 5. ANGEBOT-Titel ──────────────────────────────────────────────────────────
+#    Beginnt 50pt unter Logo-Unterkante → harmonischer Abstand
+TITLE_TOP = LY + LOGO_SIZE + p(55)
+d.text((p(MARGIN), TITLE_TOP), "ANGEBOT", fill=DARK, font=F_TITLE)
 
-# 5. ANGEBOT-Titel
-# Times-Roman 62pt: Basislinie bei y=657 (PDF) = fy(657) in PIL
-# Textoberkante ≈ Basislinie - Zeichenhöhe (ca. 44pt)
-ang_top = fy(657) - p(44)
-d.text((p(35), ang_top), "ANGEBOT", fill=DARK, font=F_TITLE)
-
-# Rote Linie
-rl_y = fy(640)
-d.line([(p(35), rl_y), (p(93), rl_y)], fill=RED, width=p(2))
+# Rote Dekorlinie (kurz, unter dem Titel)
+LINE_Y = TITLE_TOP + p(58) + p(12)
+d.line([(p(MARGIN), LINE_Y), (p(MARGIN+75), LINE_Y)], fill=RED, width=p(2))
 
 # Untertitel
-sub_top = fy(616) - p(10)
-d.text((p(35), sub_top), "Maßgeschneiderte Lösung für Ihr Vorhaben", fill=DARK, font=F_SUB)
+SUB_Y = LINE_Y + p(16)
+d.text((p(MARGIN), SUB_Y), "Massgeschneiderte Loesung fuer Ihr Vorhaben",
+       fill=MUTED, font=F_SUB)
 
-# 6. Info-Box – vertikal zentriert, großzügiges Spacing
-BX    = p(35)
-BW    = p(int(ARCH_CP_X) - 35 - 20)   # passt in die weiße Fläche
-ROW_H = p(52)                           # größerer Zeilenabstand (war 36)
-BOX_H = ROW_H * 7 + p(24)
-# Zentriert zwischen Untertitel-Ende (PDF y≈570) und Fußzeile+Rand (PDF y≈115)
-MID_Y   = (570 + 115) // 2
-BOX_TOP = fy(MID_Y) - BOX_H // 2
+# ── 6. Info-Box ───────────────────────────────────────────────────────────────
+#    Vertikal zentriert zwischen Untertitel-Ende und Fusszeile
+BX    = p(MARGIN)
+BW    = p(310)          # passt sicher in die weisse Flaeche
+ROW_H = p(48)
+BOX_H = ROW_H * 7 + p(20)
 
-# Schatten
-d.rounded_rectangle([BX + p(4), BOX_TOP + p(5), BX + BW + p(4), BOX_TOP + BOX_H + p(5)],
-                     radius=p(8), fill=SHADOW)
-# Weißer Kasten
-d.rounded_rectangle([BX, BOX_TOP, BX + BW, BOX_TOP + BOX_H], radius=p(8), fill=WHITE)
+# Mitte des freien Bereichs (in PIL-y)
+CONTENT_TOP = SUB_Y + p(20)          # Ende des Untertitels + kleiner Puffer
+CONTENT_BOT = fy(FOOTER_H) - p(10)  # direkt ueber Fusszeile
+BOX_TOP = CONTENT_TOP + (CONTENT_BOT - CONTENT_TOP - BOX_H) // 2
 
-rows = [
-    ("Angebotsnummer", "ANG-2026-06-XXXXXX"),
-    ("Datum",          "7.6.2026"),
-    ("Kunde",          "Hubermüller GmbH"),
-    ("Projekt",        "Messegespräch"),
-    ("Ansprechpartner","Hans Huber"),
-    ("Gültig bis",     "5.7.2026"),
-    ("Version",        "1.0"),
-]
+# Kein Rahmen – Zeilen direkt auf weissem Hintergrund
+# Symbole fuer jede Zeile (einfache Formen)
+ICONS = ["#", "cal", "usr", "fldr", "usr", "clk", "tag"]
 
 for i, (lbl, val) in enumerate(rows):
-    row_top = BOX_TOP + p(8) + i * ROW_H
+    row_top = BOX_TOP + i * ROW_H
     rcy     = row_top + ROW_H // 2
+    cx      = BX + p(18)
 
-    # Icon-Kreis (größer)
-    cx = BX + p(24)
-    d.ellipse([cx - p(13), rcy - p(13), cx + p(13), rcy + p(13)], fill=ICON_BG)
-    d.line([(cx - p(5), rcy), (cx + p(5), rcy)], fill=(136,136,136), width=p(2))
-    d.line([(cx, rcy - p(5)), (cx, rcy + p(5))], fill=(136,136,136), width=p(2))
+    # Farbiger Icon-Kreis (roter Akzent)
+    d.ellipse([cx-p(12), rcy-p(12), cx+p(12), rcy+p(12)], fill=(250, 235, 235))
+    d.ellipse([cx-p(12), rcy-p(12), cx+p(12), rcy+p(12)], outline=RED, width=p(1))
 
-    # Label (fett)
-    d.text((BX + p(46), rcy - p(8)), lbl, fill=DARK, font=F_LABEL)
-    # Wert
-    d.text((BX + p(175), rcy - p(8)), val, fill=DARK, font=F_VAL)
+    # Verschiedene einfache Symbole
+    ic = ICONS[i]
+    if ic == "#":   # Angebotsnummer – Raster
+        for lx in [cx-p(4), cx+p(1)]:
+            d.line([(lx, rcy-p(6)),(lx, rcy+p(6))], fill=RED, width=p(1))
+        for ly in [rcy-p(2), rcy+p(3)]:
+            d.line([(cx-p(7), ly),(cx+p(7), ly)], fill=RED, width=p(1))
+    elif ic == "cal":  # Datum – Kalender
+        d.rectangle([cx-p(7),rcy-p(7),cx+p(7),rcy+p(6)], outline=RED, width=p(1))
+        d.line([(cx-p(7),rcy-p(3)),(cx+p(7),rcy-p(3))], fill=RED, width=p(1))
+        d.line([(cx-p(3),rcy-p(9)),(cx-p(3),rcy-p(6))], fill=RED, width=p(1))
+        d.line([(cx+p(3),rcy-p(9)),(cx+p(3),rcy-p(6))], fill=RED, width=p(1))
+    elif ic == "usr":  # Person
+        d.ellipse([cx-p(4),rcy-p(9),cx+p(4),rcy-p(1)], outline=RED, width=p(1))
+        d.arc([cx-p(8),rcy-p(2),cx+p(8),rcy+p(8)], start=0, end=180, fill=RED, width=p(1))
+    elif ic == "fldr":  # Ordner
+        d.rectangle([cx-p(7),rcy-p(4),cx+p(7),rcy+p(6)], outline=RED, width=p(1))
+        d.rectangle([cx-p(7),rcy-p(7),cx,rcy-p(4)], outline=RED, width=p(1))
+    elif ic == "clk":  # Uhr
+        d.ellipse([cx-p(8),rcy-p(8),cx+p(8),rcy+p(8)], outline=RED, width=p(1))
+        d.line([(cx,rcy),(cx+p(5),rcy-p(4))], fill=RED, width=p(1))
+        d.line([(cx,rcy),(cx,rcy-p(5))], fill=RED, width=p(1))
+    else:  # Tag/Version
+        d.rectangle([cx-p(6),rcy-p(6),cx+p(6),rcy+p(6)], outline=RED, width=p(1))
+        d.ellipse([cx+p(2),rcy-p(2),cx+p(6),rcy+p(2)], fill=RED)
 
-    # Trennlinie
-    if i < 6:
-        sy = row_top + ROW_H
-        d.line([(BX + p(12), sy), (BX + BW - p(12), sy)], fill=LINE_C, width=1)
+    # Label fett, Wert normal
+    d.text((BX+p(36), rcy-p(7)), lbl,  fill=DARK, font=F_LABEL)
+    d.text((BX+p(162), rcy-p(7)), val, fill=DARK, font=F_VAL)
 
-# 7. Fußzeile
-FY = fy(FOOTER_H)   # Oberkante Fußzeile in PIL
+# ── 7. Fusszeile ─────────────────────────────────────────────────────────────
+#    2 Spalten: Firma+Adresse+UID  |  Kontakt
+FY = fy(FOOTER_H)
 d.rectangle([0, FY, PW, PH], fill=FOOTER_C)
-d.line([(0, FY), (PW, FY)], fill=(204, 204, 204), width=1)
 
-# Vertikale Trenner
-d.line([(p(75), FY + p(12)), (p(75), PH - p(12))], fill=(187,187,187), width=1)
-S2X = int(PW * 0.51)
-d.line([(S2X, FY + p(12)), (S2X, PH - p(12))], fill=(187,187,187), width=1)
+# Obere rote Akzentlinie
+d.line([(0, FY),(PW, FY)], fill=RED, width=p(2))
 
-# Gebäude-Icon (vereinfacht)
-bx, by = p(22), FY + p(14)
-d.rectangle([bx, by, bx + p(30), by + p(40)], outline=(136,136,136), width=1)
-d.rectangle([bx + p(10), by, bx + p(20), by + p(15)], outline=(136,136,136), width=1)
+MID = PW // 2
+# Trennlinie Mitte
+d.line([(MID, FY+p(10)),(MID, PH-p(10))], fill=(200,200,200), width=1)
 
-# Firmentext links
-d.text((p(84), FY + p(14)), "Sielaff Austria GmbH", fill=DARK, font=F_FTR_B)
-d.text((p(84), FY + p(26)), "Weissenbachweg 7,", fill=MUTED, font=F_FTR)
-d.text((p(84), FY + p(37)), "AT-6067 Absam (Tirol)", fill=MUTED, font=F_FTR)
+# Linke Spalte: Firma
+CL = p(20)
+d.text((CL, FY+p(10)), "Sielaff Austria GmbH",    fill=DARK,  font=F_FTR_H)
+d.text((CL, FY+p(22)), "Weissenbachweg 7",         fill=MUTED, font=F_FTR)
+d.text((CL, FY+p(32)), "AT-6067 Absam (Tirol)",    fill=MUTED, font=F_FTR)
+d.text((CL, FY+p(44)), "UID: ATU-XXXXXXXX",        fill=MUTED, font=F_FTR)
 
-# Kontakt mitte
-d.text((S2X + p(12), FY + p(14)), "0676/6570301", fill=MUTED, font=F_FTR)
-d.text((S2X + p(12), FY + p(26)), "info@at.sielaff.com", fill=MUTED, font=F_FTR)
-d.text((S2X + p(12), FY + p(37)), "www.sielaff.at", fill=MUTED, font=F_FTR)
-
-# Slogan rechts
-slogan = "Kompetent. Klar. Verlässlich."
-bbox = d.textbbox((0, 0), slogan, font=F_SLOGAN)
-sw = bbox[2] - bbox[0]
-sx = PW - p(25) - sw
-d.text((sx, FY + p(20)), slogan, fill=DARK, font=F_SLOGAN)
-d.line([(sx, FY + p(34)), (PW - p(25), FY + p(34))], fill=RED, width=p(1))
+# Rechte Spalte: Kontakt
+CR = MID + p(20)
+d.text((CR, FY+p(10)), "Kontakt",                  fill=DARK,  font=F_FTR_H)
+d.text((CR, FY+p(22)), "Tel:   +43 676 6570301",   fill=MUTED, font=F_FTR)
+d.text((CR, FY+p(32)), "Mail:  info@at.sielaff.com",fill=MUTED, font=F_FTR)
+d.text((CR, FY+p(44)), "Web:   www.sielaff.at",    fill=MUTED, font=F_FTR)
 
 # ── Speichern ─────────────────────────────────────────────────────────────────
-import os
 out = os.path.join(os.path.expanduser("~"), "deckblatt_vorschau.png")
 img.save(out, dpi=(144, 144))
-print(f"\nVorschau gespeichert: {out}")
-print(f"  Groesse: {PW}x{PH}px  (entspricht A4 bei 144dpi)")
+print(f"Gespeichert: {out}")
