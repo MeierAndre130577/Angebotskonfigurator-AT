@@ -621,24 +621,27 @@ export default function Bibliothek() {
               {/* Preis veränderbar */}
               <div className="field" style={{ gridColumn: 'span 2' }}>
                 <label>Preis in Schnellerfassung veränderbar?</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
-                  <button
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, price_editable: !f.price_editable }))}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 8,
-                      border: 'none', borderRadius: 24, padding: '7px 16px 7px 8px',
-                      cursor: 'pointer', fontWeight: 700, fontSize: 13, transition: '.18s',
-                      background: form.price_editable ? 'var(--red)' : '#e0e0e0',
-                      color: form.price_editable ? 'white' : 'var(--muted)',
-                    }}>
-                    <span style={{
-                      width: 20, height: 20, borderRadius: '50%', background: 'white',
-                      display: 'inline-block', boxShadow: '0 1px 3px rgba(0,0,0,.2)',
-                      flexShrink: 0,
+                <div
+                  onClick={() => setForm(f => ({ ...f, price_editable: !f.price_editable }))}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 6, cursor: 'pointer', userSelect: 'none', width: 'fit-content' }}>
+                  {/* Toggle-Schiene */}
+                  <div style={{
+                    width: 44, height: 24, borderRadius: 12, flexShrink: 0, transition: '.2s',
+                    background: form.price_editable ? 'var(--red)' : '#ccc',
+                    position: 'relative',
+                  }}>
+                    {/* Knopf */}
+                    <div style={{
+                      position: 'absolute', top: 2,
+                      left: form.price_editable ? 22 : 2,
+                      width: 20, height: 20, borderRadius: '50%',
+                      background: 'white', boxShadow: '0 1px 4px rgba(0,0,0,.25)',
+                      transition: '.2s',
                     }} />
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: form.price_editable ? 'var(--red)' : 'var(--muted)' }}>
                     {form.price_editable ? '✏️ Ja – Preis ist anpassbar' : 'Nein – Preis ist fest'}
-                  </button>
+                  </span>
                 </div>
               </div>
 
