@@ -39,7 +39,9 @@ Bei Fragen stehen wir Ihnen gerne zur Verfügung.
 
 Mit freundlichen Grüßen
 {{anbieter}}`,
-  // SMTP
+  // Resend API
+  resend_api_key: '',
+  // SMTP (Fallback)
   smtp_host:      '',
   smtp_port:      587,
   smtp_user:      '',
@@ -548,12 +550,36 @@ export default function Einstellungen() {
         </Field>
       </div>
 
+      {/* ── Resend API ───────────────────────────────────────────────────────── */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="card-title">🚀 E-Mail Versand via Resend (empfohlen)</div>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
+          Resend ist ein kostenloser E-Mail-Dienst (3.000 E-Mails/Monat) und funktioniert zuverlässig
+          von Cloud-Servern. Konto erstellen unter <a href="https://resend.com" target="_blank"
+          rel="noopener noreferrer" style={{ color: 'var(--red)' }}>resend.com</a> →
+          API-Key unter <b>API Keys</b> generieren → unten eintragen.
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 16 }}>
+          ⚠ Damit die Absenderadresse stimmt, muss deine Domain in Resend verifiziert sein.
+          Zum Testen kannst du vorerst an deine eigene Resend-E-Mail-Adresse senden.
+        </p>
+        <Field label="Resend API-Key" hint="Beginnt mit re_... · Hat Vorrang vor SMTP">
+          <input value={settings.resend_api_key || ''} onChange={e => set('resend_api_key', e.target.value)}
+            placeholder="re_xxxxxxxxxxxxxxxxxxxx"
+            style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13,
+              fontFamily: 'var(--font-mono)' }} />
+        </Field>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+          Absenderadresse: wird aus dem Feld <b>Benutzername / E-Mail</b> im SMTP-Bereich unten übernommen.
+        </p>
+      </div>
+
       {/* ── SMTP Konfiguration ───────────────────────────────────────────────── */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-title">🔒 SMTP – E-Mail Versand</div>
+        <div className="card-title">🔒 SMTP – Fallback (direkt, oft von Cloud geblockt)</div>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
-          Zugangsdaten für den E-Mail-Versand vom Server (z.&nbsp;B. Gmail, Posteo, Office 365).
-          Die Daten werden verschlüsselt gespeichert und nie im Code hinterlegt.
+          Wird nur verwendet wenn kein Resend API-Key hinterlegt ist.
+          Absenderadresse und Name werden auch für Resend genutzt.
         </p>
 
         <div className="grid2">

@@ -704,33 +704,61 @@ async def email_send_endpoint(request: Request):
     msg['To']      = to_addr
     msg.attach(MIMEText(html, 'html', 'utf-8'))
 
+    # ── Resend API (bevorzugt, funktioniert auch auf Cloud-Servern) ──────────
+    resend_key = (s.get('resend_api_key', '') or '').strip()
+    if resend_key:
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                resp = await client.post(
+                    'https://api.resend.com/emails',
+                    headers={
+                        'Authorization': f'Bearer {resend_key}',
+                        'Content-Type':  'application/json',
+                    },
+                    json={
+                        'from':    f"{from_name} <{smtp_user}>",
+                        'to':      [to_addr],
+                        'subject': subject,
+                        'html':    html,
+                    }
+                )
+            if resp.status_code in (200, 201):
+                return {"ok": True}
+            detail = resp.json().get('message', resp.text)
+            raise HTTPException(status_code=502, detail=f"Resend-Fehler: {detail}")
+        except HTTPException:
+            raise
+        except Exception as ex:
+            print(f"[email/resend] Fehler: {ex}")
+            raise HTTPException(status_code=500, detail=f"Resend: {ex}")
+
+    # ── Fallback: raw SMTP ───────────────────────────────────────────────────
+    if not smtp_host or not smtp_user or not smtp_pass:
+        raise HTTPException(status_code=400,
+            detail="Weder Resend-API-Key noch SMTP konfiguriert. Bitte in Einstellungen hinterlegen.")
+
     try:
-        import socket as _socket
-        # IPv4 erzwingen – verhindert ENETUNREACH auf Cloud-Servern (Render, etc.)
+        import socket as _socket, ssl
         try:
             ipv4 = _socket.getaddrinfo(smtp_host, smtp_port, _socket.AF_INET)[0][4][0]
         except Exception:
-            ipv4 = smtp_host  # Fallback auf Hostname
+            ipv4 = smtp_host
 
         ctx = ssl.create_default_context()
-
         if smtp_port == 465:
-            # Direktes SSL (kein STARTTLS)
             with smtplib.SMTP_SSL(ipv4, smtp_port, context=ctx, timeout=20) as srv:
                 srv.login(smtp_user, smtp_pass)
                 srv.send_message(msg)
         else:
-            # STARTTLS (587 oder andere)
             with smtplib.SMTP(ipv4, smtp_port, timeout=20) as srv:
                 srv.ehlo()
                 srv.starttls(context=ctx)
                 srv.ehlo()
                 srv.login(smtp_user, smtp_pass)
                 srv.send_message(msg)
-
         return {"ok": True}
     except Exception as ex:
-        print(f"[email/send] Fehler: {ex}")
+        print(f"[email/send] SMTP-Fehler: {ex}")
         raise HTTPException(status_code=500,
             detail=f"E-Mail konnte nicht gesendet werden: {ex}")
 
