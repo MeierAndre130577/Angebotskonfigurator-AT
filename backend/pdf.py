@@ -365,23 +365,7 @@ def draw_cover(c: canvas.Canvas, data: dict):
         c.drawCentredString(LOGO_X + LOGO_SIZE/2, LOGO_Y + LOGO_SIZE/2 - 3, 'LOGO')
     c.restoreState()
 
-    # ── 6. ANGEBOT + Dekorlinie + Untertitel ─────────────────────────────────
-    TITLE_BASE = LOGO_Y - 55        # Baseline des Titels (55pt unter Logo-Unterkante)
-    c.setFillColor(C_DARK)
-    c.setFont('Times-Roman', 58)
-    c.drawString(MARGIN, TITLE_BASE, 'ANGEBOT')
-
-    LINE_Y = TITLE_BASE - 14
-    c.setStrokeColor(C_RED)
-    c.setLineWidth(2)
-    c.line(MARGIN, LINE_Y, MARGIN + 75, LINE_Y)
-
-    SUB_Y = LINE_Y - 18
-    c.setFont('Helvetica', 11)
-    c.setFillColor(C_MUTED)
-    c.drawString(MARGIN, SUB_Y, 'Maßgeschneiderte Lösung für Ihr Vorhaben')
-
-    # ── 7. Info-Box (vertikal zentriert, kein Rahmen) ─────────────────────────
+    # ── 7. Info-Box – Position zuerst berechnen (Basis für Titel-Zentrierung) ──
     BOX_X  = MARGIN
     BOX_W  = 310
     ROW_H  = 48
@@ -395,11 +379,30 @@ def draw_cover(c: canvas.Canvas, data: dict):
         ('tag',     'Version',        project.get('version',    '1.0')),
     ]
     BOX_H = ROW_H * len(info_rows) + 20
+    BOX_Y = FOOTER_H + 25              # fest verankert: 25pt über Fußzeile
+    BOX_TOP = BOX_Y + BOX_H            # Oberkante der Info-Box = 381pt
 
-    # Vertikal zentriert zwischen Untertitel-Ende und Fußzeile
-    CONTENT_TOP = SUB_Y - 20
-    CONTENT_BOT = FOOTER_H + 10
-    BOX_Y = (CONTENT_TOP + CONTENT_BOT) / 2 - BOX_H / 2   # Unterkante der Box
+    # ── 6. ANGEBOT + Dekorlinie + Untertitel – mittig zwischen Logo und Box ──
+    # Titelblock-Höhe: Oberkante ANGEBOT (+42pt) bis Unterkante Untertitel (-41pt) ≈ 83pt
+    TITLE_BLOCK_H = 83
+    LOGO_BOT = LOGO_Y                  # Unterkante Logo
+    # Mitte des freien Raums zwischen Logo-Unterkante und Box-Oberkante:
+    TITLE_MID  = (LOGO_BOT + BOX_TOP) / 2
+    TITLE_BASE = TITLE_MID - 1        # ANGEBOT-Baseline liegt nahe der Blockmitte
+
+    c.setFillColor(C_DARK)
+    c.setFont('Times-Roman', 58)
+    c.drawString(MARGIN, TITLE_BASE, 'ANGEBOT')
+
+    LINE_Y = TITLE_BASE - 14
+    c.setStrokeColor(C_RED)
+    c.setLineWidth(2)
+    c.line(MARGIN, LINE_Y, MARGIN + 75, LINE_Y)
+
+    SUB_Y = LINE_Y - 18
+    c.setFont('Helvetica', 11)
+    c.setFillColor(C_MUTED)
+    c.drawString(MARGIN, SUB_Y, 'Maßgeschneiderte Lösung für Ihr Vorhaben')
 
     ICON_CX = BOX_X + 18
     for i, (icon_kind, label, value) in enumerate(info_rows):
