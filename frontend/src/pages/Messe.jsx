@@ -28,6 +28,7 @@ export default function Messe() {
   const navigate                      = useNavigate()
   const [error, setError]             = useState('')
   const [allCustomers, setAllCustomers] = useState([])
+  const [customPrices, setCustomPrices] = useState({})  // option_id → angepasster Preis
 
   useEffect(() => {
     optionsApi.list().then(setAllOptions).catch(console.warn)
@@ -111,21 +112,24 @@ export default function Messe() {
         valid:         new Date(Date.now() + 28*864e5).toLocaleDateString('de-AT'),
       }
       // offer_items mit optional-Flag und korrekten Preisen
-      const offer_items = rawItems.map(o => ({
-        option_id:      o.id,
-        name:           o.name,
-        cluster:        o.cluster      || '',
-        short_text:     o.short_text   || '',
-        long_text:      o.long_text    || '',
-        original_price: o.price        || 0,
-        price:          optionalIds.has(o.id) ? 0 : (o.price || 0),
-        optional:       optionalIds.has(o.id),
-        recurring:      o.recurring    || false,
-        image_path:     o.image_path   || '',
-        display_type:   o.display_type || '',
-        documents:      o.documents    || [],
-        qty:            1,
-      }))
+      const offer_items = rawItems.map(o => {
+        const base = customPrices[o.id] !== undefined ? Number(customPrices[o.id]) : (o.price || 0)
+        return {
+          option_id:      o.id,
+          name:           o.name,
+          cluster:        o.cluster      || '',
+          short_text:     o.short_text   || '',
+          long_text:      o.long_text    || '',
+          original_price: base,
+          price:          optionalIds.has(o.id) ? 0 : base,
+          optional:       optionalIds.has(o.id),
+          recurring:      o.recurring    || false,
+          image_path:     o.image_path   || '',
+          display_type:   o.display_type || '',
+          documents:      o.documents    || [],
+          qty:            1,
+        }
+      })
       const res  = await fetch(`${BASE}/offers/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -145,7 +149,7 @@ export default function Messe() {
   function reset() {
     setStep(0); setContact({ company: '', contactName: '', email: '' })
     setSelectedIds(new Set()); setProjectName(''); setOfferNo('')
-    setDone(false); setError('')
+    setDone(false); setError(''); setCustomPrices({})
   }
 
   // ── Cluster-Gruppen ────────────────────────────────────────────────────────
@@ -167,8 +171,9 @@ export default function Messe() {
   }, {})
 
   const selected = visibleOptions.filter(o => selectedIds.has(o.id))
-  const oneTime  = selected.filter(o => !o.recurring && !optionalIds.has(o.id)).reduce((s, o) => s + (o.price || 0), 0)
-  const monthly  = selected.filter(o =>  o.recurring && !optionalIds.has(o.id)).reduce((s, o) => s + (o.price || 0), 0)
+  const effectivePrice = o => customPrices[o.id] !== undefined ? Number(customPrices[o.id]) : (o.price || 0)
+  const oneTime  = selected.filter(o => !o.recurring && !optionalIds.has(o.id)).reduce((s, o) => s + effectivePrice(o), 0)
+  const monthly  = selected.filter(o =>  o.recurring && !optionalIds.has(o.id)).reduce((s, o) => s + effectivePrice(o), 0)
 
   // Nach Generieren direkt zur PDF-Vorschau
   if (done && result?.offer_no) {
@@ -303,9 +308,18 @@ export default function Messe() {
                         }}>{sel ? '✓' : ''}</div>
                       </div>
                       {o.short_text && <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6, lineHeight: 1.4 }}>{o.short_text}</p>}
-                      <p style={{ marginTop: 8, fontWeight: 800, fontSize: 12, color: sel ? 'var(--red)' : 'var(--muted)' }}>
-                        {o.price === 0 ? 'inklusive' : o.recurring ? money(o.price) + ' / Mo.' : money(o.price)}
-                      </p>
+                      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <p style={{ margin: 0, fontWeight: 800, fontSize: 12, color: sel ? 'var(--red)' : 'var(--muted)' }}>
+                          {o.price === 0 ? 'inklusive' : o.recurring ? money(o.price) + ' / Mo.' : money(o.price)}
+                        </p>
+                        {o.price_editable && (
+                          <span title="Preis anpassbar in Schritt 3"
+                            style={{ fontSize: 10, background: '#fff3e0', color: '#e65100',
+                              borderRadius: 6, padding: '1px 5px', fontWeight: 700 }}>
+                            ✏️ anpassbar
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )
                 })}
@@ -335,9 +349,11 @@ export default function Messe() {
               <div className="stat-card"><div className="value">{money(monthly)}</div><div className="label">Monatlich</div></div>
             </div>
             {selected.map(o => {
-              const isOptional = optionalIds.has(o.id)
+              const isOptional  = optionalIds.has(o.id)
+              const hasCustom   = customPrices[o.id] !== undefined
+              const displayPrice = hasCustom ? Number(customPrices[o.id]) : (o.price || 0)
               return (
-                <div key={o.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+                <div key={o.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
                   <div className="between small">
                     <span>
                       <b>{o.name}</b>
@@ -350,15 +366,15 @@ export default function Messe() {
                         </span>
                       )}
                     </span>
-                    <div className="row" style={{ gap: 8 }}>
+                    <div className="row" style={{ gap: 8, alignItems: 'center' }}>
                       <b style={{ color: isOptional ? 'var(--muted)' : 'var(--red)',
                         textDecoration: isOptional ? 'line-through' : 'none' }}>
-                        {o.price === 0 ? 'inkl.' : o.recurring ? money(o.price)+'/Mo.' : money(o.price)}
+                        {displayPrice === 0 ? 'inkl.' : o.recurring ? money(displayPrice)+'/Mo.' : money(displayPrice)}
                       </b>
                       {/* Optional-Schalter */}
                       <button
                         onClick={() => toggleOptional(o.id)}
-                        title={isOptional ? 'Als pflicht markieren' : 'Als optional markieren'}
+                        title={isOptional ? 'Als Pflicht markieren' : 'Als optional markieren'}
                         style={{
                           border: `1px solid ${isOptional ? 'var(--red)' : 'var(--line)'}`,
                           background: isOptional ? 'var(--red-light)' : 'white',
@@ -370,6 +386,41 @@ export default function Messe() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Preis-Eingabefeld wenn price_editable */}
+                  {o.price_editable && !isOptional && (
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <label style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap', fontWeight: 700 }}>
+                        ✏️ Preis anpassen:
+                      </label>
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <input
+                          type="number"
+                          min="0"
+                          step="10"
+                          value={hasCustom ? customPrices[o.id] : (o.price || 0)}
+                          onChange={e => setCustomPrices(p => ({ ...p, [o.id]: e.target.value }))}
+                          style={{
+                            border: '1px solid var(--red)', borderRadius: 8,
+                            padding: '5px 36px 5px 10px', fontSize: 13, width: 120,
+                            fontWeight: 700, color: 'var(--red)',
+                          }}
+                        />
+                        <span style={{ position: 'absolute', right: 10, fontSize: 12,
+                          color: 'var(--muted)', pointerEvents: 'none' }}>€</span>
+                      </div>
+                      {hasCustom && customPrices[o.id] != o.price && (
+                        <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                          (Standardpreis: {money(o.price)})
+                        </span>
+                      )}
+                      {o.price_hint && (
+                        <span style={{ fontSize: 11, color: '#e65100', fontStyle: 'italic' }}>
+                          {o.price_hint}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}

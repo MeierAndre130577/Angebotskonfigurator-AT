@@ -17,7 +17,8 @@ function money(n) {
 const EMPTY = {
   name: '', cluster: 'Farmer Shop', display_type: 'Großes Bild + Beschreibung',
   short_text: '', long_text: '', price: 0, recurring: false,
-  image_path: '', sort_order: 0, documents: [], active: true
+  image_path: '', sort_order: 0, documents: [], active: true,
+  price_editable: false, price_hint: '',
 }
 
 async function uploadDocument(file) {
@@ -616,6 +617,43 @@ export default function Bibliothek() {
                   <option value="monthly">Monatlich</option>
                 </select>
               </div>
+
+              {/* Preis veränderbar */}
+              <div className="field" style={{ gridColumn: 'span 2' }}>
+                <label>Preis in Schnellerfassung veränderbar?</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, price_editable: !f.price_editable }))}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                      border: 'none', borderRadius: 24, padding: '7px 16px 7px 8px',
+                      cursor: 'pointer', fontWeight: 700, fontSize: 13, transition: '.18s',
+                      background: form.price_editable ? 'var(--red)' : '#e0e0e0',
+                      color: form.price_editable ? 'white' : 'var(--muted)',
+                    }}>
+                    <span style={{
+                      width: 20, height: 20, borderRadius: '50%', background: 'white',
+                      display: 'inline-block', boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+                      flexShrink: 0,
+                    }} />
+                    {form.price_editable ? '✏️ Ja – Preis ist anpassbar' : 'Nein – Preis ist fest'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Hinweis bei editierbarem Preis */}
+              {form.price_editable && (
+                <div className="field" style={{ gridColumn: 'span 2' }}>
+                  <label>Hinweistext (erscheint beim Preiseingabefeld)</label>
+                  <input
+                    value={form.price_hint || ''}
+                    onChange={e => setForm(f => ({ ...f, price_hint: e.target.value }))}
+                    placeholder="z. B. Preis abhängig von Standort und Ausstattung"
+                    style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }}
+                  />
+                </div>
+              )}
               <div className="field"><label>Darstellung</label>
                 <select value={form.display_type} onChange={e => setForm(f => ({ ...f, display_type: e.target.value }))}>
                   <option>Großes Bild + Beschreibung</option>
