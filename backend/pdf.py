@@ -236,7 +236,12 @@ def draw_leasing_section(story: list, leasing: dict, s: dict, S: dict, CW: float
     """Leasing-Finanzierungsseite mit Ratenberechnung."""
     kaufpreis = float(leasing.get('kaufpreis', 0) or 0)
     durations = leasing.get('durations') or [36, 48, 60]
-    factors   = s.get('leasing_factors') or {}
+    _default_factors = {
+        '36': {'10000': 3.2, '20000': 3.2, '30000': 3.2, '50000': 3.2, '999999': 3.2},
+        '48': {'10000': 2.41,'20000': 2.41,'30000': 2.41,'50000': 2.41,'999999': 2.41},
+        '60': {'10000': 2.0, '20000': 2.0, '30000': 2.0, '50000': 2.0, '999999': 2.0},
+    }
+    factors   = s.get('leasing_factors') or _default_factors
     proc_fee  = float(s.get('leasing_processing_fee', 100) or 100)
     vat_pct   = float(s.get('leasing_vat', 20) or 20)
     min_amt   = float(s.get('leasing_min_amount', 2000) or 2000)
@@ -256,14 +261,6 @@ def draw_leasing_section(story: list, leasing: dict, s: dict, S: dict, CW: float
 
     GRAY_BG = colors.HexColor('#F4F4F5')
     PINK_BG = colors.HexColor('#fff1f2')
-
-    # Kaufpreis
-    story.append(Paragraph(
-        f'Kaufpreis exkl. USt:&nbsp;&nbsp;<b>{money(kaufpreis)}</b>'
-        f'&nbsp;&nbsp;&nbsp;<font size="8" color="#71717a">mind. {money(min_amt)} exkl. USt</font>',
-        S['body']
-    ))
-    story.append(Spacer(1, 5 * mm))
 
     # Berechnungstabelle
     dur_list = [str(d) for d in durations]
@@ -820,16 +817,19 @@ def generate_design_pdf(data: dict) -> dict:
     story = []
 
     # Inhaltsverzeichnis – dynamisch je nach Leasing
-    _sn = 3
-    _toc = [('1', 'Angebotsübersicht'), ('2', 'Detailbeschreibungen')]
+    # Reihenfolge: Übersicht → [Leasing] → Preiszusammenfassung → Detailbeschreibungen → Anlagen → AGB
+    _sn = 2
+    _toc = [('1', 'Angebotsübersicht')]
     if leasing_on:
         _toc.append((str(_sn), 'Leasing-Finanzierung')); _sn += 1
     _toc.append((str(_sn), 'Preiszusammenfassung')); _sn += 1
+    _toc.append((str(_sn), 'Detailbeschreibungen')); _sn += 1
     _toc.append((str(_sn), 'Anlagen'));               _sn += 1
     _toc.append((str(_sn), 'Rechtliche Hinweise'))
     # Sektionsnummern merken
-    _sec_leasing = 3 if leasing_on else None
-    _sec_preis   = 4 if leasing_on else 3
+    _sec_leasing = 2 if leasing_on else None
+    _sec_preis   = 3 if leasing_on else 2
+    _sec_detail  = 4 if leasing_on else 3
     _sec_anlagen = 5 if leasing_on else 4
     _sec_agb     = 6 if leasing_on else 5
 
@@ -905,8 +905,32 @@ def generate_design_pdf(data: dict) -> dict:
     story.append(t)
     story.append(PageBreak())
 
+    # ── Leasing-Finanzierung (optional) ──────────────────────────────────────
+    if leasing_on:
+        section_title(story, f'{_sec_leasing}. Leasing-Finanzierung', S, CW)
+        draw_leasing_section(story, leasing, s, S, CW)
+        story.append(PageBreak())
+
+    # ── Preiszusammenfassung ──────────────────────────────────────────────────
+    section_title(story, f'{_sec_preis}. Preiszusammenfassung', S, CW)
+    preis_rows = [
+        [Paragraph('<b>Einmalige Kosten</b>', S['h3']), Paragraph(f'<b>{money(one_time)}</b>', S['price'])],
+        [Paragraph('<b>Monatliche Kosten</b>', S['h3']), Paragraph(f'<b>{money(monthly)}</b>',  S['price'])],
+    ]
+    t = Table(preis_rows, colWidths=[CW-40*mm, 40*mm])
+    t.setStyle(TableStyle([
+        ('LINEBELOW',(0,0),(-1,-1),0.5,LINE),
+        ('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8),
+        ('BACKGROUND',(0,0),(-1,0),colors.HexColor('#fff1f2')),
+        ('BACKGROUND',(0,1),(-1,1),colors.HexColor('#fff1f2')),
+    ]))
+    story.append(t)
+    story.append(Spacer(1,2*mm))
+    story.append(Paragraph('Alle Preise verstehen sich exkl. gesetzlicher MwSt.', S['muted']))
+    story.append(PageBreak())
+
     # ── Detailseiten ──────────────────────────────────────────────────────────
-    section_title(story, '2. Detailbeschreibungen', S, CW)
+    section_title(story, f'{_sec_detail}. Detailbeschreibungen', S, CW)
 
     for i, item in enumerate(offer, 1):
         display = (item.get('display_type') or 'Großes Bild + Beschreibung').strip()
@@ -1014,31 +1038,6 @@ def generate_design_pdf(data: dict) -> dict:
         except Exception:
             # Fallback falls KeepTogether den Block nicht verarbeiten kann
             story.extend(block)
-    story.append(PageBreak())
-
-    # ── Leasing-Finanzierung (optional) ──────────────────────────────────────
-    if leasing_on:
-        section_title(story, f'{_sec_leasing}. Leasing-Finanzierung', S, CW)
-        draw_leasing_section(story, leasing, s, S, CW)
-        story.append(PageBreak())
-
-    # ── Preiszusammenfassung ──────────────────────────────────────────────────
-    section_title(story, f'{_sec_preis}. Preiszusammenfassung', S, CW)
-    servicevertrag = 0  # wird über Optionsbibliothek abgewickelt
-    preis_rows = [
-        [Paragraph('<b>Einmalige Kosten</b>', S['h3']), Paragraph(f'<b>{money(one_time)}</b>', S['price'])],
-        [Paragraph('<b>Monatliche Kosten</b>', S['h3']), Paragraph(f'<b>{money(monthly)}</b>',  S['price'])],
-    ]
-    t = Table(preis_rows, colWidths=[CW-40*mm, 40*mm])
-    t.setStyle(TableStyle([
-        ('LINEBELOW',(0,0),(-1,-1),0.5,LINE),
-        ('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8),
-        ('BACKGROUND',(0,0),(-1,0),colors.HexColor('#fff1f2')),
-        ('BACKGROUND',(0,1),(-1,1),colors.HexColor('#fff1f2')),
-    ]))
-    story.append(t)
-    story.append(Spacer(1,2*mm))
-    story.append(Paragraph('Alle Preise verstehen sich exkl. gesetzlicher MwSt.', S['muted']))
     story.append(PageBreak())
 
     # ── Anlagen ───────────────────────────────────────────────────────────────

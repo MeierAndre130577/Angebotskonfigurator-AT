@@ -135,9 +135,8 @@ export default function Messe() {
           qty:            1,
         }
       })
-      const kp = leasingKaufpreis || oneTime
       const leasingPayload = leasingEnabled ? {
-        enabled: true, kaufpreis: kp, durations: LEASING_DURATIONS,
+        enabled: true, kaufpreis: oneTime, durations: LEASING_DURATIONS,
       } : { enabled: false }
 
       const res  = await fetch(`${BASE}/offers/generate`, {
@@ -188,21 +187,27 @@ export default function Messe() {
 
   // Leasing-Berechnung
   const LEASING_DURATIONS = [36, 48, 60]
+  const LEASING_DEFAULT_FACTORS = {
+    36: { '10000': 3.2,  '20000': 3.2,  '30000': 3.2,  '50000': 3.2,  '999999': 3.2  },
+    48: { '10000': 2.41, '20000': 2.41, '30000': 2.41, '50000': 2.41, '999999': 2.41 },
+    60: { '10000': 2.0,  '20000': 2.0,  '30000': 2.0,  '50000': 2.0,  '999999': 2.0  },
+  }
   function calcLeasing(kaufpreis) {
     const s     = leasingSettings || {}
-    const facs  = s.leasing_factors || {}
+    const facs  = (s.leasing_factors && Object.keys(s.leasing_factors).length > 0)
+                    ? s.leasing_factors : LEASING_DEFAULT_FACTORS
     const fee   = parseFloat(s.leasing_processing_fee || 100)
     const vat   = parseFloat(s.leasing_vat || 20) / 100
     const brks  = [10000, 20000, 30000, 50000, 999999]
     const brk   = (brks.find(b => kaufpreis <= b) || 999999).toString()
     return LEASING_DURATIONS.map(dur => {
-      const factor  = parseFloat((facs[dur] || {})[brk] || 0)
+      const factor  = parseFloat(((facs[dur] || facs[String(dur)]) || {})[brk] || 0)
       const monthly = Math.round(kaufpreis * factor / 100 * 100) / 100
       const legal   = Math.round((36 * monthly * (1 + vat) + fee * (1 + vat)) * 0.01 * 100) / 100
       return { dur, monthly, fee, legal }
     })
   }
-  const leasingRows = calcLeasing(leasingKaufpreis || oneTime)
+  const leasingRows = calcLeasing(oneTime)
 
   // Nach Generieren direkt zur PDF-Vorschau
   if (done && result?.offer_no) {
@@ -476,26 +481,6 @@ export default function Messe() {
 
             {leasingEnabled && (
               <div style={{ marginTop: 16 }}>
-                <div className="field">
-                  <label>Kaufpreis exkl. USt (€)</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <input
-                      type="number" min="0" step="100"
-                      value={leasingKaufpreis || Math.round(oneTime)}
-                      onChange={e => setLeasingKaufpreis(Number(e.target.value))}
-                      style={{ border: '1px solid var(--red)', borderRadius: 10,
-                        padding: '10px 14px', fontSize: 14, fontWeight: 700,
-                        color: 'var(--red)', width: 180 }}
-                    />
-                    {oneTime > 0 && (
-                      <button className="btn" style={{ fontSize: 11 }}
-                        onClick={() => setLeasingKaufpreis(Math.round(oneTime))}>
-                        = Angebotssumme ({money(oneTime)})
-                      </button>
-                    )}
-                  </div>
-                </div>
-
                 {/* Live-Vorschau Tabelle */}
                 <div style={{ overflowX: 'auto', marginTop: 12 }}>
                   <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%' }}>
