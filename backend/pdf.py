@@ -6,7 +6,7 @@ PDF-Generierung – Angebotskonfigurator Sielaff Austria v5
 - Anlagen aus Optionsdokumenten (dedupliziert)
 """
 
-import os, uuid, io, httpx
+import os, uuid, io, gc, httpx
 import downloads as _dl
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -261,6 +261,20 @@ def draw_leasing_section(story: list, leasing: dict, s: dict, S: dict, CW: float
 
     GRAY_BG = colors.HexColor('#F4F4F5')
     PINK_BG = colors.HexColor('#fff1f2')
+
+    # Intro-Text (optional, aus Einstellungen)
+    intro_text = (s.get('leasing_intro_text') or '').strip()
+    if intro_text:
+        story.append(Paragraph(intro_text, S['body']))
+        story.append(Spacer(1, 4 * mm))
+
+    # Kaufpreis
+    story.append(Paragraph(
+        f'Kaufpreis exkl. USt: <b>{money(kaufpreis)}</b>'
+        f'&nbsp;&nbsp;&nbsp;<font size="8" color="#71717a">Mindestbetrag {money(min_amt)} exkl. USt</font>',
+        S['body']
+    ))
+    story.append(Spacer(1, 4 * mm))
 
     # Berechnungstabelle
     dur_list = [str(d) for d in durations]
@@ -1184,6 +1198,10 @@ def generate_design_pdf(data: dict) -> dict:
             _pdf_bytes_final = _f.read()
     except Exception:
         _pdf_bytes_final = b''
+
+    # Speicher freigeben
+    del story
+    gc.collect()
 
     return {
         'ok':             True,

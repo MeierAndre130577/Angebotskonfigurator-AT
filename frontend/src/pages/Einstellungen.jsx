@@ -48,6 +48,7 @@ Mit freundlichen Grüßen
   leasing_processing_fee: 100,
   leasing_vat:            20,
   leasing_min_amount:     2000,
+  leasing_intro_text:     '',
   leasing_contact1_name:    '', leasing_contact1_address: '',
   leasing_contact1_phone:   '', leasing_contact1_email:   '',
   leasing_contact2_name:    '', leasing_contact2_address: '',
@@ -83,6 +84,23 @@ function NumberInput({ value, onChange, min = 0, max = 100, unit = 'mm' }) {
           padding: '9px 12px', fontSize: 14, fontFamily: 'var(--font-mono)' }}
       />
       <span style={{ fontSize: 13, color: 'var(--muted)' }}>{unit}</span>
+    </div>
+  )
+}
+
+function Section({ title, defaultOpen = true, action, children }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: open ? 14 : 0 }}>
+        <div onClick={() => setOpen(o => !o)}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', flex: 1 }}>
+          <div className="card-title" style={{ marginBottom: 0 }}>{title}</div>
+          <span style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>{open ? '▲' : '▼'}</span>
+        </div>
+        {action && <div onClick={e => e.stopPropagation()}>{action}</div>}
+      </div>
+      {open && children}
     </div>
   )
 }
@@ -266,8 +284,7 @@ export default function Einstellungen() {
       </div>
 
       {/* ── Deckblatt-Foto ──────────────────────────────────────────────────── */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-title">🖼️ Deckblatt-Foto</div>
+      <Section title="🖼️ Deckblatt-Foto" defaultOpen={false}>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
           Vollbild-Foto das auf dem Deckblatt erscheint. Datei hochladen, Drag & Drop oder Bild einfügen (Strg+V).
         </p>
@@ -315,11 +332,10 @@ export default function Einstellungen() {
             Foto entfernen
           </button>
         )}
-      </div>
+      </Section>
 
       {/* ── Logo ──────────────────────────────────────────────────────────── */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-title">🏷️ Logo (Deckblatt oben links)</div>
+      <Section title="🏷️ Logo (Deckblatt oben links)" defaultOpen={false}>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
           Ihr Firmenlogo für das Deckblatt. Datei hochladen, Drag & Drop oder Bild einfügen (Strg+V).
         </p>
@@ -366,11 +382,10 @@ export default function Einstellungen() {
             Logo entfernen
           </button>
         )}
-      </div>
+      </Section>
 
       {/* ── PDF Layout ─────────────────────────────────────────────────────── */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-title">📐 PDF-Layout</div>
+      <Section title="📐 PDF-Layout" defaultOpen={false}>
 
         {/* Visualisierung */}
         <div style={{
@@ -441,11 +456,10 @@ export default function Einstellungen() {
             </Field>
           </div>
         </div>
-      </div>
+      </Section>
 
       {/* ── Firmenangaben ───────────────────────────────────────────────────── */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-title">🏢 Firmenangaben</div>
+      <Section title="🏢 Firmenangaben">
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
           Diese Angaben erscheinen in Kopf- und Fußzeile sowie auf dem Deckblatt.
         </p>
@@ -472,11 +486,10 @@ export default function Einstellungen() {
               style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 14 }} />
           </Field>
         </div>
-      </div>
+      </Section>
 
       {/* ── AGB ─────────────────────────────────────────────────────────────── */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-title">📋 Rechtliche Hinweise / AGB</div>
+      <Section title="📋 Rechtliche Hinweise / AGB">
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
           Erscheint als Text auf der letzten Seite des Angebots.
         </p>
@@ -485,22 +498,19 @@ export default function Einstellungen() {
             style={{ minHeight: 120, border: '1px solid var(--line)', borderRadius: 10,
               padding: '10px 14px', fontSize: 13, lineHeight: 1.6 }} />
         </Field>
-      </div>
+      </Section>
 
       {/* ── Pflichtanlagen ───────────────────────────────────────────────────── */}
-      <div className="card">
-        <div className="between" style={{ marginBottom: 12 }}>
-          <div>
-            <div className="card-title" style={{ marginBottom: 2 }}>📎 Pflichtanlagen</div>
-            <p style={{ fontSize: 12, color: 'var(--muted)' }}>
-              Diese Dokumente werden <b>immer</b> beigefügt – bei jedem Angebot, unabhängig von den gewählten Optionen.
-            </p>
-          </div>
-          <button className="btn" style={{ padding: '7px 14px', fontSize: 12, flex: 'none' }}
+      <Section title="📎 Pflichtanlagen" defaultOpen={false}
+        action={
+          <button className="btn" style={{ padding: '7px 14px', fontSize: 12 }}
             onClick={() => docRef.current?.click()} disabled={uploadingDoc}>
             {uploadingDoc ? '⏳' : '📎 Dokument hinzufügen'}
           </button>
-        </div>
+        }>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+          Diese Dokumente werden <b>immer</b> beigefügt – bei jedem Angebot, unabhängig von den gewählten Optionen.
+        </p>
         <input ref={docRef} type="file" accept=".pdf,.doc,.docx"
           onChange={e => uploadMandatoryDoc(e.target.files[0])} style={{ display: 'none' }} />
 
@@ -545,11 +555,10 @@ export default function Einstellungen() {
             ))}
           </div>
         )}
-      </div>
+      </Section>
 
       {/* ── E-Mail Vorlage ───────────────────────────────────────────────────── */}
-      <div className="card" style={{ marginBottom: 16, marginTop: 16 }}>
-        <div className="card-title">✉️ E-Mail Vorlage</div>
+      <Section title="✉️ E-Mail Vorlage" defaultOpen={false}>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
           Verfügbare Platzhalter: <code>{'{{kunde}}'}</code> <code>{'{{ansprechpartner}}'}</code> <code>{'{{angebotsnummer}}'}</code> <code>{'{{projekt}}'}</code> <code>{'{{datum}}'}</code> <code>{'{{gueltigBis}}'}</code> <code>{'{{anbieter}}'}</code> <code>{'{{downloadLink}}'}</code>
         </p>
@@ -562,9 +571,8 @@ export default function Einstellungen() {
             style={{ minHeight: 180, border: '1px solid var(--line)', borderRadius: 10,
               padding: '10px 14px', fontSize: 12, lineHeight: 1.6, fontFamily: 'var(--font-mono)' }} />
         </Field>
-      </div>
+      </Section>
 
-      {/* ── Resend API ───────────────────────────────────────────────────────── */}
       {/* ── Leasing Stammdaten ──────────────────────────────────────────────── */}
       {(() => {
         const BRACKETS = [
@@ -583,8 +591,7 @@ export default function Einstellungen() {
           })
         }
         return (
-          <div className="card" style={{ marginBottom: 16 }}>
-            <div className="card-title">💶 Leasing – Stammdaten</div>
+          <Section title="💶 Leasing – Stammdaten">
             <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
               Leasingfaktorentabelle: Leasingentgelt in % der Anschaffungskosten exkl. USt pro Monat.
             </p>
@@ -639,6 +646,17 @@ export default function Einstellungen() {
               </Field>
             </div>
 
+            <Field label="Einleitungstext (wird oben auf der Leasing-PDF-Seite angezeigt)"
+              hint="Optional – z. B. Hinweis zur Finanzierungsmöglichkeit">
+              <textarea
+                value={settings.leasing_intro_text || ''}
+                onChange={e => set('leasing_intro_text', e.target.value)}
+                placeholder="z. B. Gerne bieten wir Ihnen die Möglichkeit zur Leasingfinanzierung über unseren Partner abcfinance GmbH."
+                style={{ minHeight: 80, border: '1px solid var(--line)', borderRadius: 10,
+                  padding: '10px 14px', fontSize: 13, lineHeight: 1.6 }}
+              />
+            </Field>
+
             <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--muted)', textTransform: 'uppercase',
               letterSpacing: '.05em', marginTop: 16, marginBottom: 10 }}>Ansprechpartner</div>
             {[1, 2].map(n => (
@@ -672,12 +690,11 @@ export default function Einstellungen() {
                 </div>
               </div>
             ))}
-          </div>
+          </Section>
         )
       })()}
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-title">🚀 E-Mail Versand via Resend (empfohlen)</div>
+      <Section title="🚀 E-Mail Versand via Resend (empfohlen)" defaultOpen={false}>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
           Resend ist ein kostenloser E-Mail-Dienst (3.000 E-Mails/Monat) und funktioniert zuverlässig
           von Cloud-Servern. Konto erstellen unter <a href="https://resend.com" target="_blank"
@@ -706,11 +723,10 @@ export default function Einstellungen() {
           <b>Domain verifizieren:</b> Resend → <b>Domains</b> → Domain hinzufügen (z.&nbsp;B. <code>at.sielaff.com</code>)
           → 3 DNS-Einträge beim Domain-Anbieter eintragen → fertig. Dauert ca. 5 Minuten.
         </div>
-      </div>
+      </Section>
 
       {/* ── SMTP Konfiguration ───────────────────────────────────────────────── */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-title">🔒 SMTP – Fallback (direkt, oft von Cloud geblockt)</div>
+      <Section title="🔒 SMTP – Fallback (direkt, oft von Cloud geblockt)" defaultOpen={false}>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
           Wird nur verwendet wenn kein Resend API-Key hinterlegt ist.
           Absenderadresse und Name werden auch für Resend genutzt.
@@ -748,7 +764,7 @@ export default function Einstellungen() {
             placeholder={settings.company || 'Sielaff Austria GmbH'}
             style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13, maxWidth: 340 }} />
         </Field>
-      </div>
+      </Section>
 
       <div style={{ marginTop: 8 }}>
         <button className="btn btn-red btn-lg" onClick={save} disabled={saving}>
