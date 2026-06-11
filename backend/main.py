@@ -277,6 +277,7 @@ async def generate_full_offer(data: dict):
         "project": project, "provider": provider,
         "offer": offer_items, "attachments": attachments,
         "legal_notice": "", "pages": [], "clusters": [],
+        "leasing": data.get("leasing") or {},
     })
 
     pdf_download_url = pdf_result.get("download_url", "")

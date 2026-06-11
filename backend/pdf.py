@@ -1,4 +1,4 @@
-"""
+﻿"""
 PDF-Generierung – Angebotskonfigurator Sielaff Austria v5
 - Deckblatt: komplett weißes Design
 - Kopfzeile: topMargin korrekt
@@ -228,6 +228,130 @@ def _draw_icon(c: canvas.Canvas, cx: float, cy: float, kind: str):
         path.close()
         c.drawPath(path, fill=0, stroke=1)
         c.circle(cx-3, cy, 1.5, fill=1, stroke=0)
+
+
+# ── Leasing-Seite ────────────────────────────────────────────────────────────
+
+def draw_leasing_section(story: list, leasing: dict, s: dict, S: dict, CW: float):
+    """Leasing-Finanzierungsseite mit Ratenberechnung."""
+    kaufpreis = float(leasing.get('kaufpreis', 0) or 0)
+    durations = leasing.get('durations') or [36, 48, 60]
+    factors   = s.get('leasing_factors') or {}
+    proc_fee  = float(s.get('leasing_processing_fee', 100) or 100)
+    vat_pct   = float(s.get('leasing_vat', 20) or 20)
+    min_amt   = float(s.get('leasing_min_amount', 2000) or 2000)
+    vat       = vat_pct / 100
+
+    # Preisklasse ermitteln
+    brackets = [10000, 20000, 30000, 50000, 999999]
+    bracket  = next((b for b in brackets if kaufpreis <= b), 999999)
+    b_key    = str(bracket)
+
+    def calc(dur):
+        dur_k   = str(dur)
+        factor  = float((factors.get(dur_k) or {}).get(b_key, 0) or 0)
+        monthly = round(kaufpreis * factor / 100, 2)
+        legal   = round((36 * monthly * (1 + vat) + proc_fee * (1 + vat)) * 0.01, 2)
+        return monthly, proc_fee, legal
+
+    GRAY_BG = colors.HexColor('#F4F4F5')
+    PINK_BG = colors.HexColor('#fff1f2')
+
+    # Kaufpreis
+    story.append(Paragraph(
+        f'Kaufpreis exkl. USt:&nbsp;&nbsp;<b>{money(kaufpreis)}</b>'
+        f'&nbsp;&nbsp;&nbsp;<font size="8" color="#71717a">mind. {money(min_amt)} exkl. USt</font>',
+        S['body']
+    ))
+    story.append(Spacer(1, 5 * mm))
+
+    # Berechnungstabelle
+    dur_list = [str(d) for d in durations]
+    n_dur    = len(dur_list)
+    label_w  = 75 * mm
+    col_w    = (CW - label_w) / n_dur
+
+    hdr = [Paragraph('', S['muted'])] + [
+        Paragraph(f'<b>{d} Monate</b>', S['h3']) for d in dur_list
+    ]
+    results = {d: calc(int(d)) for d in dur_list}
+
+    rows = [
+        hdr,
+        [Paragraph('<b>Leasingrate p.M. exkl. USt</b>', S['body'])] +
+        [Paragraph(f'<b>{money(results[d][0])}</b>', S['body']) for d in dur_list],
+        [Paragraph('Einmalige Bearbeitungsgebühr exkl. USt', S['body'])] +
+        [Paragraph(money(proc_fee), S['muted']) for d in dur_list],
+        [Paragraph('Gesetzl. Rechtsgeschäftsgebühr', S['body'])] +
+        [Paragraph(money(results[d][2]), S['muted']) for d in dur_list],
+    ]
+
+    t = Table(rows, colWidths=[label_w] + [col_w] * n_dur)
+    t.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, 0), GRAY_BG),
+        ('BACKGROUND',    (0, 1), (-1, 1), PINK_BG),
+        ('LINEBELOW',     (0, 0), (-1, -1), 0.5, LINE),
+        ('TOPPADDING',    (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
+        ('ALIGN',  (1, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 5 * mm))
+
+    # Hinweistexte
+    hints = [
+        'Leasingentgelt: Anschaffungskosten x Leasingfaktor / 100',
+        f'Einmaliges Bearbeitungsentgelt: {money(proc_fee)} exkl. {int(vat_pct)} % USt bei Vertragsbeginn',
+        'Gesetzliche Mietvertragsgebühr: 1 % von max. 36 Leasingentgelten inkl. USt + Nebengebühren',
+        'Kalkulation basiert auf dem 3-Monats-Euribor. Anpassung des Leasingentgeltes vierteljährlich.',
+    ]
+    for h in hints:
+        story.append(Paragraph(f'• {h}', S['muted']))
+        story.append(Spacer(1, 1 * mm))
+
+    # Ansprechpartner
+    contacts = []
+    for n in ['1', '2']:
+        name = (s.get(f'leasing_contact{n}_name') or '').strip()
+        if name:
+            contacts.append({
+                'name':    name,
+                'address': (s.get(f'leasing_contact{n}_address') or '').strip(),
+                'phone':   (s.get(f'leasing_contact{n}_phone') or '').strip(),
+                'email':   (s.get(f'leasing_contact{n}_email') or '').strip(),
+            })
+
+    if contacts:
+        story.append(Spacer(1, 6 * mm))
+        story.append(Paragraph(
+            'Ihre Ansprechpartner für Fragen und Abwicklung:',
+            S['body']
+        ))
+        story.append(Spacer(1, 3 * mm))
+        cells = []
+        for c in contacts:
+            lines = [Paragraph(f'<b>{c["name"]}</b>', S['body'])]
+            if c['address']: lines.append(Paragraph(c['address'], S['muted']))
+            if c['phone']:   lines.append(Paragraph(f'Tel: {c["phone"]}', S['muted']))
+            if c['email']:   lines.append(Paragraph(c['email'], S['muted']))
+            cells.append(lines)
+        while len(cells) < 2:
+            cells.append([Paragraph('', S['muted'])])
+        half = CW / 2
+        tc = Table([cells], colWidths=[half, half])
+        tc.setStyle(TableStyle([
+            ('VALIGN',        (0, 0), (-1, -1), 'TOP'),
+            ('BOX',           (0, 0), (0, 0),   0.5, LINE),
+            ('BOX',           (1, 0), (1, 0),   0.5, LINE),
+            ('TOPPADDING',    (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 10),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 10),
+        ]))
+        story.append(tc)
 
 
 # ── Deckblatt – Diagonaler Schnitt ───────────────────────────────────────────
@@ -616,6 +740,8 @@ def generate_design_pdf(data: dict) -> dict:
     offer       = data.get('offer')        or []
     attachments = data.get('attachments')  or []
     legal       = data.get('legal_notice') or ''
+    leasing     = data.get('leasing')      or {}
+    leasing_on  = bool(leasing.get('enabled', False))
 
     # Einstellungen aus DB laden
     s = _get_pdf_settings()
@@ -693,10 +819,22 @@ def generate_design_pdf(data: dict) -> dict:
     CW  = W - m_l - m_r
     story = []
 
-    # Inhaltsverzeichnis
+    # Inhaltsverzeichnis – dynamisch je nach Leasing
+    _sn = 3
+    _toc = [('1', 'Angebotsübersicht'), ('2', 'Detailbeschreibungen')]
+    if leasing_on:
+        _toc.append((str(_sn), 'Leasing-Finanzierung')); _sn += 1
+    _toc.append((str(_sn), 'Preiszusammenfassung')); _sn += 1
+    _toc.append((str(_sn), 'Anlagen'));               _sn += 1
+    _toc.append((str(_sn), 'Rechtliche Hinweise'))
+    # Sektionsnummern merken
+    _sec_leasing = 3 if leasing_on else None
+    _sec_preis   = 4 if leasing_on else 3
+    _sec_anlagen = 5 if leasing_on else 4
+    _sec_agb     = 6 if leasing_on else 5
+
     section_title(story, 'Inhaltsverzeichnis', S, CW)
-    for num, label in [('1','Angebotsübersicht'),('2','Detailbeschreibungen'),
-                       ('3','Preiszusammenfassung'),('4','Anlagen'),('5','Rechtliche Hinweise')]:
+    for num, label in _toc:
         t = Table([[Paragraph(f'{num}.', S['tocn']), Paragraph(label, S['toc'])]],
                   colWidths=[10*mm, CW-10*mm])
         t.setStyle(TableStyle([
@@ -878,8 +1016,14 @@ def generate_design_pdf(data: dict) -> dict:
             story.extend(block)
     story.append(PageBreak())
 
+    # ── Leasing-Finanzierung (optional) ──────────────────────────────────────
+    if leasing_on:
+        section_title(story, f'{_sec_leasing}. Leasing-Finanzierung', S, CW)
+        draw_leasing_section(story, leasing, s, S, CW)
+        story.append(PageBreak())
+
     # ── Preiszusammenfassung ──────────────────────────────────────────────────
-    section_title(story, '3. Preiszusammenfassung', S, CW)
+    section_title(story, f'{_sec_preis}. Preiszusammenfassung', S, CW)
     servicevertrag = 0  # wird über Optionsbibliothek abgewickelt
     preis_rows = [
         [Paragraph('<b>Einmalige Kosten</b>', S['h3']), Paragraph(f'<b>{money(one_time)}</b>', S['price'])],
@@ -898,7 +1042,7 @@ def generate_design_pdf(data: dict) -> dict:
     story.append(PageBreak())
 
     # ── Anlagen ───────────────────────────────────────────────────────────────
-    section_title(story, '4. Anlagen', S, CW)
+    section_title(story, f'{_sec_anlagen}. Anlagen', S, CW)
 
     # ZIP + Download-Link generieren
     download_url = None
@@ -976,7 +1120,7 @@ def generate_design_pdf(data: dict) -> dict:
     else:
         story.append(Paragraph('Keine Anlagen ausgewählt.', S['muted']))
     # ── AGB ───────────────────────────────────────────────────────────────────
-    section_title(story, '5. Rechtliche Hinweise', S, CW)
+    section_title(story, f'{_sec_agb}. Rechtliche Hinweise', S, CW)
     agb = legal or (
         'Die ausgewiesenen Preise sind Nettopreise und verstehen sich zuzüglich der gesetzlichen '
         'Mehrwertsteuer. Die Distribution entscheidet Sielaff Austria GmbH. Es gelten die '
@@ -1056,3 +1200,4 @@ def generate_design_pdf(data: dict) -> dict:
 def get_pdf_path(filename: str) -> str | None:
     path = os.path.join(EXPORT_DIR, filename)
     return path if os.path.exists(path) else None
+

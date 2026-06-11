@@ -29,12 +29,17 @@ export default function Messe() {
   const [error, setError]             = useState('')
   const [allCustomers, setAllCustomers] = useState([])
   const [customPrices, setCustomPrices] = useState({})  // option_id → angepasster Preis
+  const [leasingEnabled, setLeasingEnabled] = useState(false)
+  const [leasingKaufpreis, setLeasingKaufpreis] = useState(0)
+  const [leasingSettings, setLeasingSettings] = useState(null)
 
   useEffect(() => {
     optionsApi.list().then(setAllOptions).catch(console.warn)
     fetch((import.meta.env.VITE_API_URL || '') + '/api/templates')
       .then(r => r.json()).then(setTemplates).catch(console.warn)
     customersApi.list().then(setAllCustomers).catch(console.warn)
+    fetch((import.meta.env.VITE_API_URL || '') + '/api/settings')
+      .then(r => r.json()).then(setLeasingSettings).catch(console.warn)
   }, [])
 
   // Live-Suche in Kunden
@@ -130,10 +135,15 @@ export default function Messe() {
           qty:            1,
         }
       })
+      const kp = leasingKaufpreis || oneTime
+      const leasingPayload = leasingEnabled ? {
+        enabled: true, kaufpreis: kp, durations: LEASING_DURATIONS,
+      } : { enabled: false }
+
       const res  = await fetch(`${BASE}/offers/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project: proj, offer_items, provider: {}, attachments: [] })
+        body: JSON.stringify({ project: proj, offer_items, provider: {}, attachments: [], leasing: leasingPayload })
       })
       const data = await res.json()
       if (!data.ok) throw new Error('Generierung fehlgeschlagen')
@@ -174,6 +184,24 @@ export default function Messe() {
   const effectivePrice = o => customPrices[o.id] !== undefined ? Number(customPrices[o.id]) : (o.price || 0)
   const oneTime  = selected.filter(o => !o.recurring && !optionalIds.has(o.id)).reduce((s, o) => s + effectivePrice(o), 0)
   const monthly  = selected.filter(o =>  o.recurring && !optionalIds.has(o.id)).reduce((s, o) => s + effectivePrice(o), 0)
+
+  // Leasing-Berechnung
+  const LEASING_DURATIONS = [36, 48, 60]
+  function calcLeasing(kaufpreis) {
+    const s     = leasingSettings || {}
+    const facs  = s.leasing_factors || {}
+    const fee   = parseFloat(s.leasing_processing_fee || 100)
+    const vat   = parseFloat(s.leasing_vat || 20) / 100
+    const brks  = [10000, 20000, 30000, 50000, 999999]
+    const brk   = (brks.find(b => kaufpreis <= b) || 999999).toString()
+    return LEASING_DURATIONS.map(dur => {
+      const factor  = parseFloat((facs[dur] || {})[brk] || 0)
+      const monthly = Math.round(kaufpreis * factor / 100 * 100) / 100
+      const legal   = Math.round((36 * monthly * (1 + vat) + fee * (1 + vat)) * 0.01 * 100) / 100
+      return { dur, monthly, fee, legal }
+    })
+  }
+  const leasingRows = calcLeasing(leasingKaufpreis || oneTime)
 
   // Nach Generieren direkt zur PDF-Vorschau
   if (done && result?.offer_no) {
@@ -424,6 +452,87 @@ export default function Messe() {
                 </div>
               )
             })}
+          </div>
+
+          {/* ── Leasing ── */}
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', userSelect: 'none' }}
+              onClick={() => { setLeasingEnabled(v => !v); if (!leasingKaufpreis) setLeasingKaufpreis(Math.round(oneTime)) }}>
+              <div style={{
+                width: 44, height: 24, borderRadius: 12, flexShrink: 0, transition: '.2s',
+                background: leasingEnabled ? 'var(--red)' : '#ccc', position: 'relative',
+              }}>
+                <div style={{
+                  position: 'absolute', top: 2, left: leasingEnabled ? 22 : 2,
+                  width: 20, height: 20, borderRadius: '50%', background: 'white',
+                  boxShadow: '0 1px 4px rgba(0,0,0,.25)', transition: '.2s',
+                }} />
+              </div>
+              <span style={{ fontWeight: 700, fontSize: 14 }}>
+                💶 Leasing-Finanzierung anbieten
+              </span>
+            </div>
+
+            {leasingEnabled && (
+              <div style={{ marginTop: 16 }}>
+                <div className="field">
+                  <label>Kaufpreis exkl. USt (€)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <input
+                      type="number" min="0" step="100"
+                      value={leasingKaufpreis || Math.round(oneTime)}
+                      onChange={e => setLeasingKaufpreis(Number(e.target.value))}
+                      style={{ border: '1px solid var(--red)', borderRadius: 10,
+                        padding: '10px 14px', fontSize: 14, fontWeight: 700,
+                        color: 'var(--red)', width: 180 }}
+                    />
+                    {oneTime > 0 && (
+                      <button className="btn" style={{ fontSize: 11 }}
+                        onClick={() => setLeasingKaufpreis(Math.round(oneTime))}>
+                        = Angebotssumme ({money(oneTime)})
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Live-Vorschau Tabelle */}
+                <div style={{ overflowX: 'auto', marginTop: 12 }}>
+                  <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--bg)' }}>
+                        <th style={{ padding: '8px 12px', border: '1px solid var(--line)', textAlign: 'left' }}></th>
+                        {leasingRows.map(r => (
+                          <th key={r.dur} style={{ padding: '8px 14px', border: '1px solid var(--line)', textAlign: 'center', fontWeight: 700 }}>{r.dur} Monate</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ background: '#fff1f2' }}>
+                        <td style={{ padding: '8px 12px', border: '1px solid var(--line)', fontWeight: 700 }}>Leasingrate p.M. exkl. USt</td>
+                        {leasingRows.map(r => (
+                          <td key={r.dur} style={{ padding: '8px 14px', border: '1px solid var(--line)', textAlign: 'center', fontWeight: 800, color: 'var(--red)' }}>{money(r.monthly)}</td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '8px 12px', border: '1px solid var(--line)', color: 'var(--muted)' }}>Bearbeitungsgebühr exkl. USt</td>
+                        {leasingRows.map(r => (
+                          <td key={r.dur} style={{ padding: '8px 14px', border: '1px solid var(--line)', textAlign: 'center', color: 'var(--muted)' }}>{money(r.fee)}</td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '8px 12px', border: '1px solid var(--line)', color: 'var(--muted)' }}>Gesetzl. Rechtsgeschäftsgebühr</td>
+                        {leasingRows.map(r => (
+                          <td key={r.dur} style={{ padding: '8px 14px', border: '1px solid var(--line)', textAlign: 'center', color: 'var(--muted)' }}>{money(r.legal)}</td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>
+                  Vorschau · Faktoren aus Einstellungen · alle Preise exkl. USt
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="card">

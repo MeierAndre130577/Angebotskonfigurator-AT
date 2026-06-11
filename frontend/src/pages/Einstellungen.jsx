@@ -39,6 +39,19 @@ Bei Fragen stehen wir Ihnen gerne zur Verfügung.
 
 Mit freundlichen Grüßen
 {{anbieter}}`,
+  // Leasing
+  leasing_factors: {
+    '36': { '10000': 3.200, '20000': 3.200, '30000': 3.200, '50000': 3.200, '999999': 3.200 },
+    '48': { '10000': 2.410, '20000': 2.410, '30000': 2.410, '50000': 2.410, '999999': 2.410 },
+    '60': { '10000': 2.000, '20000': 2.000, '30000': 2.000, '50000': 2.000, '999999': 2.000 },
+  },
+  leasing_processing_fee: 100,
+  leasing_vat:            20,
+  leasing_min_amount:     2000,
+  leasing_contact1_name:    '', leasing_contact1_address: '',
+  leasing_contact1_phone:   '', leasing_contact1_email:   '',
+  leasing_contact2_name:    '', leasing_contact2_address: '',
+  leasing_contact2_phone:   '', leasing_contact2_email:   '',
   // Resend API
   resend_api_key: '',
   resend_from:    '',
@@ -552,6 +565,117 @@ export default function Einstellungen() {
       </div>
 
       {/* ── Resend API ───────────────────────────────────────────────────────── */}
+      {/* ── Leasing Stammdaten ──────────────────────────────────────────────── */}
+      {(() => {
+        const BRACKETS = [
+          { key: '10000', label: 'bis 10.000' },
+          { key: '20000', label: 'bis 20.000' },
+          { key: '30000', label: 'bis 30.000' },
+          { key: '50000', label: 'bis 50.000' },
+          { key: '999999', label: 'ab 50.000' },
+        ]
+        const DURATIONS = ['36', '48', '60']
+        const setFactor = (dur, brk, val) => {
+          const cur = settings.leasing_factors || {}
+          set('leasing_factors', {
+            ...cur,
+            [dur]: { ...(cur[dur] || {}), [brk]: parseFloat(val) || 0 }
+          })
+        }
+        return (
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div className="card-title">💶 Leasing – Stammdaten</div>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+              Leasingfaktorentabelle: Leasingentgelt in % der Anschaffungskosten exkl. USt pro Monat.
+            </p>
+
+            {/* Faktorentabelle */}
+            <div style={{ overflowX: 'auto', marginBottom: 20 }}>
+              <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%' }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg)' }}>
+                    <th style={{ padding: '8px 12px', border: '1px solid var(--line)', textAlign: 'left', fontWeight: 700 }}>Laufzeit</th>
+                    {BRACKETS.map(b => (
+                      <th key={b.key} style={{ padding: '8px 10px', border: '1px solid var(--line)', textAlign: 'center', fontWeight: 700, whiteSpace: 'nowrap', fontSize: 11 }}>{b.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {DURATIONS.map(dur => (
+                    <tr key={dur}>
+                      <td style={{ padding: '6px 12px', border: '1px solid var(--line)', fontWeight: 700 }}>{dur} Monate</td>
+                      {BRACKETS.map(b => (
+                        <td key={b.key} style={{ padding: '4px 6px', border: '1px solid var(--line)', textAlign: 'center' }}>
+                          <input
+                            type="number" step="0.001" min="0"
+                            value={(settings.leasing_factors?.[dur]?.[b.key]) ?? ''}
+                            onChange={e => setFactor(dur, b.key, e.target.value)}
+                            style={{ width: 72, textAlign: 'center', border: '1px solid var(--line)',
+                              borderRadius: 6, padding: '5px 6px', fontSize: 12 }}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="grid2">
+              <Field label="Einmaliges Bearbeitungsentgelt (€ exkl. USt)">
+                <input type="number" min="0" value={settings.leasing_processing_fee ?? 100}
+                  onChange={e => set('leasing_processing_fee', Number(e.target.value))}
+                  style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }} />
+              </Field>
+              <Field label="USt-Satz (%)" hint="Für Rechtsgeschäftsgebühr-Berechnung">
+                <input type="number" min="0" value={settings.leasing_vat ?? 20}
+                  onChange={e => set('leasing_vat', Number(e.target.value))}
+                  style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13, width: 100 }} />
+              </Field>
+              <Field label="Mindest-Kaufpreis (€ exkl. USt)">
+                <input type="number" min="0" value={settings.leasing_min_amount ?? 2000}
+                  onChange={e => set('leasing_min_amount', Number(e.target.value))}
+                  style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }} />
+              </Field>
+            </div>
+
+            <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--muted)', textTransform: 'uppercase',
+              letterSpacing: '.05em', marginTop: 16, marginBottom: 10 }}>Ansprechpartner</div>
+            {[1, 2].map(n => (
+              <div key={n} style={{ marginBottom: 12, padding: 12, background: 'var(--bg)', borderRadius: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', marginBottom: 8 }}>Kontakt {n}</div>
+                <div className="grid2">
+                  <Field label="Name">
+                    <input value={settings[`leasing_contact${n}_name`] || ''}
+                      onChange={e => set(`leasing_contact${n}_name`, e.target.value)}
+                      placeholder="z. B. Max Mustermann, MBA"
+                      style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }} />
+                  </Field>
+                  <Field label="Firma / Adresse">
+                    <input value={settings[`leasing_contact${n}_address`] || ''}
+                      onChange={e => set(`leasing_contact${n}_address`, e.target.value)}
+                      placeholder="Firma GmbH, A-6020 Innsbruck"
+                      style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }} />
+                  </Field>
+                  <Field label="Telefon">
+                    <input value={settings[`leasing_contact${n}_phone`] || ''}
+                      onChange={e => set(`leasing_contact${n}_phone`, e.target.value)}
+                      placeholder="+43 664 ..."
+                      style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }} />
+                  </Field>
+                  <Field label="E-Mail">
+                    <input value={settings[`leasing_contact${n}_email`] || ''}
+                      onChange={e => set(`leasing_contact${n}_email`, e.target.value)}
+                      placeholder="name@firma.at"
+                      style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13 }} />
+                  </Field>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
+
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-title">🚀 E-Mail Versand via Resend (empfohlen)</div>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
