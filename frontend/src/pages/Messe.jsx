@@ -146,6 +146,7 @@ export default function Messe() {
         body: JSON.stringify({ project: proj, offer_items, provider: {}, attachments: [], leasing: leasingPayload })
       })
       const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || `Server-Fehler ${res.status}`)
       if (!data.ok) throw new Error('Generierung fehlgeschlagen')
       setResult(data)
       setDone(true)

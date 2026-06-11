@@ -273,12 +273,17 @@ async def generate_full_offer(data: dict):
         provider = {**provider, "website": s["website"]}
 
     # 3. PDF generieren
-    pdf_result = pdf.generate_design_pdf({
-        "project": project, "provider": provider,
-        "offer": offer_items, "attachments": attachments,
-        "legal_notice": "", "pages": [], "clusters": [],
-        "leasing": data.get("leasing") or {},
-    })
+    import traceback as _tb
+    try:
+        pdf_result = pdf.generate_design_pdf({
+            "project": project, "provider": provider,
+            "offer": offer_items, "attachments": attachments,
+            "legal_notice": "", "pages": [], "clusters": [],
+            "leasing": data.get("leasing") or {},
+        })
+    except Exception as _exc:
+        _tb.print_exc()
+        raise HTTPException(status_code=500, detail=f"PDF-Fehler: {_exc}")
 
     pdf_download_url = pdf_result.get("download_url", "")
 
