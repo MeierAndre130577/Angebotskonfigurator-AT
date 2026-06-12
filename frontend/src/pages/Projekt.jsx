@@ -104,6 +104,9 @@ export default function Projekt() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {c.logo_url && (
+                      <img src={c.logo_url} alt="" style={{ height: 24, maxWidth: 60, objectFit: 'contain' }} />
+                    )}
                     <strong style={{ fontSize: 15 }}>{c.company}</strong>
                     {c.city && <span className="muted small">{c.zip ? `${c.zip} ` : ''}{c.city}</span>}
                   </div>

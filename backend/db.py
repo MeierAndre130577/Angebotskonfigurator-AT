@@ -92,6 +92,7 @@ else:
             "city":          'TEXT DEFAULT ""',
             "website":       'TEXT DEFAULT ""',
             "card_image_url":'TEXT DEFAULT ""',
+            "logo_url":      'TEXT DEFAULT ""',
         }
         for col, defn in new_cols.items():
             if col not in existing:
@@ -130,7 +131,7 @@ def get_customer_by_email(email: str):
     return dict(row) if row else None
 
 def upsert_customer(data: dict):
-    for f in ["position", "phone", "mobile", "street", "zip", "city", "website", "card_image_url"]:
+    for f in ["position", "phone", "mobile", "street", "zip", "city", "website", "card_image_url", "logo_url"]:
         data.setdefault(f, "")
     # Deduplizierung über E-Mail
     if not data.get("id") and data.get("email"):
@@ -144,15 +145,16 @@ def upsert_customer(data: dict):
     conn = _get_conn()
     conn.execute("""
         INSERT INTO customers (id, company, contact, email, billing, delivery,
-            position, phone, mobile, street, zip, city, website, card_image_url)
+            position, phone, mobile, street, zip, city, website, card_image_url, logo_url)
         VALUES (:id,:company,:contact,:email,:billing,:delivery,
-            :position,:phone,:mobile,:street,:zip,:city,:website,:card_image_url)
+            :position,:phone,:mobile,:street,:zip,:city,:website,:card_image_url,:logo_url)
         ON CONFLICT(id) DO UPDATE SET
             company=excluded.company, contact=excluded.contact,
             email=excluded.email, billing=excluded.billing, delivery=excluded.delivery,
             position=excluded.position, phone=excluded.phone, mobile=excluded.mobile,
             street=excluded.street, zip=excluded.zip, city=excluded.city,
-            website=excluded.website, card_image_url=excluded.card_image_url
+            website=excluded.website, card_image_url=excluded.card_image_url,
+            logo_url=excluded.logo_url
     """, data)
     conn.commit(); conn.close()
     return data

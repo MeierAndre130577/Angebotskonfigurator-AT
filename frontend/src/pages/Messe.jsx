@@ -17,6 +17,7 @@ export default function Messe() {
   const [scanning, setScanning]       = useState(false)
   const [cardImageFile, setCardImageFile] = useState(null)
   const [logoUrl, setLogoUrl]         = useState('')
+  const [logoFallback, setLogoFallback] = useState('')
   const [useLogo, setUseLogo]         = useState(false)
   const [suggestions, setSuggestions] = useState([])
   const [allOptions, setAllOptions]   = useState([])
@@ -55,16 +56,30 @@ export default function Messe() {
     setSuggestions([])
   }
 
+  const FREE_MAIL_DOMAINS = new Set([
+    'gmail.com','googlemail.com','outlook.com','hotmail.com','hotmail.de',
+    'live.com','live.de','msn.com','yahoo.com','yahoo.de','yahoo.at',
+    'gmx.de','gmx.at','gmx.net','gmx.ch','web.de','t-online.de',
+    'icloud.com','me.com','mac.com','aol.com','protonmail.com',
+    'pm.me','tutanota.com','mailbox.org',
+  ])
+
   function extractDomain(website) {
     if (!website) return ''
     return website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
+  }
+
+  function emailDomain(email) {
+    if (!email) return ''
+    const d = email.split('@')[1] || ''
+    return FREE_MAIL_DOMAINS.has(d.toLowerCase()) ? '' : d
   }
 
   async function scanCard(file) {
     if (!file) return
     setScanning(true)
     setCardImageFile(file)
-    setLogoUrl(''); setUseLogo(false)
+    setLogoUrl(''); setLogoFallback(''); setUseLogo(false); setError('')
     try {
       const fd = new FormData()
       fd.append('file', file)
@@ -84,9 +99,15 @@ export default function Messe() {
         city:        d.city        || p.city,
         website:     d.website     || p.website,
       }))
-      // Logo via Clearbit suchen
-      const domain = extractDomain(d.website || '')
-      if (domain) setLogoUrl(`https://logo.clearbit.com/${domain}`)
+      // Logo suchen – Website-Domain, sonst Firmen-E-Mail-Domain (keine Freemailer)
+      const domain = extractDomain(d.website || '') || emailDomain(d.email || '')
+      if (domain) {
+        setLogoUrl(`https://logo.clearbit.com/${domain}`)
+        setLogoFallback(`https://www.google.com/s2/favicons?domain=${domain}&sz=256`)
+      } else {
+        setLogoUrl('__no_domain__')
+        setLogoFallback('')
+      }
     } catch(e) {
       setError('Scan fehlgeschlagen: ' + e.message)
     } finally {
@@ -130,6 +151,7 @@ export default function Messe() {
           city:           contact.city,
           website:        contact.website,
           card_image_url: cardImageUrl,
+          logo_url: (logoUrl && !logoUrl.startsWith('__')) ? logoUrl : '',
         })
       } catch { /* nicht kritisch */ }
     }
@@ -228,7 +250,7 @@ export default function Messe() {
   function reset() {
     setStep(0); setContact({ company: '', contactName: '', email: '', position: '', phone: '', mobile: '', street: '', zip: '', city: '', website: '' })
     setCardImageFile(null)
-    setLogoUrl(''); setUseLogo(false)
+    setLogoUrl(''); setLogoFallback(''); setUseLogo(false)
     setSelectedIds(new Set()); setProjectName(''); setOfferNo('')
     setDone(false); setError(''); setCustomPrices({})
   }
@@ -384,13 +406,21 @@ export default function Messe() {
           </div>
 
           {/* Logo-Vorschau nach Scan */}
-          {logoUrl && (
+          {logoUrl === '__no_domain__' && (
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>
+              Kein Logo gefunden – keine Website oder E-Mail erkannt.
+            </div>
+          )}
+          {logoUrl && logoUrl !== '__no_domain__' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px',
               background: useLogo ? '#f0fdf4' : 'var(--bg)', borderRadius: 12,
-              border: `1px solid ${useLogo ? '#86efac' : 'var(--line)'}`, marginBottom: 8, transition: '.2s' }}>
+              border: `1px solid ${useLogo ? '#86efac' : 'var(--border)'}`, marginBottom: 8, transition: '.2s' }}>
               <img src={logoUrl} alt="Logo"
                 style={{ height: 44, maxWidth: 120, objectFit: 'contain', borderRadius: 4 }}
-                onError={() => setLogoUrl('')} />
+                onError={() => {
+                  if (logoFallback) { setLogoUrl(logoFallback); setLogoFallback('') }
+                  else setLogoUrl('__not_found__')
+                }} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 13 }}>Firmenlogo gefunden</div>
                 <div style={{ fontSize: 11, color: 'var(--muted)' }}>Soll dieses Logo im Angebot verwendet werden?</div>
@@ -406,6 +436,11 @@ export default function Messe() {
                   {useLogo ? 'Ja, verwenden' : 'Nein'}
                 </span>
               </div>
+            </div>
+          )}
+          {logoUrl === '__not_found__' && (
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>
+              Kein Logo in der Datenbank gefunden.
             </div>
           )}
 
