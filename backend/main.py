@@ -65,6 +65,36 @@ async def upload_image(file: UploadFile = File(...)):
 
     return {"url": f"{supabase_url}/storage/v1/object/public/images/options/{filename}"}
 
+@app.post("/api/upload/card-image")
+async def upload_card_image(file: UploadFile = File(...)):
+    """Visitenkartenbild speichern"""
+    supabase_url = os.environ.get("SUPABASE_URL")
+    service_key  = os.environ.get("SUPABASE_SERVICE_KEY")
+
+    ext      = (file.filename or "card.jpg").split(".")[-1].lower()
+    filename = f"{uuid.uuid4()}.{ext}"
+    content  = await file.read()
+
+    if not supabase_url or not service_key:
+        local_dir = os.path.join(os.path.dirname(__file__), "uploads", "cards")
+        os.makedirs(local_dir, exist_ok=True)
+        with open(os.path.join(local_dir, filename), "wb") as f:
+            f.write(content)
+        return {"url": f"/uploads/cards/{filename}"}
+
+    upload_url = f"{supabase_url}/storage/v1/object/images/cards/{filename}"
+    headers = {
+        "Authorization": f"Bearer {service_key}",
+        "Content-Type": file.content_type or "image/jpeg",
+    }
+    async with httpx.AsyncClient() as client:
+        res = await client.post(upload_url, content=content, headers=headers)
+
+    if res.status_code not in (200, 201):
+        return JSONResponse(status_code=500, content={"error": f"Upload fehlgeschlagen: {res.text}"})
+
+    return {"url": f"{supabase_url}/storage/v1/object/public/images/cards/{filename}"}
+
 # ── Kunden ────────────────────────────────────────────────────────────────────
 
 class CustomerIn(BaseModel):
@@ -74,6 +104,14 @@ class CustomerIn(BaseModel):
     email: Optional[str] = ""
     billing: Optional[str] = ""
     delivery: Optional[str] = ""
+    position: Optional[str] = ""
+    phone: Optional[str] = ""
+    mobile: Optional[str] = ""
+    street: Optional[str] = ""
+    zip: Optional[str] = ""
+    city: Optional[str] = ""
+    website: Optional[str] = ""
+    card_image_url: Optional[str] = ""
 
 @app.get("/api/customers")
 def list_customers():

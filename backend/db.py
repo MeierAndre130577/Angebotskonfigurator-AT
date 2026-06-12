@@ -80,6 +80,26 @@ else:
 
     _init_sqlite()
 
+    def _migrate_sqlite():
+        conn = _get_conn()
+        existing = [row[1] for row in conn.execute("PRAGMA table_info(customers)").fetchall()]
+        new_cols = {
+            "position":      'TEXT DEFAULT ""',
+            "phone":         'TEXT DEFAULT ""',
+            "mobile":        'TEXT DEFAULT ""',
+            "street":        'TEXT DEFAULT ""',
+            "zip":           'TEXT DEFAULT ""',
+            "city":          'TEXT DEFAULT ""',
+            "website":       'TEXT DEFAULT ""',
+            "card_image_url":'TEXT DEFAULT ""',
+        }
+        for col, defn in new_cols.items():
+            if col not in existing:
+                conn.execute(f"ALTER TABLE customers ADD COLUMN {col} {defn}")
+        conn.commit(); conn.close()
+
+    _migrate_sqlite()
+
 # ── Hilfsfunktionen ───────────────────────────────────────────────────────────
 
 def _new_id():
@@ -98,18 +118,41 @@ def get_customers():
     conn.close()
     return [dict(r) for r in rows]
 
+def get_customer_by_email(email: str):
+    if not email:
+        return None
+    if USE_SUPABASE:
+        rows = _sb.table("customers").select("*").eq("email", email).execute().data
+        return rows[0] if rows else None
+    conn = _get_conn()
+    row = conn.execute("SELECT * FROM customers WHERE email=?", (email,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
 def upsert_customer(data: dict):
+    for f in ["position", "phone", "mobile", "street", "zip", "city", "website", "card_image_url"]:
+        data.setdefault(f, "")
+    # Deduplizierung über E-Mail
+    if not data.get("id") and data.get("email"):
+        existing = get_customer_by_email(data["email"])
+        if existing:
+            data["id"] = existing["id"]
     if not data.get("id"):
         data["id"] = _new_id()
     if USE_SUPABASE:
         return _sb.table("customers").upsert(data).execute().data
     conn = _get_conn()
     conn.execute("""
-        INSERT INTO customers (id, company, contact, email, billing, delivery)
-        VALUES (:id,:company,:contact,:email,:billing,:delivery)
+        INSERT INTO customers (id, company, contact, email, billing, delivery,
+            position, phone, mobile, street, zip, city, website, card_image_url)
+        VALUES (:id,:company,:contact,:email,:billing,:delivery,
+            :position,:phone,:mobile,:street,:zip,:city,:website,:card_image_url)
         ON CONFLICT(id) DO UPDATE SET
             company=excluded.company, contact=excluded.contact,
-            email=excluded.email, billing=excluded.billing, delivery=excluded.delivery
+            email=excluded.email, billing=excluded.billing, delivery=excluded.delivery,
+            position=excluded.position, phone=excluded.phone, mobile=excluded.mobile,
+            street=excluded.street, zip=excluded.zip, city=excluded.city,
+            website=excluded.website, card_image_url=excluded.card_image_url
     """, data)
     conn.commit(); conn.close()
     return data

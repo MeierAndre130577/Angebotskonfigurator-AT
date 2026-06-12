@@ -13,7 +13,9 @@ function money(n) {
 export default function Messe() {
   const [step, setStep]               = useState(0)
   const [contact, setContact]         = useState({ company: '', contactName: '', email: '', position: '', phone: '', mobile: '', street: '', zip: '', city: '', website: '' })
+  const [saveCustomer, setSaveCustomer] = useState(true)
   const [scanning, setScanning]       = useState(false)
+  const [cardImageFile, setCardImageFile] = useState(null)
   const [logoUrl, setLogoUrl]         = useState('')
   const [useLogo, setUseLogo]         = useState(false)
   const [suggestions, setSuggestions] = useState([])
@@ -61,6 +63,7 @@ export default function Messe() {
   async function scanCard(file) {
     if (!file) return
     setScanning(true)
+    setCardImageFile(file)
     setLogoUrl(''); setUseLogo(false)
     try {
       const fd = new FormData()
@@ -99,10 +102,39 @@ export default function Messe() {
     })
   }
 
-  function validateStep0() {
-    if (!contact.company.trim()) { setError('Firma ist erforderlich'); return false }
-    if (!contact.email.trim() || !contact.email.includes('@')) { setError('Bitte gültige E-Mail angeben'); return false }
-    setError(''); return true
+  async function goToOptions() {
+    if (!contact.company.trim()) { setError('Firma ist erforderlich'); return }
+    if (!contact.email.trim() || !contact.email.includes('@')) { setError('Bitte gültige E-Mail angeben'); return }
+    setError('')
+
+    if (saveCustomer) {
+      let cardImageUrl = ''
+      if (cardImageFile) {
+        try {
+          const fd = new FormData()
+          fd.append('file', cardImageFile)
+          const r = await fetch(`${BASE}/upload/card-image`, { method: 'POST', body: fd })
+          if (r.ok) cardImageUrl = (await r.json()).url || ''
+        } catch { /* nicht kritisch */ }
+      }
+      try {
+        await customersApi.upsert({
+          company:        contact.company,
+          contact:        contact.contactName,
+          email:          contact.email,
+          position:       contact.position,
+          phone:          contact.phone,
+          mobile:         contact.mobile,
+          street:         contact.street,
+          zip:            contact.zip,
+          city:           contact.city,
+          website:        contact.website,
+          card_image_url: cardImageUrl,
+        })
+      } catch { /* nicht kritisch */ }
+    }
+
+    setStep(1)
   }
 
   function toggleOptional(id) {
@@ -195,6 +227,7 @@ export default function Messe() {
 
   function reset() {
     setStep(0); setContact({ company: '', contactName: '', email: '', position: '', phone: '', mobile: '', street: '', zip: '', city: '', website: '' })
+    setCardImageFile(null)
     setLogoUrl(''); setUseLogo(false)
     setSelectedIds(new Set()); setProjectName(''); setOfferNo('')
     setDone(false); setError(''); setCustomPrices({})
@@ -393,7 +426,24 @@ export default function Messe() {
 
           {error && <p style={{ color: 'var(--red)', fontSize: 13, marginBottom: 12 }}>⚠ {error}</p>}
 
-          <button className="btn btn-red btn-lg" onClick={() => { if (validateStep0()) setStep(1) }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+            <div onClick={() => setSaveCustomer(v => !v)} style={{
+              width: 40, height: 22, borderRadius: 11, cursor: 'pointer', flexShrink: 0,
+              background: saveCustomer ? 'var(--red)' : 'var(--border)',
+              transition: 'background .2s', position: 'relative',
+            }}>
+              <div style={{
+                position: 'absolute', top: 3, left: saveCustomer ? 21 : 3,
+                width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                transition: 'left .2s',
+              }} />
+            </div>
+            <span style={{ fontSize: 13, color: saveCustomer ? 'var(--text)' : 'var(--muted)' }}>
+              Kunden anlegen
+            </span>
+          </div>
+
+          <button className="btn btn-red btn-lg" onClick={goToOptions}>
             Weiter zu den Optionen →
           </button>
         </div>
