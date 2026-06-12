@@ -14,6 +14,8 @@ export default function Messe() {
   const [step, setStep]               = useState(0)
   const [contact, setContact]         = useState({ company: '', contactName: '', email: '', position: '', phone: '', mobile: '', street: '', zip: '', city: '', website: '' })
   const [scanning, setScanning]       = useState(false)
+  const [logoUrl, setLogoUrl]         = useState('')
+  const [useLogo, setUseLogo]         = useState(false)
   const [suggestions, setSuggestions] = useState([])
   const [allOptions, setAllOptions]   = useState([])
   const [selectedIds, setSelectedIds] = useState(new Set())
@@ -51,9 +53,15 @@ export default function Messe() {
     setSuggestions([])
   }
 
+  function extractDomain(website) {
+    if (!website) return ''
+    return website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
+  }
+
   async function scanCard(file) {
     if (!file) return
     setScanning(true)
+    setLogoUrl(''); setUseLogo(false)
     try {
       const fd = new FormData()
       fd.append('file', file)
@@ -73,6 +81,9 @@ export default function Messe() {
         city:        d.city        || p.city,
         website:     d.website     || p.website,
       }))
+      // Logo via Clearbit suchen
+      const domain = extractDomain(d.website || '')
+      if (domain) setLogoUrl(`https://logo.clearbit.com/${domain}`)
     } catch(e) {
       setError('Scan fehlgeschlagen: ' + e.message)
     } finally {
@@ -184,6 +195,7 @@ export default function Messe() {
 
   function reset() {
     setStep(0); setContact({ company: '', contactName: '', email: '', position: '', phone: '', mobile: '', street: '', zip: '', city: '', website: '' })
+    setLogoUrl(''); setUseLogo(false)
     setSelectedIds(new Set()); setProjectName(''); setOfferNo('')
     setDone(false); setError(''); setCustomPrices({})
   }
@@ -337,6 +349,32 @@ export default function Messe() {
               <input value={contact.mobile} onChange={e => setContact(p => ({ ...p, mobile: e.target.value }))} placeholder="+43 664 ..." />
             </div>
           </div>
+
+          {/* Logo-Vorschau nach Scan */}
+          {logoUrl && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px',
+              background: useLogo ? '#f0fdf4' : 'var(--bg)', borderRadius: 12,
+              border: `1px solid ${useLogo ? '#86efac' : 'var(--line)'}`, marginBottom: 8, transition: '.2s' }}>
+              <img src={logoUrl} alt="Logo"
+                style={{ height: 44, maxWidth: 120, objectFit: 'contain', borderRadius: 4 }}
+                onError={() => setLogoUrl('')} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>Firmenlogo gefunden</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)' }}>Soll dieses Logo im Angebot verwendet werden?</div>
+              </div>
+              <div onClick={() => setUseLogo(v => !v)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{ width: 40, height: 22, borderRadius: 11, background: useLogo ? '#22c55e' : '#ccc',
+                  position: 'relative', transition: '.2s', flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', top: 2, left: useLogo ? 20 : 2,
+                    width: 18, height: 18, borderRadius: '50%', background: 'white', transition: '.2s' }} />
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: useLogo ? '#16a34a' : 'var(--muted)' }}>
+                  {useLogo ? 'Ja, verwenden' : 'Nein'}
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="field">
             <label style={{ color: 'var(--muted)' }}>Straße / Adresse</label>
