@@ -12,7 +12,8 @@ function money(n) {
 
 export default function Messe() {
   const [step, setStep]               = useState(0)
-  const [contact, setContact]         = useState({ company: '', contactName: '', email: '' })
+  const [contact, setContact]         = useState({ company: '', contactName: '', email: '', position: '', phone: '', mobile: '', street: '', zip: '', city: '', website: '' })
+  const [scanning, setScanning]       = useState(false)
   const [suggestions, setSuggestions] = useState([])
   const [allOptions, setAllOptions]   = useState([])
   const [selectedIds, setSelectedIds] = useState(new Set())
@@ -46,8 +47,37 @@ export default function Messe() {
   }, [contact.company, allCustomers])
 
   function fillContact(c) {
-    setContact({ company: c.company, contactName: c.contact || '', email: c.email || '' })
+    setContact(p => ({ ...p, company: c.company, contactName: c.contact || '', email: c.email || '' }))
     setSuggestions([])
+  }
+
+  async function scanCard(file) {
+    if (!file) return
+    setScanning(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res  = await fetch(`${BASE}/scan/business-card`, { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Fehler beim Scannen')
+      const d = data.data || {}
+      setContact(p => ({
+        company:     d.company     || p.company,
+        contactName: d.contactName || p.contactName,
+        email:       d.email       || p.email,
+        position:    d.position    || p.position,
+        phone:       d.phone       || p.phone,
+        mobile:      d.mobile      || p.mobile,
+        street:      d.street      || p.street,
+        zip:         d.zip         || p.zip,
+        city:        d.city        || p.city,
+        website:     d.website     || p.website,
+      }))
+    } catch(e) {
+      setError('Scan fehlgeschlagen: ' + e.message)
+    } finally {
+      setScanning(false)
+    }
   }
 
   function toggleOption(id) {
@@ -153,7 +183,7 @@ export default function Messe() {
   }
 
   function reset() {
-    setStep(0); setContact({ company: '', contactName: '', email: '' })
+    setStep(0); setContact({ company: '', contactName: '', email: '', position: '', phone: '', mobile: '', street: '', zip: '', city: '', website: '' })
     setSelectedIds(new Set()); setProjectName(''); setOfferNo('')
     setDone(false); setError(''); setCustomPrices({})
   }
@@ -230,25 +260,42 @@ export default function Messe() {
       {/* ── Step 0: Kontakt ─────────────────────────────────────────────────── */}
       {step === 0 && (
         <div className="card">
-          <div className="card-title">Kontaktdaten</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div className="card-title" style={{ marginBottom: 0 }}>Kontaktdaten</div>
+            {/* Visitenkarten-Scan */}
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer',
+              background: scanning ? 'var(--bg)' : 'var(--dark)', color: scanning ? 'var(--muted)' : 'white',
+              border: 'none', borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 600,
+              userSelect: 'none', transition: '.15s',
+            }}>
+              <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+                onChange={e => scanCard(e.target.files[0])} disabled={scanning} />
+              {scanning ? '⏳ Scannt …' : '📷 Visitenkarte scannen'}
+            </label>
+          </div>
+
+          {/* Pflichtfelder */}
+          <div style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.06em',
+            color: 'var(--red)', marginBottom: 8 }}>Pflichtfelder</div>
 
           <div className="field" style={{ position: 'relative' }}>
-            <label>Firma *</label>
+            <label style={{ color: 'var(--red)', fontWeight: 700 }}>Firma *</label>
             <input
               value={contact.company}
               onChange={e => setContact(p => ({ ...p, company: e.target.value }))}
               placeholder="Firmenname …"
-              style={{ fontSize: 18, padding: '14px 16px' }}
+              style={{ fontSize: 18, padding: '14px 16px', borderColor: 'var(--red)' }}
               autoFocus
             />
             {suggestions.length > 0 && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 8px 24px rgba(0,0,0,.1)', zIndex: 10, marginTop: 4 }}>
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white',
+                border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 8px 24px rgba(0,0,0,.1)', zIndex: 10, marginTop: 4 }}>
                 {suggestions.map(c => (
                   <div key={c.id} onClick={() => fillContact(c)}
                     style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--line)', fontSize: 14 }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--red-light)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'white'}
-                  >
+                    onMouseLeave={e => e.currentTarget.style.background = 'white'}>
                     <b>{c.company}</b>
                     <div className="small muted">{c.contact} · {c.email}</div>
                   </div>
@@ -257,14 +304,53 @@ export default function Messe() {
             )}
           </div>
 
-          <div className="field">
-            <label>Ansprechpartner</label>
-            <input value={contact.contactName} onChange={e => setContact(p => ({ ...p, contactName: e.target.value }))} placeholder="Name" />
+          <div className="grid2">
+            <div className="field">
+              <label style={{ color: 'var(--red)', fontWeight: 700 }}>Ansprechpartner *</label>
+              <input value={contact.contactName} onChange={e => setContact(p => ({ ...p, contactName: e.target.value }))} placeholder="Vor- und Nachname" />
+            </div>
+            <div className="field">
+              <label style={{ color: 'var(--red)', fontWeight: 700 }}>E-Mail *</label>
+              <input type="email" value={contact.email} onChange={e => setContact(p => ({ ...p, email: e.target.value }))} placeholder="email@firma.com" />
+            </div>
+          </div>
+
+          {/* Optionale Felder */}
+          <div style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.06em',
+            color: 'var(--muted)', margin: '16px 0 8px' }}>Weitere Angaben (optional)</div>
+
+          <div className="grid2">
+            <div className="field">
+              <label style={{ color: 'var(--muted)' }}>Position / Titel</label>
+              <input value={contact.position} onChange={e => setContact(p => ({ ...p, position: e.target.value }))} placeholder="z.B. Geschäftsführer" />
+            </div>
+            <div className="field">
+              <label style={{ color: 'var(--muted)' }}>Website</label>
+              <input value={contact.website} onChange={e => setContact(p => ({ ...p, website: e.target.value }))} placeholder="www.firma.at" />
+            </div>
+            <div className="field">
+              <label style={{ color: 'var(--muted)' }}>Telefon</label>
+              <input value={contact.phone} onChange={e => setContact(p => ({ ...p, phone: e.target.value }))} placeholder="+43 1 234 5678" />
+            </div>
+            <div className="field">
+              <label style={{ color: 'var(--muted)' }}>Mobil</label>
+              <input value={contact.mobile} onChange={e => setContact(p => ({ ...p, mobile: e.target.value }))} placeholder="+43 664 ..." />
+            </div>
           </div>
 
           <div className="field">
-            <label>E-Mail *</label>
-            <input type="email" value={contact.email} onChange={e => setContact(p => ({ ...p, email: e.target.value }))} placeholder="email@firma.com" />
+            <label style={{ color: 'var(--muted)' }}>Straße / Adresse</label>
+            <input value={contact.street} onChange={e => setContact(p => ({ ...p, street: e.target.value }))} placeholder="Musterstraße 1" />
+          </div>
+          <div className="grid2">
+            <div className="field">
+              <label style={{ color: 'var(--muted)' }}>PLZ</label>
+              <input value={contact.zip} onChange={e => setContact(p => ({ ...p, zip: e.target.value }))} placeholder="1010" />
+            </div>
+            <div className="field">
+              <label style={{ color: 'var(--muted)' }}>Ort</label>
+              <input value={contact.city} onChange={e => setContact(p => ({ ...p, city: e.target.value }))} placeholder="Wien" />
+            </div>
           </div>
 
           {error && <p style={{ color: 'var(--red)', fontSize: 13, marginBottom: 12 }}>⚠ {error}</p>}

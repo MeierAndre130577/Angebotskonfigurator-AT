@@ -441,6 +441,61 @@ Return ONLY valid JSON array, no markdown, no explanation.
 
     return {"ok": True, "items": merged}
 
+@app.post("/api/scan/business-card")
+async def scan_business_card(file: UploadFile = File(...)):
+    """Visitenkarte fotografieren und Daten via Claude Vision extrahieren"""
+    import base64, json as _json
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY nicht konfiguriert")
+
+    img_bytes = await file.read()
+    img_b64   = base64.standard_b64encode(img_bytes).decode()
+    mime      = file.content_type or "image/jpeg"
+
+    prompt = """Extrahiere alle Kontaktdaten von dieser Visitenkarte.
+Antworte NUR mit einem JSON-Objekt, kein Markdown, keine Erklärung.
+Felder (alle optional, leerer String wenn nicht vorhanden):
+{
+  "company": "",
+  "contactName": "",
+  "position": "",
+  "email": "",
+  "phone": "",
+  "mobile": "",
+  "street": "",
+  "zip": "",
+  "city": "",
+  "website": ""
+}"""
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        res = await client.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+            json={
+                "model": "claude-haiku-4-5-20251001",
+                "max_tokens": 500,
+                "messages": [{"role": "user", "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": mime, "data": img_b64}},
+                    {"type": "text", "text": prompt}
+                ]}]
+            }
+        )
+
+    if res.status_code != 200:
+        raise HTTPException(status_code=500, detail=f"Claude API Fehler: {res.text}")
+
+    text = res.json()["content"][0]["text"].strip()
+    import re
+    m = re.search(r'\{.*\}', text, re.DOTALL)
+    if not m:
+        raise HTTPException(status_code=500, detail="Keine Daten erkannt")
+
+    return {"ok": True, "data": _json.loads(m.group())}
+
+
 @app.post("/api/upload/document")
 async def upload_document(file: UploadFile = File(...)):
     """Dokument (PDF etc.) zu Supabase Storage hochladen"""
