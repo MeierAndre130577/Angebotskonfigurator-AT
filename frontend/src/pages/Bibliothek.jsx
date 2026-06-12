@@ -17,7 +17,7 @@ function money(n) {
 const EMPTY = {
   name: '', cluster: 'Farmer Shop', display_type: 'Großes Bild + Beschreibung',
   short_text: '', long_text: '', price: 0, recurring: false,
-  image_path: '', sort_order: 0, documents: [], active: true,
+  image_path: '', sort_order: 0, documents: [], active: false,
   price_editable: false, price_hint: '',
 }
 
