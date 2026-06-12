@@ -1,11 +1,13 @@
 [
   {
-    "date": "12.06.2026",
+    "date": "12.06.2026 – 14:06",
     "title": "Kundenverwaltung & Visitenkarten-Scan",
     "changes": [
       "Neue Kundendaten-Seite: Alle Kontakte mit Suche, Bearbeiten und Löschen",
       "Visitenkarte fotografieren: Kamera öffnen, Daten werden automatisch erkannt und eingetragen",
-      "Firmenlogo wird automatisch gesucht (über Website oder E-Mail-Domain) und beim Kunden gespeichert",
+      "Firmenlogo wird automatisch gesucht – über die Website auf der Karte oder die E-Mail-Adresse der Firma",
+      "Bekannte Gratis-Mailanbieter (GMX, Gmail, usw.) werden dabei ausgeschlossen",
+      "Logo und Visitenkartenfoto werden beim Kunden gespeichert",
       "Toggle 'Kunden anlegen': Du entscheidest beim Weitergehen ob der Kontakt gespeichert wird",
       "Neue Kontaktfelder: Position, Telefon, Mobil, Website, Adresse"
     ]
