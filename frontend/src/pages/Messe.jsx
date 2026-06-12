@@ -15,8 +15,6 @@ export default function Messe() {
   const [contact, setContact]         = useState({ company: '', contactName: '', email: '' })
   const [suggestions, setSuggestions] = useState([])
   const [allOptions, setAllOptions]   = useState([])
-  const [templates, setTemplates]     = useState([])
-  const [activeTemplate, setActiveTemplate] = useState(null)  // null = alle aktiven
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [projectName, setProjectName]   = useState('')
   const [optionalIds, setOptionalIds]   = useState(new Set())  // Optionen die als optional markiert sind
@@ -35,8 +33,6 @@ export default function Messe() {
 
   useEffect(() => {
     optionsApi.list().then(setAllOptions).catch(console.warn)
-    fetch((import.meta.env.VITE_API_URL || '') + '/api/templates')
-      .then(r => r.json()).then(setTemplates).catch(console.warn)
     customersApi.list().then(setAllCustomers).catch(console.warn)
     fetch((import.meta.env.VITE_API_URL || '') + '/api/settings')
       .then(r => r.json()).then(setLeasingSettings).catch(console.warn)
@@ -163,15 +159,7 @@ export default function Messe() {
   }
 
   // ── Cluster-Gruppen ────────────────────────────────────────────────────────
-  // Nur aktive Optionen, gefiltert nach Vorlage
-  const visibleOptions = allOptions.filter(o => {
-    if (o.active === false) return false
-    if (activeTemplate) {
-      const ids = (activeTemplate.option_ids || []).map(String)
-      return ids.includes(String(o.id))
-    }
-    return true
-  })
+  const visibleOptions = allOptions.filter(o => o.active !== false)
 
   const byCluster = visibleOptions.reduce((acc, o) => {
     const cl = o.cluster || 'Sonstiges'
@@ -294,30 +282,6 @@ export default function Messe() {
             <p className="muted small">{selectedIds.size} Option(en) gewählt für <b>{contact.company}</b></p>
             <button className="btn" onClick={() => setStep(0)}>← zurück</button>
           </div>
-
-          {/* Vorlagen-Auswahl */}
-          {templates.length > 0 && (
-            <div className="row" style={{ marginBottom: 16, gap: 8, flexWrap: 'wrap' }}>
-              <button
-                className="btn"
-                style={{ fontSize: 12, background: !activeTemplate ? 'var(--dark)' : 'white',
-                  color: !activeTemplate ? 'white' : 'var(--muted)' }}
-                onClick={() => setActiveTemplate(null)}>
-                Alle
-              </button>
-              {templates.map(tpl => (
-                <button key={tpl.id}
-                  className="btn"
-                  style={{ fontSize: 12,
-                    background: activeTemplate?.id === tpl.id ? 'var(--red)' : 'white',
-                    color: activeTemplate?.id === tpl.id ? 'white' : 'var(--dark)',
-                    border: `1px solid ${activeTemplate?.id === tpl.id ? 'var(--red)' : 'var(--line)'}` }}
-                  onClick={() => setActiveTemplate(activeTemplate?.id === tpl.id ? null : tpl)}>
-                  📋 {tpl.name}
-                </button>
-              ))}
-            </div>
-          )}
 
           {Object.entries(byCluster).map(([cluster, items]) => (
             <div key={cluster} style={{ marginBottom: 24 }}>
