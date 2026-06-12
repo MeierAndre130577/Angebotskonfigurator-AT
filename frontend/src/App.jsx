@@ -8,8 +8,6 @@ import Vorschau      from './pages/Vorschau'
 import Angebote      from './pages/Angebote'
 import Einstellungen from './pages/Einstellungen'
 
-const VERSION = 'v0.4.1'
-const BUILD_DATE = '2026-06-07'
 
 const NAV = [
   { group: 'Messe', items: [
@@ -28,8 +26,14 @@ const NAV = [
 ]
 
 export default function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen]     = useState(false)
+  const [changelog, setChangelog]         = useState([])
+  const [changelogOpen, setChangelogOpen] = useState(false)
   const location = useLocation()
+
+  useEffect(() => {
+    fetch('/changelog.json').then(r => r.json()).then(setChangelog).catch(() => {})
+  }, [])
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
   useEffect(() => { setSidebarOpen(false) }, [location.pathname])
@@ -74,18 +78,46 @@ export default function App() {
               ))}
             </div>
           ))}
-          {/* Versionsnummer */}
-          <div style={{
-            marginTop: 'auto', padding: '12px 16px',
-            borderTop: '1px solid var(--line)',
-          }}>
-            <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
-              {VERSION}
+          {/* Changelog */}
+          {changelog.length > 0 && (
+            <div style={{ marginTop: 'auto', borderTop: '1px solid var(--line)' }}>
+              <div
+                onClick={() => setChangelogOpen(o => !o)}
+                style={{ padding: '10px 16px', cursor: 'pointer', userSelect: 'none' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+                    {changelog[0].date}
+                  </div>
+                  <span style={{ fontSize: 10, color: 'var(--muted)' }}>{changelogOpen ? '▲' : '▼'}</span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text)', marginTop: 2, fontWeight: 600 }}>
+                  {changelog[0].title}
+                </div>
+              </div>
+
+              {changelogOpen && (
+                <div style={{
+                  maxHeight: 320, overflowY: 'auto',
+                  borderTop: '1px solid var(--line)',
+                  padding: '8px 0',
+                }}>
+                  {changelog.map((entry, i) => (
+                    <div key={i} style={{ padding: '8px 16px', borderBottom: i < changelog.length - 1 ? '1px solid var(--line)' : 'none' }}>
+                      <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{entry.date}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, margin: '2px 0 6px', color: 'var(--text)' }}>{entry.title}</div>
+                      {entry.changes.map((c, j) => (
+                        <div key={j} style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.5, paddingLeft: 8, position: 'relative' }}>
+                          <span style={{ position: 'absolute', left: 0 }}>·</span>
+                          {c}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div style={{ fontSize: 10, color: 'var(--line)', marginTop: 2 }}>
-              {BUILD_DATE}
-            </div>
-          </div>
+          )}
         </aside>
       )}
 

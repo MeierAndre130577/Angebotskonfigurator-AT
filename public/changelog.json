@@ -1,0 +1,32 @@
+[
+  {
+    "date": "12.06.2026",
+    "title": "Kundenverwaltung & Visitenkarten-Scan",
+    "changes": [
+      "Neue Kundendaten-Seite: Alle Kontakte mit Suche, Bearbeiten und Löschen",
+      "Visitenkarte fotografieren: Kamera öffnen, Daten werden automatisch erkannt und eingetragen",
+      "Firmenlogo wird automatisch gesucht (über Website oder E-Mail-Domain) und beim Kunden gespeichert",
+      "Toggle 'Kunden anlegen': Du entscheidest beim Weitergehen ob der Kontakt gespeichert wird",
+      "Neue Kontaktfelder: Position, Telefon, Mobil, Website, Adresse"
+    ]
+  },
+  {
+    "date": "12.06.2026",
+    "title": "Optionsbibliothek & Vorlagen",
+    "changes": [
+      "Neue Optionen sind jetzt automatisch deaktiviert – du aktivierst bewusst was ins Angebot soll",
+      "Vorlagen speichern den aktuellen Ein-/Aus-Zustand aller Optionen – kein Ankreuzen mehr nötig"
+    ]
+  },
+  {
+    "date": "11.06.2026",
+    "title": "Leasing-Finanzierung",
+    "changes": [
+      "Leasing-Berechnung direkt im Angebot: Monatsrate wird automatisch aus dem Kaufpreis errechnet",
+      "Leasing-Seite im PDF mit Laufzeiten, Monatsraten und rechtlichem Hinweis",
+      "Einstellungen für Leasing-Faktoren und Einführungstext im PDF",
+      "Einstellungen sind jetzt aufklappbar – übersichtlicher bei vielen Bereichen",
+      "Stabilität: Fehlermeldungen bei PDF-Erstellung sind jetzt verständlicher"
+    ]
+  }
+]
