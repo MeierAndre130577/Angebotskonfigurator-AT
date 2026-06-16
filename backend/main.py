@@ -144,6 +144,7 @@ class OptionIn(BaseModel):
     active: Optional[bool] = True
     price_editable: Optional[bool] = False
     price_hint: Optional[str] = ""
+    discountable: Optional[bool] = False
 
 @app.get("/api/options")
 def list_options():

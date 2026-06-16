@@ -18,7 +18,7 @@ const EMPTY = {
   name: '', cluster: 'Farmer Shop', display_type: 'Großes Bild + Beschreibung',
   short_text: '', long_text: '', price: 0, recurring: false,
   image_path: '', sort_order: 0, documents: [], active: false,
-  price_editable: false, price_hint: '',
+  price_editable: false, price_hint: '', discountable: false,
 }
 
 async function uploadDocument(file) {
@@ -618,6 +618,29 @@ export default function Bibliothek() {
                   </div>
                   <span style={{ fontSize: 13, fontWeight: 600, color: form.price_editable ? 'var(--red)' : 'var(--muted)' }}>
                     {form.price_editable ? '✏️ Ja – Preis ist anpassbar' : 'Nein – Preis ist fest'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Rabattfähig */}
+              <div className="field" style={{ gridColumn: 'span 2' }}>
+                <label>Rabattfähig?</label>
+                <div
+                  onClick={() => setForm(f => ({ ...f, discountable: !f.discountable }))}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 6, cursor: 'pointer', userSelect: 'none', width: 'fit-content' }}>
+                  <div style={{
+                    width: 44, height: 24, borderRadius: 12, flexShrink: 0, transition: '.2s',
+                    background: form.discountable ? 'var(--red)' : '#ccc', position: 'relative',
+                  }}>
+                    <div style={{
+                      position: 'absolute', top: 2,
+                      left: form.discountable ? 22 : 2,
+                      width: 20, height: 20, borderRadius: '50%',
+                      background: 'white', boxShadow: '0 1px 4px rgba(0,0,0,.25)', transition: '.2s',
+                    }} />
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: form.discountable ? 'var(--red)' : 'var(--muted)' }}>
+                    {form.discountable ? '% Ja – Artikel ist rabattfähig' : 'Nein – kein Rabatt möglich'}
                   </span>
                 </div>
               </div>

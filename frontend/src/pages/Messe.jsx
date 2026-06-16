@@ -34,6 +34,7 @@ export default function Messe() {
   const [error, setError]             = useState('')
   const [allCustomers, setAllCustomers] = useState([])
   const [customPrices, setCustomPrices] = useState({})  // option_id → angepasster Preis
+  const [customNotes, setCustomNotes]   = useState({})  // option_id → Freitext-Notiz
   const [leasingEnabled, setLeasingEnabled] = useState(false)
   const [leasingKaufpreis, setLeasingKaufpreis] = useState(0)
   const [leasingSettings, setLeasingSettings] = useState(null)
@@ -229,7 +230,7 @@ export default function Messe() {
           option_id:      o.id,
           name:           o.name,
           cluster:        o.cluster      || '',
-          short_text:     o.short_text   || '',
+          short_text:     customNotes[o.id] ? `${o.short_text || ''}\n${customNotes[o.id]}`.trim() : (o.short_text || ''),
           long_text:      o.long_text    || '',
           original_price: base,
           price:          optionalIds.has(o.id) ? 0 : base,
@@ -641,6 +642,22 @@ export default function Messe() {
                           {o.price_hint}
                         </span>
                       )}
+                    </div>
+                  )}
+
+                  {/* Notiz-Textfeld für price_editable Artikel */}
+                  {o.price_editable && (
+                    <div style={{ marginTop: 6 }}>
+                      <input
+                        value={customNotes[o.id] || ''}
+                        onChange={e => setCustomNotes(p => ({ ...p, [o.id]: e.target.value }))}
+                        placeholder="Anmerkung / Beschreibung zum Preis …"
+                        style={{
+                          width: '100%', border: '1px solid var(--line)', borderRadius: 8,
+                          padding: '6px 12px', fontSize: 12, color: 'var(--text)',
+                          boxSizing: 'border-box',
+                        }}
+                      />
                     </div>
                   )}
                 </div>
