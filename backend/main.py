@@ -292,8 +292,8 @@ async def generate_full_offer(data: dict):
     offer_items = data.get("offer_items", [])
     attachments = data.get("attachments", [])
 
-    # 1. Angebotsnummer
-    offer_no = db.generate_offer_number()
+    # 1. Angebotsnummer – vorgegebene (z.B. neue Version) oder frisch generieren
+    offer_no = data.get("offer_no") or db.generate_offer_number()
     project["offerNo"] = offer_no
 
     # 2. Anlagen sammeln

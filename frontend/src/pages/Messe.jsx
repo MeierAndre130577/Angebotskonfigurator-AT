@@ -247,7 +247,7 @@ export default function Messe() {
       const res  = await fetch(`${BASE}/offers/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project: proj, offer_items, provider: {}, attachments: [], leasing: leasingPayload })
+        body: JSON.stringify({ project: proj, offer_items, provider: {}, attachments: [], leasing: leasingPayload, offer_no: offerNo || undefined })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || `Server-Fehler ${res.status}`)
