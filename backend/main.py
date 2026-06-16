@@ -258,6 +258,13 @@ def archive_expired():
 def generate_offer_number():
     return {"offer_no": db.generate_offer_number()}
 
+@app.post("/api/offers/next-version")
+def next_offer_version(body: dict):
+    offer_no = body.get("offer_no", "")
+    if not offer_no:
+        raise HTTPException(status_code=400, detail="offer_no fehlt")
+    return {"offer_no": db.next_offer_version(offer_no)}
+
 @app.post("/api/offers")
 def upsert_offer(data: OfferIn):
     return db.upsert_offer(data.model_dump())

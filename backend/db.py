@@ -278,7 +278,18 @@ def generate_offer_number():
     year  = now.strftime('%Y')
     month = now.strftime('%m')
     rnd   = ''.join(random.choices(string.digits, k=6))
-    return f"ANG-{year}-{month}-{rnd}"
+    return f"ANG-{year}-{month}-{rnd}-01"
+
+def next_offer_version(offer_no: str) -> str:
+    """ANG-2026-06-796651-01 → ANG-2026-06-796651-02 (auch ohne Suffix)"""
+    parts = offer_no.rsplit('-', 1)
+    if len(parts) == 2 and parts[1].isdigit():
+        base    = parts[0]
+        version = int(parts[1]) + 1
+    else:
+        base    = offer_no
+        version = 2
+    return f"{base}-{version:02d}"
 
 def upsert_offer(data: dict):
     if not data.get("id"):

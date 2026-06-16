@@ -38,7 +38,21 @@ export default function Messe() {
   const [leasingSettings, setLeasingSettings] = useState(null)
 
   useEffect(() => {
-    optionsApi.list().then(setAllOptions).catch(console.warn)
+    optionsApi.list().then(opts => {
+      setAllOptions(opts)
+      // sessionStorage Vorausfüllung (aus PDF-Vorschau)
+      const raw = sessionStorage.getItem('messe_prefill')
+      if (raw) {
+        sessionStorage.removeItem('messe_prefill')
+        try {
+          const pre = JSON.parse(raw)
+          if (pre.contact) setContact(p => ({ ...p, ...pre.contact }))
+          if (pre.offerNo) setOfferNo(pre.offerNo)
+          if (pre.itemIds?.length) setSelectedIds(new Set(pre.itemIds))
+          if (pre.mode === 'revision' || pre.mode === 'template') setSaveCustomer(false)
+        } catch {}
+      }
+    }).catch(console.warn)
     customersApi.list().then(setAllCustomers).catch(console.warn)
     fetch((import.meta.env.VITE_API_URL || '') + '/api/settings')
       .then(r => r.json()).then(setLeasingSettings).catch(console.warn)

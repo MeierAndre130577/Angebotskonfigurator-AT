@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { offers, pdf } from '../lib/api'
 
 const BASE = (import.meta.env.VITE_API_URL || '') + '/api'
@@ -17,6 +17,7 @@ const DEFAULT_PROVIDER = {
 
 export default function Vorschau() {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [offerNo, setOfferNo]       = useState('')
   const [offerData, setOfferData]   = useState(null)
   const [loading, setLoading]       = useState(false)
@@ -127,6 +128,35 @@ export default function Vorschau() {
     } finally {
       setEmailSending(false)
     }
+  }
+
+  async function newVersionSameCustomer() {
+    try {
+      const res  = await fetch(`${BASE}/offers/next-version`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ offer_no: offerData.project?.offerNo || offerNo })
+      })
+      const data = await res.json()
+      sessionStorage.setItem('messe_prefill', JSON.stringify({
+        mode:        'revision',
+        offerNo:     data.offer_no,
+        contact: {
+          company:     offerData.project?.customer     || '',
+          contactName: offerData.project?.contact      || '',
+          email:       offerData.project?.customerEmail|| '',
+        },
+        itemIds: (offerData.offer_items || []).map(i => i.option_id).filter(Boolean),
+      }))
+      navigate('/messe')
+    } catch(e) { showToast('Fehler: ' + e.message) }
+  }
+
+  function newOfferSameConfig() {
+    sessionStorage.setItem('messe_prefill', JSON.stringify({
+      mode:    'template',
+      itemIds: (offerData.offer_items || []).map(i => i.option_id).filter(Boolean),
+    }))
+    navigate('/messe')
   }
 
   async function doLoad(no) {
@@ -288,6 +318,20 @@ export default function Vorschau() {
 
           <div className="card">
             <div className="card-title">Aktionen</div>
+
+            {/* Angebot weiterverarbeiten */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+              <button className="btn btn-lg" style={{ flex: 1, justifyContent: 'center', fontSize: 13 }}
+                onClick={newVersionSameCustomer}>
+                🔄 Neue Version – gleicher Kunde
+              </button>
+              <button className="btn btn-lg" style={{ flex: 1, justifyContent: 'center', fontSize: 13 }}
+                onClick={newOfferSameConfig}>
+                📋 Vorlage – neuer Kunde
+              </button>
+            </div>
+
+            <div style={{ borderTop: '1px solid var(--line)', marginBottom: 14 }} />
 
             {!pdfUrl ? (
               <button className="btn btn-red btn-lg" onClick={generatePdf} disabled={generating}>
