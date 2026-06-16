@@ -1,5 +1,16 @@
 [
   {
+    "date": "16.06.2026",
+    "title": "Lieferadresse, Zahlungsziele & Bestellseite",
+    "changes": [
+      "Lieferadresse in der Schnellerfassung: Toggle einschalten, Adresse tippen – österreichische Adressen werden automatisch vorgeschlagen und befüllt",
+      "Zahlungsziele in den Einstellungen verwalten: z.B. '14 Tage netto' – aktive Ziele erscheinen in der Erfassung, bei nur einem wird es automatisch übernommen",
+      "Preiszusammenfassung im PDF komplett neu: Kundendaten und Logo oben, darunter die Preise, Lieferadresse und Zahlungsziel",
+      "Neue Unterschriftszeile am Ende der Preisseite: Datum, Firmenstempel und der Text 'Rechtsverbindliche Bestellung' – alles auf einer Seite",
+      "Einstellungen merken sich jetzt welche Bereiche auf- oder zugeklappt waren – beim nächsten Öffnen alles genau so wie du es verlassen hast"
+    ]
+  },
+  {
     "date": "12.06.2026 – 14:12",
     "title": "Release Notes",
     "changes": [
