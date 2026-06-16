@@ -90,12 +90,19 @@ function NumberInput({ value, onChange, min = 0, max = 100, unit = 'mm' }) {
   )
 }
 
-function Section({ title, defaultOpen = true, action, children }) {
+function Section({ id, title, defaultOpen = true, action, onToggle, children }) {
   const [open, setOpen] = useState(defaultOpen)
+  function toggle() {
+    setOpen(o => {
+      const next = !o
+      if (onToggle && id) onToggle(id, next)
+      return next
+    })
+  }
   return (
     <div className="card" style={{ marginBottom: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: open ? 14 : 0 }}>
-        <div onClick={() => setOpen(o => !o)}
+        <div onClick={toggle}
           style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', flex: 1 }}>
           <div className="card-title" style={{ marginBottom: 0 }}>{title}</div>
           <span style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>{open ? '▲' : '▼'}</span>
@@ -107,6 +114,13 @@ function Section({ title, defaultOpen = true, action, children }) {
   )
 }
 
+const SECTION_DEFAULTS = {
+  'deckblatt': false, 'logo': false, 'pdf-layout': false,
+  'firmenangaben': true, 'agb': true, 'pflichtanlagen': false,
+  'email-vorlage': false, 'leasing': false, 'resend': false,
+  'smtp': false, 'zahlungsziele': false,
+}
+
 export default function Einstellungen() {
   const [settings, setSettings] = useState(DEFAULTS)
   const [saving, setSaving]     = useState(false)
@@ -114,6 +128,10 @@ export default function Einstellungen() {
   const [loading, setLoading]       = useState(true)
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const [newPaymentTerm, setNewPaymentTerm] = useState('')
+  const [sectionOpen, setSectionOpen] = useState(() => {
+    try { return { ...SECTION_DEFAULTS, ...JSON.parse(localStorage.getItem('einstellungen_sections') || '{}') } }
+    catch { return { ...SECTION_DEFAULTS } }
+  })
   const [uploadingCover, setUploadingCover] = useState(false)
   const [coverDragOver, setCoverDragOver] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -146,6 +164,7 @@ export default function Einstellungen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       })
+      localStorage.setItem('einstellungen_sections', JSON.stringify(sectionOpen))
       showToast('Einstellungen gespeichert ✓')
     } catch(e) {
       showToast('Fehler: ' + e.message)
@@ -156,6 +175,14 @@ export default function Einstellungen() {
 
   function set(key, value) {
     setSettings(s => ({ ...s, [key]: value }))
+  }
+
+  function handleSectionToggle(id, val) {
+    setSectionOpen(s => ({ ...s, [id]: val }))
+  }
+
+  function sec(id) {
+    return { id, onToggle: handleSectionToggle, defaultOpen: sectionOpen[id] ?? SECTION_DEFAULTS[id] ?? true }
   }
 
   function showToast(msg) {
@@ -302,7 +329,7 @@ export default function Einstellungen() {
       </div>
 
       {/* ── Deckblatt-Foto ──────────────────────────────────────────────────── */}
-      <Section title="🖼️ Deckblatt-Foto" defaultOpen={false}>
+      <Section title="🖼️ Deckblatt-Foto" {...sec('deckblatt')}>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
           Vollbild-Foto das auf dem Deckblatt erscheint. Datei hochladen, Drag & Drop oder Bild einfügen (Strg+V).
         </p>
@@ -353,7 +380,7 @@ export default function Einstellungen() {
       </Section>
 
       {/* ── Logo ──────────────────────────────────────────────────────────── */}
-      <Section title="🏷️ Logo (Deckblatt oben links)" defaultOpen={false}>
+      <Section title="🏷️ Logo (Deckblatt oben links)" {...sec('logo')}>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
           Ihr Firmenlogo für das Deckblatt. Datei hochladen, Drag & Drop oder Bild einfügen (Strg+V).
         </p>
@@ -403,7 +430,7 @@ export default function Einstellungen() {
       </Section>
 
       {/* ── PDF Layout ─────────────────────────────────────────────────────── */}
-      <Section title="📐 PDF-Layout" defaultOpen={false}>
+      <Section title="📐 PDF-Layout" {...sec('pdf-layout')}>
 
         {/* Visualisierung */}
         <div style={{
@@ -477,7 +504,7 @@ export default function Einstellungen() {
       </Section>
 
       {/* ── Firmenangaben ───────────────────────────────────────────────────── */}
-      <Section title="🏢 Firmenangaben">
+      <Section title="🏢 Firmenangaben" {...sec('firmenangaben')}>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
           Diese Angaben erscheinen in Kopf- und Fußzeile sowie auf dem Deckblatt.
         </p>
@@ -507,7 +534,7 @@ export default function Einstellungen() {
       </Section>
 
       {/* ── AGB ─────────────────────────────────────────────────────────────── */}
-      <Section title="📋 Rechtliche Hinweise / AGB">
+      <Section title="📋 Rechtliche Hinweise / AGB" {...sec('agb')}>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
           Erscheint als Text auf der letzten Seite des Angebots.
         </p>
@@ -519,7 +546,7 @@ export default function Einstellungen() {
       </Section>
 
       {/* ── Pflichtanlagen ───────────────────────────────────────────────────── */}
-      <Section title="📎 Pflichtanlagen" defaultOpen={false}
+      <Section title="📎 Pflichtanlagen" {...sec('pflichtanlagen')}
         action={
           <button className="btn" style={{ padding: '7px 14px', fontSize: 12 }}
             onClick={() => docRef.current?.click()} disabled={uploadingDoc}>
@@ -576,7 +603,7 @@ export default function Einstellungen() {
       </Section>
 
       {/* ── E-Mail Vorlage ───────────────────────────────────────────────────── */}
-      <Section title="✉️ E-Mail Vorlage" defaultOpen={false}>
+      <Section title="✉️ E-Mail Vorlage" {...sec('email-vorlage')}>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
           Verfügbare Platzhalter: <code>{'{{kunde}}'}</code> <code>{'{{ansprechpartner}}'}</code> <code>{'{{angebotsnummer}}'}</code> <code>{'{{projekt}}'}</code> <code>{'{{datum}}'}</code> <code>{'{{gueltigBis}}'}</code> <code>{'{{anbieter}}'}</code> <code>{'{{downloadLink}}'}</code>
         </p>
@@ -609,7 +636,7 @@ export default function Einstellungen() {
           })
         }
         return (
-          <Section title="💶 Leasing – Stammdaten">
+          <Section title="💶 Leasing – Stammdaten" {...sec('leasing')}>
             <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
               Leasingfaktorentabelle: Leasingentgelt in % der Anschaffungskosten exkl. USt pro Monat.
             </p>
@@ -712,7 +739,7 @@ export default function Einstellungen() {
         )
       })()}
 
-      <Section title="🚀 E-Mail Versand via Resend (empfohlen)" defaultOpen={false}>
+      <Section title="🚀 E-Mail Versand via Resend (empfohlen)" {...sec('resend')}>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
           Resend ist ein kostenloser E-Mail-Dienst (3.000 E-Mails/Monat) und funktioniert zuverlässig
           von Cloud-Servern. Konto erstellen unter <a href="https://resend.com" target="_blank"
@@ -744,7 +771,7 @@ export default function Einstellungen() {
       </Section>
 
       {/* ── SMTP Konfiguration ───────────────────────────────────────────────── */}
-      <Section title="🔒 SMTP – Fallback (direkt, oft von Cloud geblockt)" defaultOpen={false}>
+      <Section title="🔒 SMTP – Fallback (direkt, oft von Cloud geblockt)" {...sec('smtp')}>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
           Wird nur verwendet wenn kein Resend API-Key hinterlegt ist.
           Absenderadresse und Name werden auch für Resend genutzt.
@@ -785,7 +812,7 @@ export default function Einstellungen() {
       </Section>
 
       {/* ── Zahlungsziele ────────────────────────────────────────────────────── */}
-      <Section title="💳 Zahlungsziele" defaultOpen={false}>
+      <Section title="💳 Zahlungsziele" {...sec('zahlungsziele')}>
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
           Aktivierte Zahlungsziele erscheinen in der Schnellerfassung.
           Ist nur eines aktiv, wird es automatisch übernommen.

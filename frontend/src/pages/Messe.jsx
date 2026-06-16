@@ -26,6 +26,12 @@ export default function Messe() {
   const [optionalIds, setOptionalIds]   = useState(new Set())  // Optionen die als optional markiert sind
   const [offerNo, setOfferNo]         = useState('')
   const revisionNoRef                 = useRef('')   // Versionsnummer – Ref statt State wegen Closure
+  const deliveryTimerRef              = useRef(null)
+  const [deliveryEnabled, setDeliveryEnabled]         = useState(false)
+  const [deliveryQuery, setDeliveryQuery]             = useState('')
+  const [deliverySuggestions, setDeliverySuggestions] = useState([])
+  const [deliveryAddress, setDeliveryAddress]         = useState('')
+  const [deliveryLoading, setDeliveryLoading]         = useState(false)
   const [busy, setBusy]               = useState(false)
   const [done, setDone]               = useState(false)
   const [result, setResult]           = useState(null)  // Angebotsergebnis
@@ -215,19 +221,58 @@ export default function Messe() {
     }
   }
 
+  function onDeliveryInput(val) {
+    setDeliveryQuery(val)
+    setDeliveryAddress('')
+    if (deliveryTimerRef.current) clearTimeout(deliveryTimerRef.current)
+    if (val.length < 3) { setDeliverySuggestions([]); return }
+    deliveryTimerRef.current = setTimeout(async () => {
+      setDeliveryLoading(true)
+      try {
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&lang=de&limit=6&countrycode=at`)
+        const data = await res.json()
+        setDeliverySuggestions(data.features || [])
+      } catch {}
+      setDeliveryLoading(false)
+    }, 350)
+  }
+
+  function selectDelivery(feature) {
+    const p = feature.properties
+    const street = [p.street, p.housenumber].filter(Boolean).join(' ')
+    const parts  = [street || p.name, p.postcode, p.city || p.town || p.village].filter(Boolean)
+    const addr   = parts.join(', ')
+    setDeliveryAddress(addr)
+    setDeliveryQuery(addr)
+    setDeliverySuggestions([])
+  }
+
   async function finalize() {
     if (busy) return
     setBusy(true); setError('')
     try {
       const rawItems = allOptions.filter(o => selectedIds.has(o.id))
+      const effectiveLogo = useLogo
+        ? (logoUrl && !logoUrl.startsWith('__') ? logoUrl
+           : logoFallback && !logoFallback.startsWith('__') ? logoFallback : '')
+        : ''
       const proj  = {
-        customer:      contact.company,
-        contact:       contact.contactName,
-        customerEmail: contact.email,
-        project:       projectName || 'Messegespräch',
-        date:          new Date().toLocaleDateString('de-AT'),
-        valid:         new Date(Date.now() + 28*864e5).toLocaleDateString('de-AT'),
-        payment_term:  selectedPaymentTerm || undefined,
+        customer:           contact.company,
+        contact:            contact.contactName,
+        customerEmail:      contact.email,
+        project:            projectName || 'Messegespräch',
+        date:               new Date().toLocaleDateString('de-AT'),
+        valid:              new Date(Date.now() + 28*864e5).toLocaleDateString('de-AT'),
+        payment_term:       selectedPaymentTerm || undefined,
+        customer_position:  contact.position  || undefined,
+        customer_phone:     contact.phone     || undefined,
+        customer_mobile:    contact.mobile    || undefined,
+        customer_street:    contact.street    || undefined,
+        customer_zip:       contact.zip       || undefined,
+        customer_city:      contact.city      || undefined,
+        customer_website:   contact.website   || undefined,
+        customer_logo:      effectiveLogo     || undefined,
+        delivery_address:   deliveryEnabled && deliveryAddress ? deliveryAddress : undefined,
       }
       // offer_items mit optional-Flag und korrekten Preisen
       const offer_items = rawItems.map(o => {
@@ -275,6 +320,7 @@ export default function Messe() {
     setLogoUrl(''); setLogoFallback(''); setUseLogo(false)
     setSelectedIds(new Set()); setProjectName(''); setOfferNo('')
     setDone(false); setError(''); setCustomPrices({}); setSelectedPaymentTerm('')
+    setDeliveryEnabled(false); setDeliveryQuery(''); setDeliveryAddress(''); setDeliverySuggestions([])
   }
 
   // ── Cluster-Gruppen ────────────────────────────────────────────────────────
@@ -770,6 +816,61 @@ export default function Messe() {
               </div>
             )
           })()}
+
+          {/* ── Lieferadresse ── */}
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', userSelect: 'none' }}
+              onClick={() => { setDeliveryEnabled(v => !v); setDeliveryQuery(''); setDeliveryAddress(''); setDeliverySuggestions([]) }}>
+              <div style={{ width: 44, height: 24, borderRadius: 12, flexShrink: 0, transition: '.2s',
+                background: deliveryEnabled ? 'var(--red)' : '#ccc', position: 'relative' }}>
+                <div style={{ position: 'absolute', top: 2, left: deliveryEnabled ? 22 : 2,
+                  width: 20, height: 20, borderRadius: '50%', background: 'white',
+                  boxShadow: '0 1px 4px rgba(0,0,0,.25)', transition: '.2s' }} />
+              </div>
+              <span style={{ fontWeight: 700, fontSize: 14 }}>📍 Lieferadresse angeben</span>
+            </div>
+
+            {deliveryEnabled && (
+              <div style={{ marginTop: 16, position: 'relative' }}>
+                <input
+                  value={deliveryQuery}
+                  onChange={e => onDeliveryInput(e.target.value)}
+                  placeholder="Straße, PLZ oder Ort suchen …"
+                  style={{ width: '100%', border: '1px solid var(--line)', borderRadius: 10,
+                    padding: '10px 14px', fontSize: 13, boxSizing: 'border-box' }}
+                />
+                {deliveryLoading && (
+                  <p style={{ fontSize: 11, color: 'var(--muted)', margin: '4px 0 0' }}>Suche …</p>
+                )}
+                {deliverySuggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0,
+                    background: 'white', border: '1px solid var(--line)', borderRadius: 10,
+                    boxShadow: '0 4px 16px rgba(0,0,0,.12)', zIndex: 100, overflow: 'hidden' }}>
+                    {deliverySuggestions.map((f, i) => {
+                      const p = f.properties
+                      const line1 = [p.street, p.housenumber].filter(Boolean).join(' ') || p.name || ''
+                      const line2 = [p.postcode, p.city || p.town || p.village].filter(Boolean).join(' ')
+                      return (
+                        <div key={i} onClick={() => selectDelivery(f)}
+                          style={{ padding: '10px 14px', cursor: 'pointer',
+                            borderBottom: '1px solid var(--line)', fontSize: 13 }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#f8f8f8'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+                          <b>{line1}</b>
+                          {line2 && <span style={{ color: 'var(--muted)', marginLeft: 6 }}>{line2}</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                {deliveryAddress && (
+                  <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
+                    ✓ Ausgewählt: <b style={{ color: 'var(--dark)' }}>{deliveryAddress}</b>
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="card">
 

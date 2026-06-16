@@ -931,6 +931,59 @@ def generate_design_pdf(data: dict) -> dict:
 
     # ── Preiszusammenfassung ──────────────────────────────────────────────────
     section_title(story, f'{_sec_preis}. Preiszusammenfassung', S, CW)
+
+    # Kundenlogo laden
+    cust_logo_url = project.get('customer_logo', '')
+    logo_img = None
+    if cust_logo_url:
+        ld = fetch_image(cust_logo_url)
+        logo_img = make_image(ld, 32*mm, 22*mm) if ld else None
+
+    # Kundendaten aufbauen
+    cust_name    = project.get('customer', '')
+    cust_contact = project.get('contact', '')
+    cust_pos     = project.get('customer_position', '')
+    cust_email   = project.get('customerEmail', '')
+    cust_phone   = project.get('customer_phone', '')
+    cust_mobile  = project.get('customer_mobile', '')
+    cust_street  = project.get('customer_street', '')
+    cust_zip     = project.get('customer_zip', '')
+    cust_city    = project.get('customer_city', '')
+    cust_web     = project.get('customer_website', '')
+
+    cust_cells = []
+    if cust_name:    cust_cells.append(Paragraph(f'<b>{cust_name}</b>', S['h2']))
+    if cust_contact:
+        contact_line = cust_contact + (f', {cust_pos}' if cust_pos else '')
+        cust_cells.append(Paragraph(contact_line, S['body']))
+    addr = ', '.join(filter(None, [cust_street, f'{cust_zip} {cust_city}'.strip()]))
+    if addr:         cust_cells.append(Paragraph(addr, S['body']))
+    if cust_email:   cust_cells.append(Paragraph(cust_email, S['muted']))
+    tel = ' · '.join(filter(None, [
+        f'Tel: {cust_phone}'   if cust_phone  else '',
+        f'Mobil: {cust_mobile}' if cust_mobile else '',
+    ]))
+    if tel:          cust_cells.append(Paragraph(tel, S['muted']))
+    if cust_web:     cust_cells.append(Paragraph(cust_web, S['muted']))
+    if not cust_cells: cust_cells = [Paragraph('', S['body'])]
+
+    logo_col_w = 36*mm if logo_img else 0
+    info_col_w = CW - logo_col_w
+    if logo_img:
+        hdr_t = Table([[cust_cells, logo_img]], colWidths=[info_col_w, logo_col_w])
+        hdr_t.setStyle(TableStyle([
+            ('VALIGN',(0,0),(-1,-1),'TOP'),
+            ('ALIGN',(1,0),(1,0),'RIGHT'),
+            ('TOPPADDING',(0,0),(-1,-1),0),
+            ('BOTTOMPADDING',(0,0),(-1,-1),0),
+        ]))
+    else:
+        hdr_t = Table([[[*cust_cells]]], colWidths=[CW])
+        hdr_t.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP')]))
+    story.append(hdr_t)
+    story.append(Spacer(1, 5*mm))
+
+    # Preistabelle
     preis_rows = [
         [Paragraph('<b>Einmalige Kosten</b>', S['h3']), Paragraph(f'<b>{money(one_time)}</b>', S['price'])],
         [Paragraph('<b>Monatliche Kosten</b>', S['h3']), Paragraph(f'<b>{money(monthly)}</b>',  S['price'])],
@@ -948,6 +1001,43 @@ def generate_design_pdf(data: dict) -> dict:
     if payment_term:
         story.append(Spacer(1,2*mm))
         story.append(Paragraph(f'Zahlungsziel: {payment_term}', S['muted']))
+
+    # Lieferadresse
+    delivery_address = project.get('delivery_address', '')
+    if delivery_address:
+        story.append(Spacer(1, 4*mm))
+        story.append(Paragraph('<b>Lieferadresse</b>', S['h3']))
+        story.append(Paragraph(delivery_address, S['body']))
+
+    # Unterschrift / Rechtsverbindliche Bestellung
+    order_style = ParagraphStyle('order', fontName='Helvetica-Bold', fontSize=11, textColor=DARK)
+    sig_block = [
+        Spacer(1, 14*mm),
+        Table([[Paragraph('Rechtsverbindliche Bestellung', order_style)]],
+              colWidths=[CW],
+              style=[('BACKGROUND',(0,0),(-1,-1),BG),
+                     ('LINEABOVE',(0,0),(-1,-1),1.5,RED),
+                     ('TOPPADDING',(0,0),(-1,-1),7),
+                     ('BOTTOMPADDING',(0,0),(-1,-1),7)]),
+        Spacer(1, 3*mm),
+        Paragraph(
+            'Mit meiner Unterschrift bestätige ich die Richtigkeit der oben angeführten Angaben '
+            'und beauftrage Sielaff Austria GmbH rechtsverbindlich mit der Lieferung der '
+            'aufgeführten Produkte und Dienstleistungen zu den genannten Konditionen.',
+            S['muted']),
+        Spacer(1, 14*mm),
+        Table([
+            [Paragraph('Datum', S['muted']), Paragraph('Unterschrift &amp; Firmenstempel', S['muted'])],
+            [Paragraph(project.get('date',''), S['body']), Paragraph('', S['body'])],
+        ], colWidths=[CW*0.35, CW*0.65],
+        style=[
+            ('LINEBELOW',(0,1),(0,1),0.6,DARK),
+            ('LINEBELOW',(1,1),(1,1),0.6,DARK),
+            ('TOPPADDING',(0,0),(-1,-1),2),
+            ('BOTTOMPADDING',(0,0),(-1,-1),8),
+        ]),
+    ]
+    story.append(KeepTogether(sig_block))
     story.append(PageBreak())
 
     # ── Detailseiten ──────────────────────────────────────────────────────────
