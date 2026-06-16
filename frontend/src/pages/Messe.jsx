@@ -38,6 +38,7 @@ export default function Messe() {
   const [leasingEnabled, setLeasingEnabled] = useState(false)
   const [leasingKaufpreis, setLeasingKaufpreis] = useState(0)
   const [leasingSettings, setLeasingSettings] = useState(null)
+  const [selectedPaymentTerm, setSelectedPaymentTerm] = useState('')
 
   useEffect(() => {
     optionsApi.list().then(opts => {
@@ -57,7 +58,11 @@ export default function Messe() {
     }).catch(console.warn)
     customersApi.list().then(setAllCustomers).catch(console.warn)
     fetch((import.meta.env.VITE_API_URL || '') + '/api/settings')
-      .then(r => r.json()).then(setLeasingSettings).catch(console.warn)
+      .then(r => r.json()).then(data => {
+        setLeasingSettings(data)
+        const active = (data.payment_terms || []).filter(t => t.active)
+        if (active.length === 1) setSelectedPaymentTerm(active[0].label)
+      }).catch(console.warn)
   }, [])
 
   // Live-Suche in Kunden
@@ -222,6 +227,7 @@ export default function Messe() {
         project:       projectName || 'Messegespräch',
         date:          new Date().toLocaleDateString('de-AT'),
         valid:         new Date(Date.now() + 28*864e5).toLocaleDateString('de-AT'),
+        payment_term:  selectedPaymentTerm || undefined,
       }
       // offer_items mit optional-Flag und korrekten Preisen
       const offer_items = rawItems.map(o => {
@@ -268,7 +274,7 @@ export default function Messe() {
     setCardImageFile(null); revisionNoRef.current = ''
     setLogoUrl(''); setLogoFallback(''); setUseLogo(false)
     setSelectedIds(new Set()); setProjectName(''); setOfferNo('')
-    setDone(false); setError(''); setCustomPrices({})
+    setDone(false); setError(''); setCustomPrices({}); setSelectedPaymentTerm('')
   }
 
   // ── Cluster-Gruppen ────────────────────────────────────────────────────────
@@ -725,6 +731,45 @@ export default function Messe() {
               </div>
             )}
           </div>
+
+          {/* ── Zahlungsziel ── */}
+          {(() => {
+            const active = (leasingSettings?.payment_terms || []).filter(t => t.active)
+            if (active.length === 0) return null
+            return (
+              <div className="card" style={{ marginBottom: 16 }}>
+                <div className="card-title" style={{ marginBottom: 12 }}>💳 Zahlungsziel</div>
+                {active.length === 1 ? (
+                  <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
+                    Wird automatisch übernommen:&nbsp;
+                    <b style={{ color: 'var(--dark)' }}>{active[0].label}</b>
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {active.map(term => (
+                      <label key={term.id} style={{ display: 'flex', alignItems: 'center',
+                        gap: 10, cursor: 'pointer', fontSize: 14 }}>
+                        <input
+                          type="radio"
+                          name="payment_term"
+                          value={term.label}
+                          checked={selectedPaymentTerm === term.label}
+                          onChange={() => setSelectedPaymentTerm(term.label)}
+                          style={{ accentColor: 'var(--red)', width: 16, height: 16 }}
+                        />
+                        {term.label}
+                      </label>
+                    ))}
+                    {!selectedPaymentTerm && (
+                      <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0 }}>
+                        Kein Zahlungsziel ausgewählt – erscheint nicht im PDF.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           <div className="card">
 

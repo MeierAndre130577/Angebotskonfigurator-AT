@@ -917,6 +917,10 @@ def generate_design_pdf(data: dict) -> dict:
     ])
     t.setStyle(ts)
     story.append(t)
+    payment_term = project.get('payment_term', '')
+    if payment_term:
+        story.append(Spacer(1, 3*mm))
+        story.append(Paragraph(f'Zahlungsziel: {payment_term}', S['muted']))
     story.append(PageBreak())
 
     # ── Leasing-Finanzierung (optional) ──────────────────────────────────────
@@ -941,6 +945,9 @@ def generate_design_pdf(data: dict) -> dict:
     story.append(t)
     story.append(Spacer(1,2*mm))
     story.append(Paragraph('Alle Preise verstehen sich exkl. gesetzlicher MwSt.', S['muted']))
+    if payment_term:
+        story.append(Spacer(1,2*mm))
+        story.append(Paragraph(f'Zahlungsziel: {payment_term}', S['muted']))
     story.append(PageBreak())
 
     # ── Detailseiten ──────────────────────────────────────────────────────────

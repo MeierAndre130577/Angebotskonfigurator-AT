@@ -62,6 +62,8 @@ Mit freundlichen Grüßen
   smtp_user:      '',
   smtp_pass:      '',
   smtp_from_name: '',
+  // Zahlungsziele
+  payment_terms: [],
 }
 
 function Field({ label, hint, children }) {
@@ -111,6 +113,7 @@ export default function Einstellungen() {
   const [toast, setToast]       = useState('')
   const [loading, setLoading]       = useState(true)
   const [uploadingDoc, setUploadingDoc] = useState(false)
+  const [newPaymentTerm, setNewPaymentTerm] = useState('')
   const [uploadingCover, setUploadingCover] = useState(false)
   const [coverDragOver, setCoverDragOver] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -250,6 +253,21 @@ export default function Einstellungen() {
         return
       }
     }
+  }
+
+  function addPaymentTerm() {
+    if (!newPaymentTerm.trim()) return
+    const term = { id: crypto.randomUUID(), label: newPaymentTerm.trim(), active: true }
+    setSettings(s => ({ ...s, payment_terms: [...(s.payment_terms || []), term] }))
+    setNewPaymentTerm('')
+  }
+
+  function removePaymentTerm(id) {
+    setSettings(s => ({ ...s, payment_terms: (s.payment_terms || []).filter(t => t.id !== id) }))
+  }
+
+  function togglePaymentTerm(id) {
+    setSettings(s => ({ ...s, payment_terms: (s.payment_terms || []).map(t => t.id === id ? { ...t, active: !t.active } : t) }))
   }
 
   function handleCoverPaste(e) {
@@ -764,6 +782,41 @@ export default function Einstellungen() {
             placeholder={settings.company || 'Sielaff Austria GmbH'}
             style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13, maxWidth: 340 }} />
         </Field>
+      </Section>
+
+      {/* ── Zahlungsziele ────────────────────────────────────────────────────── */}
+      <Section title="💳 Zahlungsziele" defaultOpen={false}>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
+          Aktivierte Zahlungsziele erscheinen in der Schnellerfassung.
+          Ist nur eines aktiv, wird es automatisch übernommen.
+        </p>
+        {(settings.payment_terms || []).map(term => (
+          <div key={term.id} style={{ display: 'flex', alignItems: 'center', gap: 12,
+            padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+            <div onClick={() => togglePaymentTerm(term.id)} style={{ cursor: 'pointer', flexShrink: 0,
+              width: 36, height: 20, borderRadius: 10, position: 'relative', transition: '.2s',
+              background: term.active ? 'var(--red)' : '#ccc' }}>
+              <div style={{ position: 'absolute', top: 2, left: term.active ? 18 : 2,
+                width: 16, height: 16, borderRadius: '50%', background: 'white',
+                boxShadow: '0 1px 3px rgba(0,0,0,.2)', transition: '.2s' }} />
+            </div>
+            <span style={{ flex: 1, fontSize: 14 }}>{term.label}</span>
+            <button onClick={() => removePaymentTerm(term.id)}
+              style={{ fontSize: 12, color: 'var(--muted)', background: 'none',
+                border: 'none', cursor: 'pointer', padding: '2px 6px' }}>✕</button>
+          </div>
+        ))}
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+          <input
+            value={newPaymentTerm} onChange={e => setNewPaymentTerm(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addPaymentTerm()}
+            placeholder="z. B. 14 Tage netto · 30 Tage netto …"
+            style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 10,
+              padding: '9px 14px', fontSize: 13 }} />
+          <button className="btn btn-red" onClick={addPaymentTerm} disabled={!newPaymentTerm.trim()}>
+            + Hinzufügen
+          </button>
+        </div>
       </Section>
 
       <div style={{ marginTop: 8 }}>
