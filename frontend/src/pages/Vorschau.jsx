@@ -263,20 +263,29 @@ export default function Vorschau() {
             value={offerNo}
             onChange={e => setOfferNo(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && doLoad()}
-            placeholder="z.B. ANG-2026-06-483921"
+            placeholder="Nummer eingeben + Enter"
             style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 10,
               padding: '10px 14px', fontSize: 14, fontFamily: 'var(--font-mono)' }}
           />
-          <button className="btn btn-red" onClick={() => doLoad()} disabled={loading}>
-            {loading ? '⏳ Lädt …' : '🔍 Laden'}
-          </button>
-          <button className="btn" onClick={loadLatest} disabled={loadingLatest || loading}
-            title="Lädt das zuletzt erstellte Angebot">
+          <button className="btn" onClick={loadLatest} disabled={loadingLatest || loading}>
             {loadingLatest ? '⏳' : '⭐ Neuestes'}
           </button>
         </div>
         {loading && <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8 }}>⏳ Wird geladen …</p>}
         {error   && <p style={{ color: 'var(--red)',   fontSize: 13, marginTop: 8 }}>⚠ {error}</p>}
+
+        {offerData && (
+          <div style={{ display: 'flex', gap: 10, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+            <button className="btn" style={{ flex: 1, justifyContent: 'center', fontSize: 13 }}
+              onClick={newVersionSameCustomer}>
+              🔄 Neue Version – gleicher Kunde
+            </button>
+            <button className="btn" style={{ flex: 1, justifyContent: 'center', fontSize: 13 }}
+              onClick={newOfferSameConfig}>
+              📋 Vorlage – neuer Kunde
+            </button>
+          </div>
+        )}
       </div>
 
       {offerData && (
@@ -327,67 +336,66 @@ export default function Vorschau() {
           <div className="card">
             <div className="card-title">Aktionen</div>
 
-            {/* Angebot weiterverarbeiten */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-              <button className="btn btn-lg" style={{ flex: 1, justifyContent: 'center', fontSize: 13 }}
-                onClick={newVersionSameCustomer}>
-                🔄 Neue Version – gleicher Kunde
-              </button>
-              <button className="btn btn-lg" style={{ flex: 1, justifyContent: 'center', fontSize: 13 }}
-                onClick={newOfferSameConfig}>
-                📋 Vorlage – neuer Kunde
-              </button>
-            </div>
-
-            <div style={{ borderTop: '1px solid var(--line)', marginBottom: 14 }} />
-
             {!pdfUrl ? (
-              <button className="btn btn-red btn-lg" onClick={generatePdf} disabled={generating}>
+              <button className="btn btn-red btn-lg" onClick={generatePdf} disabled={generating}
+                style={{ width: '100%', justifyContent: 'center' }}>
                 {generating ? '⏳ PDF wird erstellt …' : '📄 PDF erstellen'}
               </button>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-                {/* 1. PDF öffnen */}
+                {/* Primär: PDF öffnen */}
                 <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
                   className="btn btn-red btn-lg" style={{ textDecoration: 'none', justifyContent: 'center' }}>
                   📄 PDF öffnen
                 </a>
 
-                {/* 2. ZIP herunterladen */}
-                {packageUrl && (
-                  <a href={packageUrl} target="_blank" rel="noopener noreferrer"
-                    className="btn btn-lg" style={{ textDecoration: 'none', justifyContent: 'center' }}>
-                    📦 ZIP herunterladen
+                {/* 2×2 Grid: sekundäre Aktionen */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+
+                  <a href={packageUrl || '#'} target="_blank" rel="noopener noreferrer"
+                    className="btn" style={{ textDecoration: 'none', justifyContent: 'center',
+                      flexDirection: 'column', gap: 4, padding: '14px 10px', opacity: packageUrl ? 1 : .4 }}>
+                    <span style={{ fontSize: 20 }}>📦</span>
+                    <span style={{ fontSize: 12 }}>ZIP laden</span>
                   </a>
-                )}
 
-                {/* 3. Download-Link kopieren */}
-                {packageUrl && (
-                  <button className="btn btn-lg" style={{ justifyContent: 'center' }}
-                    onClick={copyLink}>
-                    {copied ? '✅ Kopiert!' : '📋 Download-Link kopieren'}
+                  <div style={{ position: 'relative' }}>
+                    <div className="btn" style={{ flexDirection: 'column', gap: 4, padding: '14px 10px',
+                      justifyContent: 'center', opacity: .35, pointerEvents: 'none',
+                      cursor: 'default', width: '100%', boxSizing: 'border-box' }}>
+                      <span style={{ fontSize: 20 }}>✉️</span>
+                      <span style={{ fontSize: 12 }}>E-Mail senden</span>
+                    </div>
+                    <span style={{
+                      position: 'absolute', top: 6, right: 8,
+                      fontSize: 9, fontWeight: 700, letterSpacing: '.5px',
+                      color: 'var(--muted)', textTransform: 'uppercase',
+                    }}>Coming soon</span>
+                  </div>
+
+                  <button className="btn" onClick={copyLink}
+                    style={{ flexDirection: 'column', gap: 4, padding: '14px 10px',
+                      justifyContent: 'center', opacity: packageUrl ? 1 : .4 }}>
+                    <span style={{ fontSize: 20 }}>{copied ? '✅' : '📋'}</span>
+                    <span style={{ fontSize: 12 }}>{copied ? 'Kopiert!' : 'Link kopieren'}</span>
                   </button>
-                )}
 
-                {/* 4. E-Mail senden */}
-                <button className="btn btn-lg" onClick={openEmailModal}
-                  style={{ justifyContent: 'center', background: 'var(--dark)', color: 'white', border: 'none' }}>
-                  ✉️ E-Mail senden
-                </button>
-
-                {/* 5. QR-Code anzeigen */}
-                {packageUrl && (
-                  <button className="btn btn-lg" style={{ justifyContent: 'center' }}
-                    onClick={() => setQrVisible(v => !v)}>
-                    🔳 QR-Code {qrVisible ? 'ausblenden' : 'anzeigen'}
+                  <button className="btn" onClick={() => setQrVisible(v => !v)}
+                    style={{ flexDirection: 'column', gap: 4, padding: '14px 10px',
+                      justifyContent: 'center', opacity: packageUrl ? 1 : .4,
+                      background: qrVisible ? 'var(--red-light)' : undefined,
+                      border: qrVisible ? '1px solid var(--red)' : undefined }}>
+                    <span style={{ fontSize: 20 }}>🔳</span>
+                    <span style={{ fontSize: 12 }}>QR-Code</span>
                   </button>
-                )}
+
+                </div>
 
                 {/* QR-Code Bild */}
                 {qrVisible && packageUrl && (
                   <div style={{ textAlign: 'center', padding: 16, background: 'var(--bg)',
-                    borderRadius: 12, border: '1px solid var(--line)', marginTop: 4 }}>
+                    borderRadius: 12, border: '1px solid var(--line)' }}>
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(packageUrl)}`}
                       alt="QR-Code" style={{ width: 180, height: 180, borderRadius: 8 }}
