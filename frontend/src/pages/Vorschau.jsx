@@ -132,22 +132,30 @@ export default function Vorschau() {
 
   async function newVersionSameCustomer() {
     try {
+      const baseNo = offerNo.trim()
+      if (!baseNo) { showToast('Bitte zuerst ein Angebot laden'); return }
+
       const res  = await fetch(`${BASE}/offers/next-version`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ offer_no: offerData.project?.offerNo || offerNo })
+        body: JSON.stringify({ offer_no: baseNo })
       })
       const data = await res.json()
+      if (!res.ok || !data.offer_no) {
+        showToast('Fehler: ' + (data.detail || 'Versionsnummer konnte nicht ermittelt werden'))
+        return
+      }
+      showToast(`Neue Version: ${data.offer_no}`)
       sessionStorage.setItem('messe_prefill', JSON.stringify({
-        mode:        'revision',
-        offerNo:     data.offer_no,
+        mode:    'revision',
+        offerNo: data.offer_no,
         contact: {
-          company:     offerData.project?.customer     || '',
-          contactName: offerData.project?.contact      || '',
-          email:       offerData.project?.customerEmail|| '',
+          company:     project.customer      || '',
+          contactName: project.contact       || '',
+          email:       project.customerEmail || '',
         },
         itemIds: (offerData.offer_items || []).map(i => i.option_id).filter(Boolean),
       }))
-      navigate('/messe')
+      setTimeout(() => navigate('/messe'), 1200)
     } catch(e) { showToast('Fehler: ' + e.message) }
   }
 
