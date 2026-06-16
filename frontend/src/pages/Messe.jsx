@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const BASE = (import.meta.env.VITE_API_URL || '') + '/api'
@@ -25,6 +25,7 @@ export default function Messe() {
   const [projectName, setProjectName]   = useState('')
   const [optionalIds, setOptionalIds]   = useState(new Set())  // Optionen die als optional markiert sind
   const [offerNo, setOfferNo]         = useState('')
+  const revisionNoRef                 = useRef('')   // Versionsnummer – Ref statt State wegen Closure
   const [busy, setBusy]               = useState(false)
   const [done, setDone]               = useState(false)
   const [result, setResult]           = useState(null)  // Angebotsergebnis
@@ -47,7 +48,7 @@ export default function Messe() {
         try {
           const pre = JSON.parse(raw)
           if (pre.contact) setContact(p => ({ ...p, ...pre.contact }))
-          if (pre.offerNo) setOfferNo(pre.offerNo)
+          if (pre.offerNo) { setOfferNo(pre.offerNo); revisionNoRef.current = pre.offerNo }
           if (pre.itemIds?.length) setSelectedIds(new Set(pre.itemIds))
           if (pre.mode === 'revision' || pre.mode === 'template') setSaveCustomer(false)
         } catch {}
@@ -247,7 +248,7 @@ export default function Messe() {
       const res  = await fetch(`${BASE}/offers/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project: proj, offer_items, provider: {}, attachments: [], leasing: leasingPayload, offer_no: offerNo || undefined })
+        body: JSON.stringify({ project: proj, offer_items, provider: {}, attachments: [], leasing: leasingPayload, offer_no: revisionNoRef.current || undefined })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || `Server-Fehler ${res.status}`)
@@ -263,7 +264,7 @@ export default function Messe() {
 
   function reset() {
     setStep(0); setContact({ company: '', contactName: '', email: '', position: '', phone: '', mobile: '', street: '', zip: '', city: '', website: '' })
-    setCardImageFile(null)
+    setCardImageFile(null); revisionNoRef.current = ''
     setLogoUrl(''); setLogoFallback(''); setUseLogo(false)
     setSelectedIds(new Set()); setProjectName(''); setOfferNo('')
     setDone(false); setError(''); setCustomPrices({})
