@@ -7,7 +7,6 @@ import Bibliothek    from './pages/Bibliothek'
 import Vorschau      from './pages/Vorschau'
 import Angebote      from './pages/Angebote'
 import Einstellungen from './pages/Einstellungen'
-import OCRTest       from './pages/OCRTest'
 
 
 const NAV = [
@@ -24,9 +23,7 @@ const NAV = [
     { to: '/bibliothek',   icon: '📚', label: 'Optionsbibliothek' },
     { to: '/einstellungen',icon: '⚙️', label: 'Einstellungen' },
   ]},
-  { group: 'Tools', items: [
-    { to: '/ocr-test', icon: '🔍', label: 'OCR Test' },
-  ]},
+
 ]
 
 export default function App() {
@@ -150,7 +147,7 @@ export default function App() {
           <Route path="/bibliothek"    element={<Bibliothek />} />
           <Route path="/vorschau"      element={<Vorschau key={location.search} />} />
           <Route path="/einstellungen" element={<Einstellungen />} />
-          <Route path="/ocr-test"      element={<OCRTest />} />
+
         </Routes>
       </main>
     </div>
