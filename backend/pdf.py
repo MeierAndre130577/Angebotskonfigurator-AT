@@ -1052,7 +1052,13 @@ def generate_design_pdf(data: dict) -> dict:
     t.setStyle(TableStyle(ts_preis))
     story.append(t)
     story.append(Spacer(1,2*mm))
-    story.append(Paragraph('Alle Preise verstehen sich exkl. gesetzlicher MwSt.', S['muted']))
+    vat_country = project.get('vat_country', '')
+    vat_rate    = project.get('vat_rate')
+    if vat_country and vat_rate is not None:
+        story.append(Paragraph(
+            f'Alle Preise verstehen sich zzgl. {vat_rate:g}% MwSt ({vat_country}).',
+            S['muted']
+        ))
     if payment_term:
         story.append(Spacer(1,2*mm))
         story.append(Paragraph(f'Zahlungsziel: {payment_term}', S['muted']))

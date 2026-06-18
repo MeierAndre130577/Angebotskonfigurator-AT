@@ -67,6 +67,8 @@ Mit freundlichen Grüßen
   discount_enabled: false,
   // Projektvorlagen
   project_templates: [],
+  // MwSt-Länder
+  vat_countries: [],
 }
 
 function Field({ label, hint, children }) {
@@ -121,7 +123,7 @@ const SECTION_DEFAULTS = {
   'deckblatt': false, 'logo': false, 'pdf-layout': false,
   'firmenangaben': true, 'agb': true, 'pflichtanlagen': false,
   'email-vorlage': false, 'leasing': false, 'resend': false,
-  'smtp': false, 'zahlungsziele': false, 'projektvorlagen': false,
+  'smtp': false, 'zahlungsziele': false, 'projektvorlagen': false, 'mwst': false,
 }
 
 export default function Einstellungen() {
@@ -132,6 +134,8 @@ export default function Einstellungen() {
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const [newPaymentTerm, setNewPaymentTerm]         = useState('')
   const [newProjectTemplate, setNewProjectTemplate] = useState('')
+  const [newVatCountry, setNewVatCountry]           = useState('')
+  const [newVatRate, setNewVatRate]                 = useState('')
   const [sectionOpen, setSectionOpen] = useState(() => {
     try { return { ...SECTION_DEFAULTS, ...JSON.parse(localStorage.getItem('einstellungen_sections') || '{}') } }
     catch { return { ...SECTION_DEFAULTS } }
@@ -295,6 +299,31 @@ export default function Einstellungen() {
 
   function removeProjectTemplate(id) {
     setSettings(s => ({ ...s, project_templates: (s.project_templates || []).filter(t => t.id !== id) }))
+  }
+
+  function addVatCountry() {
+    if (!newVatCountry.trim() || !newVatRate) return
+    const entry = { id: crypto.randomUUID(), country: newVatCountry.trim(), rate: parseFloat(newVatRate), isDefault: false }
+    setSettings(s => {
+      const list = s.vat_countries || []
+      return { ...s, vat_countries: [...list, { ...entry, isDefault: list.length === 0 }] }
+    })
+    setNewVatCountry(''); setNewVatRate('')
+  }
+
+  function removeVatCountry(id) {
+    setSettings(s => {
+      const list = (s.vat_countries || []).filter(v => v.id !== id)
+      if (list.length > 0 && !list.some(v => v.isDefault)) list[0].isDefault = true
+      return { ...s, vat_countries: list }
+    })
+  }
+
+  function setVatDefault(id) {
+    setSettings(s => ({
+      ...s,
+      vat_countries: (s.vat_countries || []).map(v => ({ ...v, isDefault: v.id === id }))
+    }))
   }
 
   function addPaymentTerm() {
@@ -906,6 +935,71 @@ export default function Einstellungen() {
             style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 10,
               padding: '9px 14px', fontSize: 13 }} />
           <button className="btn btn-red" onClick={addPaymentTerm} disabled={!newPaymentTerm.trim()}>
+            + Hinzufügen
+          </button>
+        </div>
+      </Section>
+
+      {/* ── MwSt-Länder ─────────────────────────────────────────────────────── */}
+      <Section title="🌍 MwSt / Länder" {...sec('mwst')}>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
+          Konfiguriere MwSt-Sätze je Land. In der Schnellerfassung kannst du eines auswählen –
+          dann erscheint im PDF der Hinweis <em>„Alle Preise verstehen sich zzgl. X% MwSt (Land)."</em>
+          Ist genau ein Land eingetragen, wird es automatisch übernommen.
+        </p>
+
+        {(settings.vat_countries || []).length === 0 ? (
+          <p style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic' }}>
+            Noch keine Länder eingetragen – z. B. Österreich 20%, Deutschland 19%.
+          </p>
+        ) : (
+          <div style={{ marginBottom: 16 }}>
+            {(settings.vat_countries || []).map(v => (
+              <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10,
+                padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+                <span style={{ flex: 1, fontSize: 14 }}>{v.country}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--red)', minWidth: 48, textAlign: 'right' }}>{v.rate}%</span>
+                <button
+                  onClick={() => setVatDefault(v.id)}
+                  title={v.isDefault ? 'Standard (wird vorausgewählt)' : 'Als Standard setzen'}
+                  style={{ fontSize: 14, background: 'none', border: 'none', cursor: 'pointer',
+                    color: v.isDefault ? '#f59e0b' : 'var(--line)', padding: '2px 4px' }}>
+                  ★
+                </button>
+                <button onClick={() => removeVatCountry(v.id)}
+                  style={{ fontSize: 12, color: 'var(--muted)', background: 'none',
+                    border: 'none', cursor: 'pointer', padding: '2px 6px' }}>✕</button>
+              </div>
+            ))}
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>
+              ★ = Standard, wird in der Schnellerfassung vorausgewählt
+            </p>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <input
+            value={newVatCountry}
+            onChange={e => setNewVatCountry(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addVatCountry()}
+            placeholder="Land (z. B. Österreich)"
+            style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 10,
+              padding: '9px 14px', fontSize: 13 }}
+          />
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input
+              type="number" min="0" max="100" step="0.1"
+              value={newVatRate}
+              onChange={e => setNewVatRate(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addVatCountry()}
+              placeholder="20"
+              style={{ border: '1px solid var(--line)', borderRadius: 10,
+                padding: '9px 32px 9px 14px', fontSize: 13, width: 90 }}
+            />
+            <span style={{ position: 'absolute', right: 10, fontSize: 12, color: 'var(--muted)', pointerEvents: 'none' }}>%</span>
+          </div>
+          <button className="btn btn-red" onClick={addVatCountry}
+            disabled={!newVatCountry.trim() || !newVatRate}>
             + Hinzufügen
           </button>
         </div>

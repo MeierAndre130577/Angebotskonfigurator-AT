@@ -46,6 +46,7 @@ export default function Messe() {
   const [leasingSettings, setLeasingSettings] = useState(null)
   const [selectedPaymentTerm, setSelectedPaymentTerm] = useState('')
   const [discountPercent, setDiscountPercent]         = useState(0)
+  const [selectedVatCountry, setSelectedVatCountry]   = useState(null)
 
   useEffect(() => {
     optionsApi.list().then(opts => {
@@ -69,6 +70,12 @@ export default function Messe() {
         setLeasingSettings(data)
         const active = (data.payment_terms || []).filter(t => t.active)
         if (active.length === 1) setSelectedPaymentTerm(active[0].label)
+        const vats = data.vat_countries || []
+        if (vats.length === 1) setSelectedVatCountry(vats[0])
+        else if (vats.length > 1) {
+          const def = vats.find(v => v.isDefault)
+          if (def) setSelectedVatCountry(def)
+        }
       }).catch(console.warn)
   }, [])
 
@@ -296,6 +303,8 @@ export default function Messe() {
         customer_logo:      effectiveLogo     || undefined,
         delivery_address:   deliveryEnabled && deliveryAddress ? deliveryAddress : undefined,
         discount_percent:   discountActive ? discountPercent : undefined,
+        vat_country:        selectedVatCountry?.country || undefined,
+        vat_rate:           selectedVatCountry?.rate ?? undefined,
       }
       // offer_items mit optional-Flag und korrekten Preisen
       const offer_items = rawItems.map(o => {
@@ -349,7 +358,7 @@ export default function Messe() {
     setSelectedIds(new Set()); setProjectName(''); setOfferNo('')
     setDone(false); setError(''); setCustomPrices({}); setSelectedPaymentTerm('')
     setDeliveryEnabled(false); setDeliveryQuery(''); setDeliveryAddress(''); setDeliverySuggestions([])
-    setDiscountPercent(0)
+    setDiscountPercent(0); setSelectedVatCountry(null)
   }
 
   // ── Cluster-Gruppen ────────────────────────────────────────────────────────
@@ -953,6 +962,51 @@ export default function Messe() {
               </div>
             )}
           </div>
+
+          {/* ── MwSt / Land ── */}
+          {(() => {
+            const vats = leasingSettings?.vat_countries || []
+            if (vats.length === 0) return null
+            return (
+              <div className="card" style={{ marginBottom: 16 }}>
+                <div className="card-title" style={{ marginBottom: 12 }}>🌍 MwSt / Land</div>
+                {vats.length === 1 ? (
+                  <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
+                    Wird automatisch übernommen:&nbsp;
+                    <b style={{ color: 'var(--dark)' }}>{vats[0].country} – {vats[0].rate}% MwSt</b>
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {vats.map(v => (
+                      <label key={v.id} style={{ display: 'flex', alignItems: 'center',
+                        gap: 10, cursor: 'pointer', fontSize: 14 }}>
+                        <input
+                          type="radio"
+                          name="vat_country"
+                          checked={selectedVatCountry?.id === v.id}
+                          onChange={() => setSelectedVatCountry(v)}
+                          style={{ accentColor: 'var(--red)', width: 16, height: 16 }}
+                        />
+                        {v.country}
+                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>{v.rate}% MwSt</span>
+                      </label>
+                    ))}
+                    <label style={{ display: 'flex', alignItems: 'center',
+                      gap: 10, cursor: 'pointer', fontSize: 14 }}>
+                      <input
+                        type="radio"
+                        name="vat_country"
+                        checked={selectedVatCountry === null}
+                        onChange={() => setSelectedVatCountry(null)}
+                        style={{ accentColor: 'var(--red)', width: 16, height: 16 }}
+                      />
+                      <span style={{ color: 'var(--muted)' }}>Kein MwSt-Hinweis im PDF</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           <div className="card">
 
