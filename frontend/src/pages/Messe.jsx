@@ -277,6 +277,7 @@ export default function Messe() {
         ? (logoUrl && !logoUrl.startsWith('__') ? logoUrl
            : logoFallback && !logoFallback.startsWith('__') ? logoFallback : '')
         : ''
+      const discountActive = leasingSettings?.discount_enabled && discountPercent > 0
       const proj  = {
         customer:           contact.company,
         contact:            contact.contactName,
@@ -297,7 +298,6 @@ export default function Messe() {
         discount_percent:   discountActive ? discountPercent : undefined,
       }
       // offer_items mit optional-Flag und korrekten Preisen
-      const discountActive = leasingSettings?.discount_enabled && discountPercent > 0
       const offer_items = rawItems.map(o => {
         const base   = customPrices[o.id] !== undefined ? Number(customPrices[o.id]) : (o.price || 0)
         const isOpt  = optionalIds.has(o.id)

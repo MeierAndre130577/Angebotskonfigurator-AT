@@ -1,6 +1,15 @@
 [
   {
     "date": "18.06.2026",
+    "title": "Rabattierung & Duplikatschutz",
+    "changes": [
+      "Rabattierung in den Einstellungen aktivierbar: Prozentsatz in der Schnellerfassung eingeben – rabattfähige Positionen werden automatisch reduziert",
+      "Im PDF: Originalpreis durchgestrichen, rabattierter Preis in Rot – plus eigene Rabattzeile in der Preiszusammenfassung",
+      "Kunden-Duplikatschutz: Wird ein Kontakt mit gleicher E-Mail-Adresse nochmals gespeichert ohne Änderung, erscheint eine Warnung bevor der Datensatz überschrieben wird"
+    ]
+  },
+  {
+    "date": "18.06.2026",
     "title": "Politur & kleine Verbesserungen",
     "changes": [
       "App kann jetzt zum Homescreen hinzugefügt werden – mit eigenem Icon (rotes Klemmbrett)",
