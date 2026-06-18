@@ -8,14 +8,12 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
-const CLUSTERS = ['Farmer Shop', 'Wein Shop', 'Maxibar', 'Erweiterungen', 'Zahlungssysteme', 'Zubehör', 'Service', 'Sonstiges']
-
 function money(n) {
   return new Intl.NumberFormat('de-AT', { style: 'currency', currency: 'EUR' }).format(n || 0)
 }
 
 const EMPTY = {
-  name: '', cluster: 'Farmer Shop', display_type: 'Großes Bild + Beschreibung',
+  name: '', cluster: '', display_type: 'Großes Bild + Beschreibung',
   short_text: '', long_text: '', price: 0, recurring: false,
   image_path: '', sort_order: 0, documents: [], active: false,
   price_editable: false, price_hint: '', discountable: false,
@@ -176,6 +174,7 @@ export default function Bibliothek() {
   const [uploading, setUploading]   = useState(false)
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const [toast, setToast]           = useState('')
+  const [clusters, setClusters]     = useState([])
   const [templates, setTemplates]   = useState([])
   const [showTemplates, setShowTemplates] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState(null)
@@ -192,7 +191,7 @@ export default function Bibliothek() {
     useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 5 } })
   )
 
-  useEffect(() => { load(); loadTemplates() }, [])
+  useEffect(() => { load(); loadTemplates(); loadClusters() }, [])
 
   useEffect(() => {
     if (!editing) return
@@ -210,6 +209,14 @@ export default function Bibliothek() {
     window.addEventListener('paste', handler)
     return () => window.removeEventListener('paste', handler)
   }, [editing])
+
+  async function loadClusters() {
+    try {
+      const res = await fetch(`${BASE}/settings`)
+      const data = await res.json()
+      setClusters(data.clusters || [])
+    } catch { /* kein Problem, Fallback auf leere Liste */ }
+  }
 
   async function load() {
     setLoading(true)
@@ -583,9 +590,15 @@ export default function Bibliothek() {
             <div className="grid2">
               <div className="field"><label>Name *</label><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus /></div>
               <div className="field"><label>Cluster</label>
-                <select value={form.cluster} onChange={e => setForm(f => ({ ...f, cluster: e.target.value }))}>
-                  {CLUSTERS.map(c => <option key={c}>{c}</option>)}
-                </select>
+                <input
+                  value={form.cluster}
+                  onChange={e => setForm(f => ({ ...f, cluster: e.target.value }))}
+                  list="cluster-list"
+                  placeholder="Cluster wählen oder eingeben …"
+                />
+                <datalist id="cluster-list">
+                  {clusters.map(c => <option key={c} value={c} />)}
+                </datalist>
               </div>
               <div className="field"><label>Preis (€)</label><input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} /></div>
               <div className="field"><label>Preisart</label>

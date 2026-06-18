@@ -69,6 +69,8 @@ Mit freundlichen Grüßen
   project_templates: [],
   // MwSt-Länder
   vat_countries: [],
+  // Cluster
+  clusters: ['Farmer Shop', 'Wein Shop', 'Maxibar', 'Erweiterungen', 'Zahlungssysteme', 'Zubehör', 'Service', 'Sonstiges'],
 }
 
 function Field({ label, hint, children }) {
@@ -123,7 +125,7 @@ const SECTION_DEFAULTS = {
   'deckblatt': false, 'logo': false, 'pdf-layout': false,
   'firmenangaben': true, 'agb': true, 'pflichtanlagen': false,
   'email-vorlage': false, 'leasing': false, 'resend': false,
-  'smtp': false, 'zahlungsziele': false, 'projektvorlagen': false, 'mwst': false,
+  'smtp': false, 'zahlungsziele': false, 'projektvorlagen': false, 'mwst': false, 'cluster': false,
 }
 
 export default function Einstellungen() {
@@ -136,6 +138,7 @@ export default function Einstellungen() {
   const [newProjectTemplate, setNewProjectTemplate] = useState('')
   const [newVatCountry, setNewVatCountry]           = useState('')
   const [newVatRate, setNewVatRate]                 = useState('')
+  const [newCluster, setNewCluster]                 = useState('')
   const [sectionOpen, setSectionOpen] = useState(() => {
     try { return { ...SECTION_DEFAULTS, ...JSON.parse(localStorage.getItem('einstellungen_sections') || '{}') } }
     catch { return { ...SECTION_DEFAULTS } }
@@ -324,6 +327,26 @@ export default function Einstellungen() {
       ...s,
       vat_countries: (s.vat_countries || []).map(v => ({ ...v, isDefault: v.id === id }))
     }))
+  }
+
+  function addCluster() {
+    if (!newCluster.trim()) return
+    const list = settings.clusters || []
+    if (list.includes(newCluster.trim())) return
+    setSettings(s => ({ ...s, clusters: [...(s.clusters || []), newCluster.trim()] }))
+    setNewCluster('')
+  }
+
+  function removeCluster(name) {
+    setSettings(s => ({ ...s, clusters: (s.clusters || []).filter(c => c !== name) }))
+  }
+
+  function moveCluster(idx, dir) {
+    const list = [...(settings.clusters || [])]
+    const target = idx + dir
+    if (target < 0 || target >= list.length) return
+    ;[list[idx], list[target]] = [list[target], list[idx]]
+    setSettings(s => ({ ...s, clusters: list }))
   }
 
   function addPaymentTerm() {
@@ -935,6 +958,47 @@ export default function Einstellungen() {
             style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 10,
               padding: '9px 14px', fontSize: 13 }} />
           <button className="btn btn-red" onClick={addPaymentTerm} disabled={!newPaymentTerm.trim()}>
+            + Hinzufügen
+          </button>
+        </div>
+      </Section>
+
+      {/* ── Cluster ─────────────────────────────────────────────────────────── */}
+      <Section title="📂 Cluster" {...sec('cluster')}>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
+          Cluster gruppieren Optionen in der Bibliothek und im Angebot. Reihenfolge bestimmt die Darstellung.
+        </p>
+        {(settings.clusters || []).length === 0 ? (
+          <p style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic' }}>Noch keine Cluster – füge den ersten hinzu.</p>
+        ) : (
+          <div style={{ marginBottom: 16 }}>
+            {(settings.clusters || []).map((c, idx) => (
+              <div key={c} style={{ display: 'flex', alignItems: 'center', gap: 8,
+                padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <button onClick={() => moveCluster(idx, -1)} disabled={idx === 0}
+                    style={{ background: 'none', border: 'none', cursor: idx === 0 ? 'default' : 'pointer',
+                      fontSize: 10, color: idx === 0 ? 'var(--line)' : 'var(--muted)', padding: '1px 4px', lineHeight: 1 }}>▲</button>
+                  <button onClick={() => moveCluster(idx, 1)} disabled={idx === (settings.clusters || []).length - 1}
+                    style={{ background: 'none', border: 'none', cursor: idx === (settings.clusters || []).length - 1 ? 'default' : 'pointer',
+                      fontSize: 10, color: idx === (settings.clusters || []).length - 1 ? 'var(--line)' : 'var(--muted)', padding: '1px 4px', lineHeight: 1 }}>▼</button>
+                </div>
+                <span style={{ flex: 1, fontSize: 14 }}>{c}</span>
+                <button onClick={() => removeCluster(c)}
+                  style={{ fontSize: 12, color: 'var(--muted)', background: 'none',
+                    border: 'none', cursor: 'pointer', padding: '2px 6px' }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <input
+            value={newCluster} onChange={e => setNewCluster(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addCluster()}
+            placeholder="z. B. Kassensysteme"
+            style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 10, padding: '9px 14px', fontSize: 13 }}
+          />
+          <button className="btn btn-red" onClick={addCluster} disabled={!newCluster.trim()}>
             + Hinzufügen
           </button>
         </div>
