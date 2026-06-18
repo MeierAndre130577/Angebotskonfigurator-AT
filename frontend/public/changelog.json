@@ -4,10 +4,9 @@
     "title": "MwSt-Länder & Bugfix Rabattierung",
     "changes": [
       "MwSt-Sätze je Land in den Einstellungen hinterlegen (z. B. Österreich 20%, Deutschland 19%)",
-      "In der Schnellerfassung Land auswählen – im PDF erscheint dann der Hinweis 'Alle Preise zzgl. X% MwSt (Land)'",
-      "Ist genau ein Land konfiguriert oder ein Standard gesetzt, wird es automatisch vorausgewählt",
-      "Kein Land gewählt = kein MwSt-Text im PDF",
-      "Bugfix: Rabattierung hat beim Erstellen des Angebots einen Fehler verursacht (Variablenreihenfolge)"
+      "In der Schnellerfassung Land auswählen – im PDF erscheint dann 'Alle Preise zzgl. X% MwSt (Land)'",
+      "Standardmäßig kein MwSt-Hinweis – muss pro Angebot aktiv ausgewählt werden",
+      "Bugfix: Rabattierung hat beim Erstellen des Angebots einen Fehler verursacht"
     ]
   },
   {
