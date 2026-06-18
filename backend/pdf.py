@@ -870,20 +870,34 @@ def generate_design_pdf(data: dict) -> dict:
         f"Datum: <b>{project.get('date','')}</b>", S['body']))
     story.append(Spacer(1, 3*mm))
 
-    one_time = sum((i.get('original_price') or i.get('price') or 0) for i in offer if not i.get('recurring') and not i.get('optional'))
-    monthly  = sum((i.get('original_price') or i.get('price') or 0) for i in offer if i.get('recurring') and not i.get('optional'))
+    discount_pct = project.get('discount_percent', 0) or 0
+
+    # Preise: original_price = vor Rabatt, price = nach Rabatt (bereits berechnet)
+    one_time_gross = sum((i.get('original_price') or i.get('price') or 0) for i in offer if not i.get('recurring') and not i.get('optional'))
+    monthly_gross  = sum((i.get('original_price') or i.get('price') or 0) for i in offer if i.get('recurring') and not i.get('optional'))
+    one_time = sum((i.get('price') or 0) for i in offer if not i.get('recurring') and not i.get('optional'))
+    monthly  = sum((i.get('price') or 0) for i in offer if i.get('recurring') and not i.get('optional'))
+    one_time_saved = one_time_gross - one_time
+    monthly_saved  = monthly_gross  - monthly
 
     hdr  = [Paragraph(f'<b>{x}</b>', S['muted']) for x in ['#','Option','Cluster','Preis']]
     rows = [hdr]
     for i, item in enumerate(offer, 1):
-        p          = item.get('original_price') or item.get('price') or 0
+        orig       = item.get('original_price') or item.get('price') or 0
+        final      = item.get('price') or 0
         is_opt     = item.get('optional', False)
+        has_disc   = item.get('discount_pct', 0) > 0
         if is_opt:
-            price_str = money(p) + ('/Mo.' if item.get('recurring') else '')
+            price_str = money(orig) + ('/Mo.' if item.get('recurring') else '')
             ps = f'optional ({price_str})'
             name_text = f"{item.get('name','')}  <font color='#71717a' size='7'>[optional]</font>"
+        elif has_disc:
+            suffix = '/Mo.' if item.get('recurring') else ''
+            ps = (f'<strike><font color="#71717a">{money(orig)}{suffix}</font></strike>  '
+                  f'<b>{money(final)}{suffix}</b>')
+            name_text = item.get('name','')
         else:
-            ps = 'inklusive' if p==0 else (money(p)+'/Mo.' if item.get('recurring') else money(p))
+            ps = 'inklusive' if orig==0 else (money(orig)+'/Mo.' if item.get('recurring') else money(orig))
             name_text = item.get('name','')
         rows.append([
             Paragraph(str(i), S['muted']),
@@ -986,17 +1000,56 @@ def generate_design_pdf(data: dict) -> dict:
     story.append(Spacer(1, 5*mm))
 
     # Preistabelle
-    preis_rows = [
-        [Paragraph('<b>Einmalige Kosten</b>', S['h3']), Paragraph(f'<b>{money(one_time)}</b>', S['price'])],
-        [Paragraph('<b>Monatliche Kosten</b>', S['h3']), Paragraph(f'<b>{money(monthly)}</b>',  S['price'])],
-    ]
+    preis_rows = []
+    if one_time_saved > 0:
+        preis_rows.append([
+            Paragraph('Einmalige Kosten (vor Rabatt)', S['muted']),
+            Paragraph(money(one_time_gross), S['muted']),
+        ])
+        preis_rows.append([
+            Paragraph(f'Rabatt {discount_pct:.4g}% auf rabattfähige Positionen', S['muted']),
+            Paragraph(f'– {money(one_time_saved)}',
+                      ParagraphStyle('disc', fontName='Helvetica-Bold', fontSize=10,
+                                     textColor=colors.HexColor('#16a34a'), alignment=TA_RIGHT)),
+        ])
+    preis_rows.append([
+        Paragraph('<b>Einmalige Kosten</b>', S['h3']),
+        Paragraph(f'<b>{money(one_time)}</b>', S['price']),
+    ])
+    if monthly_saved > 0:
+        preis_rows.append([
+            Paragraph('Monatliche Kosten (vor Rabatt)', S['muted']),
+            Paragraph(money(monthly_gross), S['muted']),
+        ])
+        preis_rows.append([
+            Paragraph(f'Rabatt {discount_pct:.4g}% auf rabattfähige Positionen', S['muted']),
+            Paragraph(f'– {money(monthly_saved)}',
+                      ParagraphStyle('discm', fontName='Helvetica-Bold', fontSize=10,
+                                     textColor=colors.HexColor('#16a34a'), alignment=TA_RIGHT)),
+        ])
+    preis_rows.append([
+        Paragraph('<b>Monatliche Kosten</b>', S['h3']),
+        Paragraph(f'<b>{money(monthly)}</b>', S['price']),
+    ])
+
+    # Hauptzeilen-Indizes merken für Hintergrundfarbe
+    preis_main_idx = []
+    preis_rows_tmp = []
+    if one_time_saved > 0:
+        preis_rows_tmp += [None, None]
+    preis_main_idx.append(len(preis_rows_tmp)); preis_rows_tmp.append(None)
+    if monthly_saved > 0:
+        preis_rows_tmp += [None, None]
+    preis_main_idx.append(len(preis_rows_tmp)); preis_rows_tmp.append(None)
+
     t = Table(preis_rows, colWidths=[CW-40*mm, 40*mm])
-    t.setStyle(TableStyle([
+    ts_preis = [
         ('LINEBELOW',(0,0),(-1,-1),0.5,LINE),
         ('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8),
-        ('BACKGROUND',(0,0),(-1,0),colors.HexColor('#fff1f2')),
-        ('BACKGROUND',(0,1),(-1,1),colors.HexColor('#fff1f2')),
-    ]))
+    ]
+    for idx in preis_main_idx:
+        ts_preis.append(('BACKGROUND',(0,idx),(-1,idx),colors.HexColor('#fff1f2')))
+    t.setStyle(TableStyle(ts_preis))
     story.append(t)
     story.append(Spacer(1,2*mm))
     story.append(Paragraph('Alle Preise verstehen sich exkl. gesetzlicher MwSt.', S['muted']))

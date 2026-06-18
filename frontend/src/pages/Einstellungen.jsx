@@ -62,8 +62,9 @@ Mit freundlichen Grüßen
   smtp_user:      '',
   smtp_pass:      '',
   smtp_from_name: '',
-  // Zahlungsziele
+  // Zahlungsziele & Rabattierung
   payment_terms: [],
+  discount_enabled: false,
   // Projektvorlagen
   project_templates: [],
 }
@@ -854,7 +855,29 @@ export default function Einstellungen() {
       </Section>
 
       {/* ── Zahlungsziele ────────────────────────────────────────────────────── */}
-      <Section title="💳 Zahlungsziele" {...sec('zahlungsziele')}>
+      <Section title="💳 Zahlungsziele & Rabattierung" {...sec('zahlungsziele')}>
+
+        {/* Rabattierung */}
+        <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid var(--line)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => set('discount_enabled', !settings.discount_enabled)}>
+            <div style={{ width: 44, height: 24, borderRadius: 12, flexShrink: 0, transition: '.2s',
+              background: settings.discount_enabled ? 'var(--red)' : '#ccc', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: 2, left: settings.discount_enabled ? 22 : 2,
+                width: 20, height: 20, borderRadius: '50%', background: 'white',
+                boxShadow: '0 1px 4px rgba(0,0,0,.25)', transition: '.2s' }} />
+            </div>
+            <span style={{ fontWeight: 700, fontSize: 14 }}>🏷️ Rabattierung aktivieren</span>
+          </div>
+          {settings.discount_enabled && (
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8, marginLeft: 58 }}>
+              In der Schnellerfassung erscheint beim Fertigstellen ein Rabattfeld (%).
+              Wirkt nur auf Artikel die in der Optionsbibliothek als "Rabattfähig" markiert sind.
+            </p>
+          )}
+        </div>
+
+        {/* Zahlungsziele */}
         <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
           Aktivierte Zahlungsziele erscheinen in der Schnellerfassung.
           Ist nur eines aktiv, wird es automatisch übernommen.

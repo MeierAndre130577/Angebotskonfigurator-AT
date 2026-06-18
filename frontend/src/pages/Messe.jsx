@@ -45,6 +45,7 @@ export default function Messe() {
   const [leasingKaufpreis, setLeasingKaufpreis] = useState(0)
   const [leasingSettings, setLeasingSettings] = useState(null)
   const [selectedPaymentTerm, setSelectedPaymentTerm] = useState('')
+  const [discountPercent, setDiscountPercent]         = useState(0)
 
   useEffect(() => {
     optionsApi.list().then(opts => {
@@ -156,6 +157,26 @@ export default function Messe() {
     setError('')
 
     if (saveCustomer) {
+      // Duplikat-Check: existiert der Kunde bereits und hat sich nichts geändert?
+      const existing = allCustomers.find(c => c.email?.toLowerCase() === contact.email.toLowerCase())
+      if (existing && !cardImageFile) {
+        const unchanged =
+          (existing.company  || '') === contact.company.trim() &&
+          (existing.contact  || '') === contact.contactName.trim() &&
+          (existing.phone    || '') === contact.phone.trim() &&
+          (existing.mobile   || '') === contact.mobile.trim() &&
+          (existing.street   || '') === contact.street.trim() &&
+          (existing.zip      || '') === contact.zip.trim() &&
+          (existing.city     || '') === contact.city.trim() &&
+          (existing.website  || '') === contact.website.trim()
+        if (unchanged) {
+          const ok = window.confirm(
+            `"${contact.company}" ist bereits gespeichert und hat sich nicht verändert.\nTrotzdem neu speichern?`
+          )
+          if (!ok) { setStep(1); return }
+        }
+      }
+
       let cardImageUrl = ''
       if (cardImageFile) {
         try {
@@ -273,10 +294,15 @@ export default function Messe() {
         customer_website:   contact.website   || undefined,
         customer_logo:      effectiveLogo     || undefined,
         delivery_address:   deliveryEnabled && deliveryAddress ? deliveryAddress : undefined,
+        discount_percent:   discountActive ? discountPercent : undefined,
       }
       // offer_items mit optional-Flag und korrekten Preisen
+      const discountActive = leasingSettings?.discount_enabled && discountPercent > 0
       const offer_items = rawItems.map(o => {
-        const base = customPrices[o.id] !== undefined ? Number(customPrices[o.id]) : (o.price || 0)
+        const base   = customPrices[o.id] !== undefined ? Number(customPrices[o.id]) : (o.price || 0)
+        const isOpt  = optionalIds.has(o.id)
+        const applyDiscount = discountActive && o.discountable && !isOpt
+        const discounted = applyDiscount ? Math.round(base * (1 - discountPercent / 100) * 100) / 100 : base
         return {
           option_id:      o.id,
           name:           o.name,
@@ -284,12 +310,14 @@ export default function Messe() {
           short_text:     customNotes[o.id] ? `${o.short_text || ''}\n${customNotes[o.id]}`.trim() : (o.short_text || ''),
           long_text:      o.long_text    || '',
           original_price: base,
-          price:          optionalIds.has(o.id) ? 0 : base,
-          optional:       optionalIds.has(o.id),
+          price:          isOpt ? 0 : discounted,
+          optional:       isOpt,
           recurring:      o.recurring    || false,
           image_path:     o.image_path   || '',
           display_type:   o.display_type || '',
           documents:      o.documents    || [],
+          discountable:   o.discountable || false,
+          discount_pct:   applyDiscount ? discountPercent : 0,
           qty:            1,
         }
       })
@@ -321,6 +349,7 @@ export default function Messe() {
     setSelectedIds(new Set()); setProjectName(''); setOfferNo('')
     setDone(false); setError(''); setCustomPrices({}); setSelectedPaymentTerm('')
     setDeliveryEnabled(false); setDeliveryQuery(''); setDeliveryAddress(''); setDeliverySuggestions([])
+    setDiscountPercent(0)
   }
 
   // ── Cluster-Gruppen ────────────────────────────────────────────────────────
@@ -642,10 +671,25 @@ export default function Messe() {
                       )}
                     </span>
                     <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-                      <b style={{ color: isOptional ? 'var(--muted)' : 'var(--red)',
-                        textDecoration: isOptional ? 'line-through' : 'none' }}>
-                        {displayPrice === 0 ? 'inkl.' : o.recurring ? money(displayPrice)+'/Mo.' : money(displayPrice)}
-                      </b>
+                      {(() => {
+                        const applyDisc = leasingSettings?.discount_enabled && discountPercent > 0 && o.discountable && !isOptional
+                        const discounted = applyDisc ? Math.round(displayPrice * (1 - discountPercent / 100) * 100) / 100 : null
+                        return applyDisc ? (
+                          <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
+                            <span style={{ fontSize: 10, color: 'var(--muted)', textDecoration: 'line-through' }}>
+                              {o.recurring ? money(displayPrice)+'/Mo.' : money(displayPrice)}
+                            </span>
+                            <b style={{ color: 'var(--red)' }}>
+                              {o.recurring ? money(discounted)+'/Mo.' : money(discounted)}
+                            </b>
+                          </span>
+                        ) : (
+                          <b style={{ color: isOptional ? 'var(--muted)' : 'var(--red)',
+                            textDecoration: isOptional ? 'line-through' : 'none' }}>
+                            {displayPrice === 0 ? 'inkl.' : o.recurring ? money(displayPrice)+'/Mo.' : money(displayPrice)}
+                          </b>
+                        )
+                      })()}
                       {/* Optional-Schalter */}
                       <button
                         onClick={() => toggleOptional(o.id)}
@@ -813,6 +857,44 @@ export default function Messe() {
                     )}
                   </div>
                 )}
+              </div>
+            )
+          })()}
+
+          {/* ── Rabatt ── */}
+          {leasingSettings?.discount_enabled && (() => {
+            const discountableItems = selected.filter(o => o.discountable && !optionalIds.has(o.id))
+            if (discountableItems.length === 0) return null
+            const saved = discountPercent > 0
+              ? discountableItems.reduce((s, o) => {
+                  const base = customPrices[o.id] !== undefined ? Number(customPrices[o.id]) : (o.price || 0)
+                  return s + base * (discountPercent / 100)
+                }, 0)
+              : 0
+            return (
+              <div className="card" style={{ marginBottom: 16 }}>
+                <div className="card-title" style={{ marginBottom: 12 }}>🏷️ Rabattierung</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                  <label style={{ fontSize: 13, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                    Rabatt auf rabattfähige Positionen:
+                  </label>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type="number" min="0" max="100" step="0.5"
+                      value={discountPercent}
+                      onChange={e => setDiscountPercent(Math.min(100, Math.max(0, Number(e.target.value))))}
+                      style={{ border: '1px solid var(--red)', borderRadius: 8,
+                        padding: '6px 28px 6px 10px', fontSize: 14, width: 80,
+                        fontWeight: 700, color: 'var(--red)' }}
+                    />
+                    <span style={{ position: 'absolute', right: 8, fontSize: 13,
+                      color: 'var(--muted)', pointerEvents: 'none' }}>%</span>
+                  </div>
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0 }}>
+                  {discountableItems.length} rabattfähige Position{discountableItems.length !== 1 ? 'en' : ''}
+                  {saved > 0 && <> · Ersparnis: <b style={{ color: 'var(--red)' }}>{money(saved)}</b></>}
+                </p>
               </div>
             )
           })()}
