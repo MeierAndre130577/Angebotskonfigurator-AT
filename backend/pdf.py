@@ -514,8 +514,11 @@ def draw_cover(c: canvas.Canvas, data: dict):
         ('tag',     'Version',        project.get('version',    '1.0')),
     ]
     BOX_H = ROW_H * len(info_rows) + 20
-    BOX_Y = FOOTER_H + 25              # fest verankert: 25pt über Fußzeile
-    BOX_TOP = BOX_Y + BOX_H            # Oberkante der Info-Box = 381pt
+    TITLE_BLOCK_H = 90                 # geschätzte Höhe: ANGEBOT + Linie + Untertitel
+    AVAILABLE = LOGO_Y - FOOTER_H      # freier Raum zwischen Logo-Unterkante und Fußzeile
+    GAP = max(20, (AVAILABLE - TITLE_BLOCK_H - BOX_H) / 3)  # 3 gleiche Abstände
+    BOX_Y = FOOTER_H + GAP            # Info-Block zentriert zwischen Titel und Fußzeile
+    BOX_TOP = BOX_Y + BOX_H
 
     # ── 6. ANGEBOT + Dekorlinie + Untertitel – mittig zwischen Logo und Box ──
     # Titelblock-Höhe: Oberkante ANGEBOT (+42pt) bis Unterkante Untertitel (-41pt) ≈ 83pt

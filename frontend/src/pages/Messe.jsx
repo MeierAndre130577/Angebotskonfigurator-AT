@@ -260,7 +260,7 @@ export default function Messe() {
         customer:           contact.company,
         contact:            contact.contactName,
         customerEmail:      contact.email,
-        project:            projectName || 'Messegespräch',
+        project:            projectName,
         date:               new Date().toLocaleDateString('de-AT'),
         valid:              new Date(Date.now() + 28*864e5).toLocaleDateString('de-AT'),
         payment_term:       selectedPaymentTerm || undefined,
@@ -876,7 +876,17 @@ export default function Messe() {
 
             <div className="field">
               <label>Projektbezeichnung (optional)</label>
-              <input value={projectName} onChange={e => setProjectName(e.target.value)} placeholder="z.B. Standort Wien · Büro 3. OG" />
+              <input
+                value={projectName}
+                onChange={e => setProjectName(e.target.value)}
+                placeholder="z.B. Standort Wien · Büro 3. OG – oder leer lassen"
+                list="projekt-vorlagen"
+              />
+              <datalist id="projekt-vorlagen">
+                {(leasingSettings?.project_templates || []).map(t => (
+                  <option key={t.id} value={t.label} />
+                ))}
+              </datalist>
             </div>
             {error && <p style={{ color: 'var(--red)', fontSize: 13, marginBottom: 12 }}>⚠ {error}</p>}
             <button className="btn btn-red btn-lg" onClick={finalize} disabled={busy}>

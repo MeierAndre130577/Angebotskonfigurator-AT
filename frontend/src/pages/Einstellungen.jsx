@@ -64,6 +64,8 @@ Mit freundlichen Grüßen
   smtp_from_name: '',
   // Zahlungsziele
   payment_terms: [],
+  // Projektvorlagen
+  project_templates: [],
 }
 
 function Field({ label, hint, children }) {
@@ -118,7 +120,7 @@ const SECTION_DEFAULTS = {
   'deckblatt': false, 'logo': false, 'pdf-layout': false,
   'firmenangaben': true, 'agb': true, 'pflichtanlagen': false,
   'email-vorlage': false, 'leasing': false, 'resend': false,
-  'smtp': false, 'zahlungsziele': false,
+  'smtp': false, 'zahlungsziele': false, 'projektvorlagen': false,
 }
 
 export default function Einstellungen() {
@@ -127,7 +129,8 @@ export default function Einstellungen() {
   const [toast, setToast]       = useState('')
   const [loading, setLoading]       = useState(true)
   const [uploadingDoc, setUploadingDoc] = useState(false)
-  const [newPaymentTerm, setNewPaymentTerm] = useState('')
+  const [newPaymentTerm, setNewPaymentTerm]         = useState('')
+  const [newProjectTemplate, setNewProjectTemplate] = useState('')
   const [sectionOpen, setSectionOpen] = useState(() => {
     try { return { ...SECTION_DEFAULTS, ...JSON.parse(localStorage.getItem('einstellungen_sections') || '{}') } }
     catch { return { ...SECTION_DEFAULTS } }
@@ -280,6 +283,17 @@ export default function Einstellungen() {
         return
       }
     }
+  }
+
+  function addProjectTemplate() {
+    if (!newProjectTemplate.trim()) return
+    const t = { id: crypto.randomUUID(), label: newProjectTemplate.trim() }
+    setSettings(s => ({ ...s, project_templates: [...(s.project_templates || []), t] }))
+    setNewProjectTemplate('')
+  }
+
+  function removeProjectTemplate(id) {
+    setSettings(s => ({ ...s, project_templates: (s.project_templates || []).filter(t => t.id !== id) }))
   }
 
   function addPaymentTerm() {
@@ -809,6 +823,34 @@ export default function Einstellungen() {
             placeholder={settings.company || 'Sielaff Austria GmbH'}
             style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px', fontSize: 13, maxWidth: 340 }} />
         </Field>
+      </Section>
+
+      {/* ── Projektvorlagen ──────────────────────────────────────────────────── */}
+      <Section title="📁 Projektvorlagen" {...sec('projektvorlagen')}>
+        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16 }}>
+          Vorlagen erscheinen als Vorschläge im Dropdown bei der Projektbezeichnung.
+          Du kannst trotzdem immer frei tippen oder das Feld leer lassen.
+        </p>
+        {(settings.project_templates || []).map(t => (
+          <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12,
+            padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+            <span style={{ flex: 1, fontSize: 14 }}>{t.label}</span>
+            <button onClick={() => removeProjectTemplate(t.id)}
+              style={{ fontSize: 12, color: 'var(--muted)', background: 'none',
+                border: 'none', cursor: 'pointer', padding: '2px 6px' }}>✕</button>
+          </div>
+        ))}
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+          <input
+            value={newProjectTemplate} onChange={e => setNewProjectTemplate(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addProjectTemplate()}
+            placeholder="z. B. Standort Wien · Büro 3. OG"
+            style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 10,
+              padding: '9px 14px', fontSize: 13 }} />
+          <button className="btn btn-red" onClick={addProjectTemplate} disabled={!newProjectTemplate.trim()}>
+            + Hinzufügen
+          </button>
+        </div>
       </Section>
 
       {/* ── Zahlungsziele ────────────────────────────────────────────────────── */}
