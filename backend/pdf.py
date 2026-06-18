@@ -655,7 +655,6 @@ def make_canvas_class(project, provider, HEADER_H=None, MARGIN_L=None, MARGIN_R=
             super().showPage()
 
         def save(self):
-            self._draw_hf()
             super().save()
 
         def _draw_hf(self):
