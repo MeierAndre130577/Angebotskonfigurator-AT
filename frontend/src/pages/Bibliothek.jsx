@@ -174,7 +174,7 @@ export default function Bibliothek() {
   const [uploading, setUploading]   = useState(false)
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const [toast, setToast]           = useState('')
-  const [clusters, setClusters]     = useState([])
+  const [configuredClusters, setConfiguredClusters] = useState([])
   const [templates, setTemplates]   = useState([])
   const [showTemplates, setShowTemplates] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState(null)
@@ -214,7 +214,7 @@ export default function Bibliothek() {
     try {
       const res = await fetch(`${BASE}/settings`)
       const data = await res.json()
-      setClusters(data.clusters || [])
+      setConfiguredClusters(data.clusters || [])
     } catch { /* kein Problem, Fallback auf leere Liste */ }
   }
 
@@ -597,7 +597,7 @@ export default function Bibliothek() {
                   placeholder="Cluster wählen oder eingeben …"
                 />
                 <datalist id="cluster-list">
-                  {clusters.map(c => <option key={c} value={c} />)}
+                  {configuredClusters.map(c => <option key={c} value={c} />)}
                 </datalist>
               </div>
               <div className="field"><label>Preis (€)</label><input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} /></div>
