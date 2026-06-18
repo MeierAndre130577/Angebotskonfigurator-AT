@@ -1,5 +1,18 @@
 [
   {
+    "date": "18.06.2026",
+    "title": "Politur & kleine Verbesserungen",
+    "changes": [
+      "App kann jetzt zum Homescreen hinzugefügt werden – mit eigenem Icon (rotes Klemmbrett)",
+      "Letzte Seite im PDF war immer leer – ist jetzt behoben",
+      "Deckblatt: Info-Block (Angebotsnummer bis Version) ist jetzt vertikal besser zentriert",
+      "Projektbezeichnung: kein 'Messegespräch' mehr als Vorgabe – leer bleibt leer",
+      "Projektvorlagen in den Einstellungen pflegen und beim Erstellen per Dropdown auswählen",
+      "Release Notes lassen sich jetzt als großes Fenster öffnen – besser lesbar",
+      "Navigation aufgeräumt: OCR-Test entfernt, Titel 'Schnellerfassung' vereinfacht"
+    ]
+  },
+  {
     "date": "16.06.2026",
     "title": "Lieferadresse, Zahlungsziele & Bestellseite",
     "changes": [
