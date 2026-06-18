@@ -27,9 +27,10 @@ const NAV = [
 ]
 
 export default function App() {
-  const [sidebarOpen, setSidebarOpen]     = useState(false)
-  const [changelog, setChangelog]         = useState([])
-  const [changelogOpen, setChangelogOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen]         = useState(false)
+  const [changelog, setChangelog]             = useState([])
+  const [changelogOpen, setChangelogOpen]     = useState(false)
+  const [changelogModal, setChangelogModal]   = useState(false)
   const location = useLocation()
 
   useEffect(() => {
@@ -82,6 +83,15 @@ export default function App() {
           {/* Changelog */}
           {changelog.length > 0 && (
             <div style={{ marginTop: 'auto', borderTop: '1px solid var(--line)' }}>
+              <div style={{ padding: '8px 16px 0' }}>
+                <button
+                  onClick={() => setChangelogModal(true)}
+                  style={{ width: '100%', background: 'none', border: '1px solid var(--line)',
+                    borderRadius: 8, padding: '5px 10px', fontSize: 11, color: 'var(--muted)',
+                    cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  📋 Release Notes öffnen
+                </button>
+              </div>
               <div
                 onClick={() => setChangelogOpen(o => !o)}
                 style={{ padding: '10px 16px', cursor: 'pointer', userSelect: 'none' }}
@@ -120,6 +130,54 @@ export default function App() {
             </div>
           )}
         </aside>
+      )}
+
+      {/* ── Release Notes Modal ─────────────────────────────────────────────── */}
+      {changelogModal && (
+        <div onClick={() => setChangelogModal(false)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
+          zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'white', borderRadius: 16, width: '100%', maxWidth: 560,
+            maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+            boxShadow: '0 8px 40px rgba(0,0,0,.2)',
+          }}>
+            {/* Header */}
+            <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--line)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--dark)' }}>📋 Release Notes</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Was hat sich wann geändert</div>
+              </div>
+              <button onClick={() => setChangelogModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 20, color: 'var(--muted)', lineHeight: 1, padding: '4px 8px' }}>✕</button>
+            </div>
+            {/* Inhalt */}
+            <div style={{ overflowY: 'auto', padding: '8px 0' }}>
+              {changelog.map((entry, i) => (
+                <div key={i} style={{ padding: '16px 24px',
+                  borderBottom: i < changelog.length - 1 ? '1px solid var(--line)' : 'none' }}>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-mono)', marginBottom: 4 }}>
+                    {entry.date}
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--dark)', marginBottom: 10 }}>
+                    {entry.title}
+                  </div>
+                  {entry.changes.map((c, j) => (
+                    <div key={j} style={{ display: 'flex', gap: 8, fontSize: 13,
+                      color: 'var(--text)', lineHeight: 1.6, marginBottom: 4 }}>
+                      <span style={{ color: 'var(--red)', flexShrink: 0, fontWeight: 700 }}>·</span>
+                      {c}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
       {isMobile && (

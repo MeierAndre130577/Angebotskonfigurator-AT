@@ -373,7 +373,7 @@ export default function Messe() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1>🎯 Messe-Schnellerfassung</h1>
+          <h1>🎯 Schnellerfassung</h1>
           <p className="subtitle">Kontakt → Optionen → Angebot in unter 60 Sekunden</p>
         </div>
       </div>
