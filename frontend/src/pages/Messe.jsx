@@ -70,12 +70,6 @@ export default function Messe() {
         setLeasingSettings(data)
         const active = (data.payment_terms || []).filter(t => t.active)
         if (active.length === 1) setSelectedPaymentTerm(active[0].label)
-        const vats = data.vat_countries || []
-        if (vats.length === 1) setSelectedVatCountry(vats[0])
-        else if (vats.length > 1) {
-          const def = vats.find(v => v.isDefault)
-          if (def) setSelectedVatCountry(def)
-        }
       }).catch(console.warn)
   }, [])
 
@@ -970,40 +964,33 @@ export default function Messe() {
             return (
               <div className="card" style={{ marginBottom: 16 }}>
                 <div className="card-title" style={{ marginBottom: 12 }}>🌍 MwSt / Land</div>
-                {vats.length === 1 ? (
-                  <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>
-                    Wird automatisch übernommen:&nbsp;
-                    <b style={{ color: 'var(--dark)' }}>{vats[0].country} – {vats[0].rate}% MwSt</b>
-                  </p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {vats.map(v => (
-                      <label key={v.id} style={{ display: 'flex', alignItems: 'center',
-                        gap: 10, cursor: 'pointer', fontSize: 14 }}>
-                        <input
-                          type="radio"
-                          name="vat_country"
-                          checked={selectedVatCountry?.id === v.id}
-                          onChange={() => setSelectedVatCountry(v)}
-                          style={{ accentColor: 'var(--red)', width: 16, height: 16 }}
-                        />
-                        {v.country}
-                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>{v.rate}% MwSt</span>
-                      </label>
-                    ))}
-                    <label style={{ display: 'flex', alignItems: 'center',
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label style={{ display: 'flex', alignItems: 'center',
+                    gap: 10, cursor: 'pointer', fontSize: 14 }}>
+                    <input
+                      type="radio"
+                      name="vat_country"
+                      checked={selectedVatCountry === null}
+                      onChange={() => setSelectedVatCountry(null)}
+                      style={{ accentColor: 'var(--red)', width: 16, height: 16 }}
+                    />
+                    <span style={{ color: 'var(--muted)' }}>Kein MwSt-Hinweis im PDF</span>
+                  </label>
+                  {vats.map(v => (
+                    <label key={v.id} style={{ display: 'flex', alignItems: 'center',
                       gap: 10, cursor: 'pointer', fontSize: 14 }}>
                       <input
                         type="radio"
                         name="vat_country"
-                        checked={selectedVatCountry === null}
-                        onChange={() => setSelectedVatCountry(null)}
+                        checked={selectedVatCountry?.id === v.id}
+                        onChange={() => setSelectedVatCountry(v)}
                         style={{ accentColor: 'var(--red)', width: 16, height: 16 }}
                       />
-                      <span style={{ color: 'var(--muted)' }}>Kein MwSt-Hinweis im PDF</span>
+                      {v.country}
+                      <span style={{ fontSize: 12, color: 'var(--muted)' }}>{v.rate}% MwSt</span>
                     </label>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
             )
           })()}
