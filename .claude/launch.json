@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "csv-to-dts",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "3456", "C:\\Users\\marc-\\OneDrive\\Documents\\GitHub\\csv-to-dts-converter"],
+      "port": 3456
+    }
+  ]
+}
