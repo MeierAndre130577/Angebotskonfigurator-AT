@@ -1,0 +1,180 @@
+[
+  {
+    "id": "schnellerfassung",
+    "icon": "🎯",
+    "title": "Schnellerfassung",
+    "intro": "Die Schnellerfassung ist das Herzstück der App – hier erstellst du auf der Messe in wenigen Schritten ein vollständiges Angebot.",
+    "steps": [
+      {
+        "title": "Schritt 1 – Kundendaten",
+        "text": "Gib Firma, Ansprechpartner und E-Mail ein. Tipp: Fang an zu tippen – bekannte Kunden werden automatisch vorgeschlagen und du kannst sie per Tipp übernehmen.\n\nMit dem Kamera-Button kannst du eine Visitenkarte fotografieren. Die Daten werden automatisch erkannt und eingetragen.\n\nDer Toggle 'Kunden anlegen' steuert ob der Kontakt in deiner Kundenliste gespeichert wird. Wenn du einen bestehenden Kunden nur auswählst, deaktiviere ihn."
+      },
+      {
+        "title": "Schritt 2 – Optionen wählen",
+        "text": "Tippe auf eine Option um sie auszuwählen (roter Rahmen = aktiv). Du kannst beliebig viele Optionen kombinieren.\n\nMit dem Button 'opt.?' markierst du eine Position als optional – sie erscheint im Angebot als Zusatzoption ohne Pflichtcharakter.\n\nBei Positionen mit Stiftsymbol (✏️ anpassbar) kannst du im nächsten Schritt den Preis individuell anpassen."
+      },
+      {
+        "title": "Schritt 3 – Fertigstellen",
+        "text": "Hier siehst du die Zusammenfassung aller gewählten Optionen. Du kannst:\n\n• Preise bei anpassbaren Positionen ändern\n• Leasing-Finanzierung aktivieren und berechnen\n• Rabatt in % auf rabattfähige Positionen anwenden\n• Lieferadresse angeben (mit österreichischer Adress-Autovervollständigung)\n• MwSt-Land für den PDF-Hinweis auswählen\n• Zahlungsziel festlegen\n• Projektbezeichnung eingeben\n\nMit 'Angebot erstellen' wird das PDF generiert und gespeichert."
+      }
+    ],
+    "tips": [
+      "Wenn du nur ein Zahlungsziel in den Einstellungen aktiviert hast, wird es automatisch übernommen.",
+      "Das Firmenlogo des Kunden wird automatisch gesucht – über die Website-Adresse auf der Visitenkarte.",
+      "Bereits gespeicherte Kunden werden beim erneuten Anlegen erkannt – du bekommst eine Warnung bevor Daten überschrieben werden."
+    ]
+  },
+  {
+    "id": "angebote",
+    "icon": "📋",
+    "title": "Angebote",
+    "intro": "Alle erstellten Angebote auf einen Blick – mit PDF-Vorschau, E-Mail-Versand und Revisionsverwaltung.",
+    "steps": [
+      {
+        "title": "Angebot öffnen",
+        "text": "Klicke auf ein Angebot in der Liste um Details zu sehen. Du findest dort alle Kundendaten, gewählten Optionen und den Gesamtpreis."
+      },
+      {
+        "title": "PDF herunterladen oder versenden",
+        "text": "Über den Button 'PDF' kannst du das fertige Angebot herunterladen. Mit 'E-Mail senden' wird das PDF automatisch als Anhang an den Kunden verschickt – vorausgesetzt Resend oder SMTP ist in den Einstellungen konfiguriert."
+      },
+      {
+        "title": "Revision erstellen",
+        "text": "Mit 'Neue Revision' öffnet sich die Schnellerfassung mit vorausgefüllten Daten des bestehenden Angebots. Du kannst Optionen anpassen und ein überarbeitetes Angebot erstellen. Die Revisionsnummer wird automatisch hochgezählt."
+      }
+    ],
+    "tips": [
+      "Angebote sind nach Datum sortiert – das neueste steht oben.",
+      "Der Download-Link in der E-Mail ist 30 Tage gültig."
+    ]
+  },
+  {
+    "id": "bibliothek",
+    "icon": "📚",
+    "title": "Optionsbibliothek",
+    "intro": "Hier pflegst du alle Produkte und Leistungen die in Angeboten auswählbar sind.",
+    "steps": [
+      {
+        "title": "Neue Option anlegen",
+        "text": "Klicke auf '＋ Neue Option'. Pflichtfeld ist nur der Name. Du kannst Bild, Kurz- und Langtext, Preis, Cluster und Darstellungstyp festlegen.\n\nBilder per Drag & Drop, Dateiauswahl oder Strg+V einfügen."
+      },
+      {
+        "title": "Cluster zuweisen",
+        "text": "Cluster gruppieren Optionen in der Schnellerfassung und im PDF. Wähle einen vorhandenen Cluster aus dem Dropdown oder tippe einen neuen Namen ein. Cluster werden in den Einstellungen zentral verwaltet."
+      },
+      {
+        "title": "Optionen aktivieren/deaktivieren",
+        "text": "Der rote Toggle pro Zeile steuert ob eine Option in der Schnellerfassung sichtbar ist. Inaktive Optionen erscheinen nicht.\n\nMit 'Alle aktivieren' bzw. 'Alle deaktivieren' kannst du alle sichtbaren Optionen auf einmal schalten."
+      },
+      {
+        "title": "Reihenfolge ändern",
+        "text": "Ziehe die ≡-Griffe links in der Tabelle um Optionen per Drag & Drop zu sortieren. Die Reihenfolge spiegelt sich im Angebot wieder."
+      },
+      {
+        "title": "Vorlagen",
+        "text": "Eine Vorlage speichert den aktuellen Aktiv/Inaktiv-Zustand aller Optionen unter einem Namen (z. B. 'Weinmesse'). Mit 'Laden' setzt du alle Optionen auf den gespeicherten Stand zurück.\n\nEine Vorlage als Standard setzen (★) wendet sie automatisch beim Öffnen der Bibliothek an."
+      },
+      {
+        "title": "Rabattfähig markieren",
+        "text": "Der Toggle 'Rabattfähig' bestimmt ob die Rabattierung in der Schnellerfassung auf diese Position angewendet wird. Positionen ohne dieses Flag behalten immer ihren Originalpreis."
+      }
+    ],
+    "tips": [
+      "Dokumente (PDFs) die du einer Option zuweist, werden automatisch als Anlagen ins Angebot eingefügt.",
+      "Bei 'Preis anpassbar' kann der Verkäufer in der Schnellerfassung den Preis individuell eingeben.",
+      "Der Darstellungstyp steuert wie die Option im PDF aussieht – mit oder ohne Bild, Kurz- oder Langtext."
+    ]
+  },
+  {
+    "id": "einstellungen",
+    "icon": "⚙️",
+    "title": "Einstellungen",
+    "intro": "Alle globalen Konfigurationen der App – von PDF-Layout bis E-Mail-Versand.",
+    "steps": [
+      {
+        "title": "Firmenangaben",
+        "text": "Name, Adresse, E-Mail, Telefon und Website deines Unternehmens. Diese Daten erscheinen in Kopf- und Fußzeile jedes PDFs sowie auf dem Deckblatt."
+      },
+      {
+        "title": "Deckblatt-Foto & Logo",
+        "text": "Das Deckblatt-Foto erscheint als Vollbild auf der ersten PDF-Seite. Das Logo erscheint oben links auf dem Deckblatt.\n\nBilder per Klick, Drag & Drop oder Strg+V einfügen. Empfohlene Größe Deckblatt: 1200 × 1800 px."
+      },
+      {
+        "title": "PDF-Layout",
+        "text": "Kopfzeilen-Höhe, Fußzeilen-Abstand und Seitenränder sind millimetergenau einstellbar. Die Vorschau zeigt das Layout live."
+      },
+      {
+        "title": "Cluster",
+        "text": "Zentrale Liste aller Cluster-Kategorien. Mit ▲▼ die Reihenfolge ändern – diese bestimmt die Darstellung im Angebot. Neue Cluster hinzufügen, bestehende entfernen.\n\nIn der Optionsbibliothek erscheinen die Cluster als Vorschläge beim Zuweisen."
+      },
+      {
+        "title": "Zahlungsziele & Rabattierung",
+        "text": "Zahlungsziele pflegen (z. B. '14 Tage netto'). Aktivierte Ziele erscheinen in der Schnellerfassung zur Auswahl. Bei genau einem aktiven Ziel wird es automatisch übernommen.\n\nRabattierung aktivieren: In der Schnellerfassung erscheint ein Rabatt-Feld in % das auf alle rabattfähigen Positionen angewendet wird."
+      },
+      {
+        "title": "MwSt / Länder",
+        "text": "MwSt-Sätze je Zielland konfigurieren (z. B. Österreich 20%, Deutschland 19%). In der Schnellerfassung kannst du pro Angebot ein Land wählen – dann erscheint im PDF der Hinweis mit dem korrekten MwSt-Satz.\n\nStandardmäßig ist kein Land ausgewählt, der Hinweis erscheint nur wenn aktiv gewählt."
+      },
+      {
+        "title": "Projektvorlagen",
+        "text": "Häufig verwendete Projektbezeichnungen als Vorlage speichern. In der Schnellerfassung erscheinen sie als Dropdown-Vorschläge beim Projektname-Feld."
+      },
+      {
+        "title": "Leasing",
+        "text": "Leasingfaktoren-Tabelle (% pro Monat, nach Laufzeit und Kaufpreis-Staffel), Bearbeitungsentgelt, MwSt-Satz und Mindestbetrag. Zwei Ansprechpartner für die Leasing-Seite im PDF."
+      },
+      {
+        "title": "E-Mail Versand",
+        "text": "Empfohlen: Resend (kostenlos, 3.000 E-Mails/Monat). API-Key unter resend.com erstellen und eintragen. Domain muss in Resend verifiziert sein.\n\nAlternativ: SMTP-Zugangsdaten direkt eintragen (oft von Cloud-Servern geblockt)."
+      },
+      {
+        "title": "Pflichtanlagen",
+        "text": "Dokumente die bei jedem Angebot automatisch beigefügt werden – unabhängig von den gewählten Optionen. Z. B. AGB als PDF hochladen."
+      },
+      {
+        "title": "Rechtliche Hinweise / AGB",
+        "text": "Erscheint als Text auf der letzten Seite jedes PDFs."
+      }
+    ],
+    "tips": [
+      "Einstellungen merken sich welche Bereiche auf- oder zugeklappt waren – beim nächsten Öffnen alles genau so wie du es verlassen hast.",
+      "Alle Änderungen erst nach Klick auf 'Speichern' aktiv – nicht vergessen!"
+    ]
+  },
+  {
+    "id": "pdf",
+    "icon": "📄",
+    "title": "PDF-Angebot",
+    "intro": "Das generierte PDF besteht aus mehreren Seiten die automatisch zusammengestellt werden.",
+    "steps": [
+      {
+        "title": "Deckblatt",
+        "text": "Vollbild-Foto, Firmenlogo oben links, Angebotsnummer, Kundendaten und Gültigkeitsdatum. Der Info-Block ist vertikal zentriert auf der Seite."
+      },
+      {
+        "title": "Angebotsübersicht",
+        "text": "Tabellarische Liste aller gewählten Optionen mit Kurzbeschreibung und Preis. Optionale Positionen sind separat ausgewiesen. Bei aktivierter Rabattierung wird der Originalpreis durchgestrichen und der rabattierte Preis angezeigt."
+      },
+      {
+        "title": "Preiszusammenfassung",
+        "text": "Kundendaten und Logo oben, darunter die Preistabelle (einmalig + monatlich, mit Rabattzeile falls aktiv). Lieferadresse und Zahlungsziel falls angegeben.\n\nAm Ende: MwSt-Hinweis (falls Land ausgewählt) und die Unterschriftszeile 'Rechtsverbindliche Bestellung' mit Datum und Firmenstempel."
+      },
+      {
+        "title": "Detailbeschreibungen",
+        "text": "Pro Option eine eigene Seite mit Bild, Kurz- und Langtext – je nach eingestelltem Darstellungstyp."
+      },
+      {
+        "title": "Leasing-Seite",
+        "text": "Erscheint nur wenn Leasing in der Schnellerfassung aktiviert wurde. Zeigt Monatsraten für alle konfigurierten Laufzeiten, Ansprechpartner und rechtlichen Hinweis."
+      },
+      {
+        "title": "Anlagen",
+        "text": "Alle PDFs die Optionen zugewiesen sind plus die Pflichtanlagen aus den Einstellungen. Automatisch dedupliziert."
+      }
+    ],
+    "tips": [
+      "Das PDF wird auf dem Server generiert und ist sofort zum Download oder E-Mail-Versand bereit.",
+      "Angebotsnummer und Version werden automatisch vergeben und hochgezählt."
+    ]
+  }
+]

@@ -7,6 +7,7 @@ import Bibliothek    from './pages/Bibliothek'
 import Vorschau      from './pages/Vorschau'
 import Angebote      from './pages/Angebote'
 import Einstellungen from './pages/Einstellungen'
+import Anleitung    from './pages/Anleitung'
 
 
 const NAV = [
@@ -23,7 +24,9 @@ const NAV = [
     { to: '/bibliothek',   icon: '📚', label: 'Optionsbibliothek' },
     { to: '/einstellungen',icon: '⚙️', label: 'Einstellungen' },
   ]},
-
+  { group: 'Hilfe', items: [
+    { to: '/anleitung', icon: '📖', label: 'Anleitung' },
+  ]},
 ]
 
 export default function App() {
@@ -205,7 +208,7 @@ export default function App() {
           <Route path="/bibliothek"    element={<Bibliothek />} />
           <Route path="/vorschau"      element={<Vorschau key={location.search} />} />
           <Route path="/einstellungen" element={<Einstellungen />} />
-
+          <Route path="/anleitung"    element={<Anleitung />} />
         </Routes>
       </main>
     </div>
