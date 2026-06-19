@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tools – Marc-André Meier</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f4f4f5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 20px 80px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: #1d1d1b;
+      letter-spacing: -.02em;
+    }
+
+    header p {
+      font-size: 14px;
+      color: #71717a;
+      margin-top: 6px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      width: 100%;
+      max-width: 720px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 28px 20px 24px;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      border: 2px solid transparent;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+      transition: border-color .15s, box-shadow .15s, transform .15s;
+      cursor: pointer;
+    }
+
+    .card:hover {
+      border-color: #E30613;
+      box-shadow: 0 8px 24px rgba(227,6,19,.12);
+      transform: translateY(-2px);
+    }
+
+    .card-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      object-fit: cover;
+      background: #f4f4f5;
+    }
+
+    .card-icon-fallback {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      background: #E30613;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+    }
+
+    .card-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1d1d1b;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .card-sub {
+      font-size: 12px;
+      color: #71717a;
+      text-align: center;
+      line-height: 1.4;
+      margin-top: -8px;
+    }
+
+    .card-badge {
+      font-size: 10px;
+      font-weight: 700;
+      color: #E30613;
+      background: #fff1f2;
+      border-radius: 6px;
+      padding: 2px 8px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    footer {
+      margin-top: 56px;
+      font-size: 11px;
+      color: #a1a1aa;
+      text-align: center;
+    }
+
+    @media (max-width: 480px) {
+      .grid { grid-template-columns: repeat(2, 1fr); }
+      header h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🗂️ Meine Tools</h1>
+    <p>Alle Werkzeuge auf einen Blick</p>
+  </header>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>Privates Tool-Portal · Marc-André Meier</footer>
+
+  <script>
+    // ── Tools konfigurieren ──────────────────────────────────────────────────
+    // Neue Tools einfach hier hinzufügen.
+    const TOOLS = [
+      {
+        name:   'Angebotskonfigurator',
+        sub:    'Sielaff Austria',
+        url:    'https://ak-frontend.onrender.com',
+        icon:   'https://ak-frontend.onrender.com/icon.png',
+        badge:  null,
+      },
+      // Weitere Tools später hier eintragen:
+      // {
+      //   name:  'Tool 2',
+      //   sub:   'Beschreibung',
+      //   url:   'https://...',
+      //   icon:  'https://.../icon.png',
+      //   badge: null,
+      // },
+    ]
+    // ────────────────────────────────────────────────────────────────────────
+
+    const grid = document.getElementById('grid')
+
+    TOOLS.forEach(tool => {
+      const a = document.createElement('a')
+      a.href = tool.url
+      a.className = 'card'
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer'
+
+      const iconEl = tool.icon
+        ? `<img class="card-icon" src="${tool.icon}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="card-icon-fallback" style="display:none">🛠️</div>`
+        : `<div class="card-icon-fallback">🛠️</div>`
+
+      a.innerHTML = `
+        ${iconEl}
+        <div class="card-name">${tool.name}</div>
+        ${tool.sub   ? `<div class="card-sub">${tool.sub}</div>` : ''}
+        ${tool.badge ? `<span class="card-badge">${tool.badge}</span>` : ''}
+      `
+      grid.appendChild(a)
+    })
+  </script>
+
+</body>
+</html>
