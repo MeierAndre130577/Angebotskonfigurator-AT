@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Projektübergabe – Angebotskonfigurator</title>
+  <title>Projektübergabe – Alle Tools</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -14,7 +14,7 @@
       padding: 40px 20px 80px;
     }
 
-    .container { max-width: 760px; margin: 0 auto; }
+    .container { max-width: 800px; margin: 0 auto; }
 
     h1 { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
     h2 { font-size: 17px; font-weight: 800; margin-bottom: 12px; color: #1d1d1b; }
@@ -30,99 +30,19 @@
       box-shadow: 0 2px 8px rgba(0,0,0,.06);
     }
 
-    .card-red {
-      border-left: 4px solid #E30613;
-    }
+    .card-accent { border-left: 4px solid #E30613; }
 
-    .badge {
-      display: inline-block;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 2px 10px;
-      border-radius: 20px;
-      margin-bottom: 14px;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-    }
-    .badge-blue  { background: #dbeafe; color: #1d4ed8; }
-    .badge-green { background: #dcfce7; color: #15803d; }
-    .badge-red   { background: #fff1f2; color: #E30613; }
-
-    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
-    th { text-align: left; padding: 8px 12px; background: #f4f4f5; font-weight: 700; color: #71717a; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
-    td { padding: 10px 12px; border-bottom: 1px solid #e4e4e7; vertical-align: top; }
-    tr:last-child td { border-bottom: none; }
-
-    .tag {
-      display: inline-block;
-      background: #f4f4f5;
-      border-radius: 6px;
-      padding: 2px 8px;
-      font-size: 12px;
-      font-family: monospace;
-      color: #3f3f46;
-    }
-
-    .step {
-      display: flex;
-      gap: 14px;
-      margin-bottom: 16px;
-    }
-    .step-num {
-      flex-shrink: 0;
-      width: 26px; height: 26px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 800; color: white;
-      margin-top: 1px;
-    }
-    .step-num-blue  { background: #3b82f6; }
-    .step-num-green { background: #22c55e; }
-
-    .step-body { flex: 1; }
-    .step-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
-    .step-text  { font-size: 13px; color: #52525b; line-height: 1.6; }
-
-    .tip {
-      background: #fffbeb;
-      border: 1px solid #fde68a;
-      border-radius: 10px;
-      padding: 12px 16px;
-      font-size: 13px;
-      color: #78350f;
-      margin-top: 16px;
-      line-height: 1.6;
-    }
-
-    .warn {
-      background: #fff1f2;
-      border: 1px solid #fecdd3;
-      border-radius: 10px;
-      padding: 12px 16px;
-      font-size: 13px;
-      color: #9f1239;
-      margin-top: 12px;
-      line-height: 1.6;
-    }
-
-    a { color: #E30613; }
-
-    .divider {
-      border: none;
-      border-top: 2px solid #e4e4e7;
-      margin: 32px 0;
-    }
-
-    .tabs {
+    .project-nav {
       display: flex;
       gap: 8px;
-      margin-bottom: 24px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
     }
 
-    .tab {
-      padding: 10px 20px;
-      border-radius: 10px;
-      font-size: 14px;
+    .project-btn {
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 13px;
       font-weight: 700;
       cursor: pointer;
       border: 2px solid #e4e4e7;
@@ -131,16 +51,76 @@
       transition: .15s;
     }
 
-    .tab.active {
+    .project-btn.active {
       border-color: #E30613;
       background: #E30613;
       color: white;
     }
 
+    .project-panel { display: none; }
+    .project-panel.active { display: block; }
+
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab {
+      padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 700;
+      cursor: pointer; border: 2px solid #e4e4e7; background: white; color: #71717a; transition: .15s;
+    }
+    .tab.active { border-color: #2563eb; background: #2563eb; color: white; }
+    .tab.green.active { border-color: #16a34a; background: #16a34a; }
+
     .panel { display: none; }
     .panel.active { display: block; }
 
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+    th { text-align: left; padding: 8px 12px; background: #f4f4f5; font-weight: 700; color: #71717a; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+    td { padding: 10px 12px; border-bottom: 1px solid #e4e4e7; vertical-align: top; line-height: 1.5; }
+    tr:last-child td { border-bottom: none; }
+
+    .tag { display: inline-block; background: #f4f4f5; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-family: monospace; color: #3f3f46; }
+
+    .step { display: flex; gap: 14px; margin-bottom: 16px; }
+    .step-num {
+      flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800; color: white; margin-top: 1px;
+    }
+    .blue  { background: #2563eb; }
+    .green { background: #16a34a; }
+
+    .step-body { flex: 1; }
+    .step-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    .step-text  { font-size: 13px; color: #52525b; line-height: 1.6; }
+
+    .tip  { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #78350f; margin-top: 14px; line-height: 1.6; }
+    .warn { background: #fff1f2; border: 1px solid #fecdd3; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #9f1239; margin-top: 12px; line-height: 1.6; }
+    .info { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #1e40af; margin-top: 14px; line-height: 1.6; }
+
+    a { color: #E30613; }
+
+    .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 20px; margin-bottom: 14px; text-transform: uppercase; letter-spacing: .05em; }
+    .badge-blue  { background: #dbeafe; color: #1d4ed8; }
+    .badge-green { background: #dcfce7; color: #15803d; }
+
     footer { margin-top: 48px; font-size: 11px; color: #a1a1aa; text-align: center; }
+
+    .project-header {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
+      padding-bottom: 16px; border-bottom: 2px solid #f4f4f5;
+    }
+    .project-icon {
+      width: 52px; height: 52px; border-radius: 14px; object-fit: cover; flex-shrink: 0;
+    }
+    .project-icon-fallback {
+      width: 52px; height: 52px; border-radius: 14px; background: #E30613;
+      display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0;
+    }
+    .complexity {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; margin-left: 8px;
+    }
+    .complexity-easy   { background: #dcfce7; color: #15803d; }
+    .complexity-medium { background: #fef9c3; color: #854d0e; }
+    .complexity-hard   { background: #fff1f2; color: #9f1239; }
   </style>
 </head>
 <body>
@@ -149,301 +129,407 @@
   <a href="/" style="font-size: 13px; color: #71717a; text-decoration: none; display: inline-block; margin-bottom: 24px;">← Zurück zur Übersicht</a>
 
   <h1>📋 Projektübergabe</h1>
-  <p class="subtitle">Angebotskonfigurator – Sielaff Austria · Stand Juni 2026</p>
+  <p class="subtitle">Alle Tools – Was tun wenn jemand das Projekt übernimmt · Stand Juni 2026</p>
 
-  <!-- ── Was ist das? ─────────────────────────────────────────────────────── -->
-  <div class="card card-red">
-    <h2>Was ist dieses Projekt?</h2>
-    <p style="font-size: 14px; line-height: 1.7; color: #3f3f46;">
-      Ein webbasierter <b>Angebotskonfigurator</b> für Sielaff Austria GmbH. Außendienstmitarbeiter
-      erfassen auf der Messe Kundendaten und wählen Produkte/Leistungen aus — das System generiert
-      automatisch ein professionelles PDF-Angebot das per E-Mail verschickt werden kann.
-    </p>
-  </div>
-
-  <!-- ── Architektur ──────────────────────────────────────────────────────── -->
-  <div class="card">
-    <h2>🏗️ Systemarchitektur</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Komponente</th>
-          <th>Technologie</th>
-          <th>Wo gehostet</th>
-          <th>URL</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><b>Frontend</b><br><span style="font-size:11px;color:#71717a">Die App die man im Browser sieht</span></td>
-          <td>React + Vite<br><span class="tag">frontend/</span></td>
-          <td>Render.com<br>(Static Site)</td>
-          <td><a href="https://ak-frontend.onrender.com" target="_blank">ak-frontend.onrender.com</a></td>
-        </tr>
-        <tr>
-          <td><b>Backend</b><br><span style="font-size:11px;color:#71717a">API + PDF-Generierung</span></td>
-          <td>Python + FastAPI<br><span class="tag">backend/</span></td>
-          <td>Render.com<br>(Web Service)</td>
-          <td>Interne API-URL (in Render sichtbar)</td>
-        </tr>
-        <tr>
-          <td><b>Datenbank</b><br><span style="font-size:11px;color:#71717a">Kunden, Angebote, Einstellungen</span></td>
-          <td>PostgreSQL<br>(via Supabase)</td>
-          <td>Supabase.com</td>
-          <td>In Render als Umgebungsvariable hinterlegt</td>
-        </tr>
-        <tr>
-          <td><b>Dateispeicher</b><br><span style="font-size:11px;color:#71717a">Bilder, PDFs, Logos</span></td>
-          <td>Supabase Storage</td>
-          <td>Supabase.com</td>
-          <td>Gleicher Supabase-Account wie Datenbank</td>
-        </tr>
-        <tr>
-          <td><b>E-Mail Versand</b><br><span style="font-size:11px;color:#71717a">Angebote per Mail verschicken</span></td>
-          <td>Resend API</td>
-          <td>Resend.com</td>
-          <td>API-Key in App-Einstellungen hinterlegt</td>
-        </tr>
-        <tr>
-          <td><b>Quellcode</b><br><span style="font-size:11px;color:#71717a">Alle Dateien, Versionshistorie</span></td>
-          <td>Git</td>
-          <td>GitHub</td>
-          <td><a href="https://github.com/MeierAndre130577/Angebotskonfigurator-AT" target="_blank">github.com/MeierAndre130577/…</a></td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div class="tip">
-      💡 <b>Deployment funktioniert automatisch:</b> Sobald eine Änderung auf GitHub gepusht wird,
-      deployed Render.com Frontend und Backend automatisch. Kein manueller Schritt nötig.
-    </div>
-  </div>
-
-  <!-- ── Zugänge ──────────────────────────────────────────────────────────── -->
-  <div class="card">
-    <h2>🔑 Benötigte Zugänge</h2>
-    <p style="font-size: 13px; color: #71717a; margin-bottom: 12px;">
-      Passwörter sind nicht in diesem Dokument enthalten. Sie müssen separat übergeben werden
-      (z. B. Passwort-Manager, versiegelter Brief).
+  <!-- ── Gemeinsame Grundlagen ─────────────────────────────────────────────── -->
+  <div class="card card-accent">
+    <h2>Gemeinsame Grundlagen</h2>
+    <p style="font-size: 14px; line-height: 1.7; color: #3f3f46; margin-bottom: 16px;">
+      Alle drei Tools liegen im selben GitHub-Account
+      (<a href="https://github.com/MeierAndre130577" target="_blank">MeierAndre130577</a>)
+      und werden über <b>GitHub Desktop</b> verwaltet. Änderungen pushen → Tool ist live.
+      Mit <b>Claude Code</b> lassen sich Änderungen ohne Programmierkenntnisse beschreiben und umsetzen.
     </p>
     <table>
-      <thead>
-        <tr><th>Dienst</th><th>Wozu</th><th>Wo zu finden</th></tr>
-      </thead>
+      <thead><tr><th>Zugang</th><th>Wozu</th></tr></thead>
       <tbody>
-        <tr>
-          <td><b>GitHub</b><br><span style="font-size:11px">github.com</span></td>
-          <td>Quellcode lesen, Änderungen einspielen</td>
-          <td>Account: MeierAndre130577</td>
-        </tr>
-        <tr>
-          <td><b>Render.com</b><br><span style="font-size:11px">render.com</span></td>
-          <td>Frontend + Backend Hosting, Logs einsehen, Umgebungsvariablen</td>
-          <td>Login via GitHub-Account</td>
-        </tr>
-        <tr>
-          <td><b>Supabase</b><br><span style="font-size:11px">supabase.com</span></td>
-          <td>Datenbank + Dateispeicher verwalten, Backups</td>
-          <td>Eigener Account, Projekt "Angebotskonfigurator"</td>
-        </tr>
-        <tr>
-          <td><b>Resend</b><br><span style="font-size:11px">resend.com</span></td>
-          <td>E-Mail Versand – API-Key generieren/erneuern</td>
-          <td>In App unter Einstellungen → E-Mail Versand</td>
-        </tr>
-        <tr>
-          <td><b>Render Umgebungsvariablen</b><br><span style="font-size:11px">(Backend-Service)</span></td>
-          <td>Datenbankverbindung</td>
-          <td><span class="tag">SUPABASE_URL</span> und <span class="tag">SUPABASE_SERVICE_KEY</span><br>
-          Im Render Dashboard → Backend Service → Environment</td>
-        </tr>
+        <tr><td><b>GitHub</b> · github.com<br><span style="font-size:11px;color:#71717a">Account: MeierAndre130577</span></td><td>Quellcode aller Tools, Deployment-Trigger</td></tr>
+        <tr><td><b>Claude Code</b> · claude.ai/code</td><td>KI-gestützte Änderungen ohne Programmierkenntnisse</td></tr>
+        <tr><td><b>GitHub Desktop</b> · desktop.github.com</td><td>Änderungen auf GitHub hochladen (Push)</td></tr>
       </tbody>
     </table>
-
-    <div class="warn">
-      ⚠️ Wenn du den Resend API-Key neu generierst, muss er in der App unter
-      <b>Einstellungen → E-Mail Versand</b> aktualisiert werden.
-    </div>
   </div>
 
-  <!-- ── Änderungen vornehmen ─────────────────────────────────────────────── -->
-  <div class="card">
-    <h2>🛠️ Änderungen vornehmen</h2>
+  <!-- ── Projekt-Navigation ────────────────────────────────────────────────── -->
+  <div class="project-nav">
+    <button class="project-btn active" onclick="showProject('ak')">🔴 Angebotskonfigurator</button>
+    <button class="project-btn" onclick="showProject('kiosk')">🖥️ Kiosk</button>
+    <button class="project-btn" onclick="showProject('csv')">📊 CSV → DTS Converter</button>
+  </div>
 
-    <div class="tabs">
-      <div class="tab active" onclick="switchTab('claude')">Mit Claude (empfohlen)</div>
-      <div class="tab" onclick="switchTab('manuell')">Ohne Claude</div>
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <!-- PROJEKT 1: Angebotskonfigurator                                         -->
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <div class="project-panel active" id="panel-ak">
+
+    <div class="card">
+      <div class="project-header">
+        <img class="project-icon" src="https://ak-frontend.onrender.com/icon.png" alt=""
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+        <div class="project-icon-fallback" style="display:none">📋</div>
+        <div>
+          <h2 style="margin-bottom: 2px;">Angebotskonfigurator
+            <span class="complexity complexity-hard">Komplex</span>
+          </h2>
+          <div style="font-size:13px;color:#71717a;">Sielaff Austria GmbH · <a href="https://ak-frontend.onrender.com" target="_blank">ak-frontend.onrender.com</a></div>
+        </div>
+      </div>
+      <p style="font-size:14px;line-height:1.7;color:#3f3f46;">
+        Webbasierter Angebotskonfigurator für den Außendienst. Kundendaten erfassen, Produkte auswählen,
+        PDF-Angebot automatisch generieren und per E-Mail versenden.
+      </p>
     </div>
 
-    <div class="panel active" id="panel-claude">
-      <div class="badge badge-blue">Mit Claude Code</div>
+    <div class="card">
+      <h2>🏗️ Architektur</h2>
+      <table>
+        <thead><tr><th>Komponente</th><th>Technologie</th><th>Hosting</th><th>URL / Info</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>Frontend</b><br><span style="font-size:11px;color:#71717a">Die App im Browser</span></td>
+            <td>React + Vite<br><span class="tag">frontend/</span></td>
+            <td>Render.com<br>(Static Site)</td>
+            <td><a href="https://ak-frontend.onrender.com" target="_blank">ak-frontend.onrender.com</a></td>
+          </tr>
+          <tr>
+            <td><b>Backend</b><br><span style="font-size:11px;color:#71717a">API + PDF-Generierung</span></td>
+            <td>Python + FastAPI<br><span class="tag">backend/</span></td>
+            <td>Render.com<br>(Web Service)</td>
+            <td>URL im Render-Dashboard sichtbar</td>
+          </tr>
+          <tr>
+            <td><b>Datenbank</b></td>
+            <td>PostgreSQL via Supabase</td>
+            <td>Supabase.com</td>
+            <td>Zugangsdaten als Umgebungsvariablen in Render</td>
+          </tr>
+          <tr>
+            <td><b>Dateispeicher</b></td>
+            <td>Supabase Storage</td>
+            <td>Supabase.com</td>
+            <td>Gleicher Account wie Datenbank</td>
+          </tr>
+          <tr>
+            <td><b>E-Mail Versand</b></td>
+            <td>Resend API</td>
+            <td>Resend.com</td>
+            <td>API-Key in App → Einstellungen gespeichert</td>
+          </tr>
+          <tr>
+            <td><b>Quellcode</b></td>
+            <td>Git</td>
+            <td>GitHub</td>
+            <td><a href="https://github.com/MeierAndre130577/Angebotskonfigurator-AT" target="_blank">github.com/…/Angebotskonfigurator-AT</a></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="tip">💡 Push auf GitHub → Render deployed Frontend + Backend automatisch. Kein manueller Schritt nötig.</div>
+    </div>
 
-      <div class="step">
-        <div class="step-num step-num-blue">1</div>
-        <div class="step-body">
+    <div class="card">
+      <h2>🔑 Benötigte Zugänge</h2>
+      <table>
+        <thead><tr><th>Dienst</th><th>Wozu</th><th>Wo</th></tr></thead>
+        <tbody>
+          <tr><td><b>GitHub</b></td><td>Quellcode, Deployment</td><td>Account MeierAndre130577</td></tr>
+          <tr><td><b>Render.com</b></td><td>Frontend + Backend Hosting, Logs, Env-Variablen</td><td>Login via GitHub</td></tr>
+          <tr><td><b>Supabase</b></td><td>Datenbank + Dateispeicher</td><td>Eigener Account, Projekt "Angebotskonfigurator"</td></tr>
+          <tr><td><b>Resend</b></td><td>E-Mail Versand</td><td>resend.com · API-Key in App-Einstellungen</td></tr>
+          <tr>
+            <td><b>Render Env-Variablen</b><br><span style="font-size:11px">(Backend Service)</span></td>
+            <td>Datenbankverbindung</td>
+            <td><span class="tag">SUPABASE_URL</span><br><span class="tag">SUPABASE_SERVICE_KEY</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>🛠️ Änderungen vornehmen</h2>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab(this, 'ak-claude', 'ak')">Mit Claude (empfohlen)</button>
+        <button class="tab green" onclick="switchTab(this, 'ak-manual', 'ak')">Ohne Claude</button>
+      </div>
+
+      <div class="panel active" id="ak-claude">
+        <div class="badge badge-blue">Mit Claude Code</div>
+        <div class="step"><div class="step-num blue">1</div><div class="step-body">
           <div class="step-title">Claude Code installieren</div>
-          <div class="step-text">
-            Unter <a href="https://claude.ai/code" target="_blank">claude.ai/code</a> die Desktop-App herunterladen und installieren.
-            Ein Anthropic-Account ist nötig (claude.ai).
-          </div>
-        </div>
-      </div>
-
-      <div class="step">
-        <div class="step-num step-num-blue">2</div>
-        <div class="step-body">
-          <div class="step-title">GitHub Desktop installieren & Repo klonen</div>
-          <div class="step-text">
-            <a href="https://desktop.github.com" target="_blank">GitHub Desktop</a> installieren, mit GitHub-Account einloggen,
-            dann das Repository <span class="tag">MeierAndre130577/Angebotskonfigurator-AT</span> klonen.
-          </div>
-        </div>
-      </div>
-
-      <div class="step">
-        <div class="step-num step-num-blue">3</div>
-        <div class="step-body">
-          <div class="step-title">Claude Code im Projektordner öffnen</div>
-          <div class="step-text">
-            In Claude Code den geklonten Ordner öffnen. Claude kennt das Projekt und kann
-            Änderungen selbstständig umsetzen — einfach in normaler Sprache beschreiben was geändert werden soll.
-          </div>
-        </div>
-      </div>
-
-      <div class="step">
-        <div class="step-num step-num-blue">4</div>
-        <div class="step-body">
-          <div class="step-title">Änderung pushen</div>
-          <div class="step-text">
-            In GitHub Desktop die Änderungen mit einem kurzen Kommentar committen und auf "Push origin" klicken.
-            Render deployed automatisch innerhalb von 1–2 Minuten.
-          </div>
-        </div>
-      </div>
-
-      <div class="tip">
-        💡 Claude kennt die gesamte Codebasis und erklärt auf Nachfrage was jede Datei macht.
-        Einfach fragen: "Was macht die Datei pdf.py?" oder "Wie füge ich ein neues Feld hinzu?"
-      </div>
-    </div>
-
-    <div class="panel" id="panel-manuell">
-      <div class="badge badge-green">Ohne Claude / Manuell</div>
-
-      <div class="step">
-        <div class="step-num step-num-green">1</div>
-        <div class="step-body">
+          <div class="step-text"><a href="https://claude.ai/code" target="_blank">claude.ai/code</a> → Desktop-App herunterladen. Anthropic-Account nötig.</div>
+        </div></div>
+        <div class="step"><div class="step-num blue">2</div><div class="step-body">
           <div class="step-title">Repo klonen</div>
-          <div class="step-text">
-            GitHub Desktop installieren, einloggen, Repo <span class="tag">MeierAndre130577/Angebotskonfigurator-AT</span> klonen.
-            Alternativ: <span class="tag">git clone https://github.com/MeierAndre130577/Angebotskonfigurator-AT</span>
-          </div>
-        </div>
+          <div class="step-text">GitHub Desktop installieren → Repo <span class="tag">Angebotskonfigurator-AT</span> klonen.</div>
+        </div></div>
+        <div class="step"><div class="step-num blue">3</div><div class="step-body">
+          <div class="step-title">Claude Code öffnen & Änderung beschreiben</div>
+          <div class="step-text">Projektordner in Claude Code öffnen. In normaler Sprache beschreiben was geändert werden soll — Claude setzt es um.</div>
+        </div></div>
+        <div class="step"><div class="step-num blue">4</div><div class="step-body">
+          <div class="step-title">Pushen</div>
+          <div class="step-text">GitHub Desktop → Commit → Push origin → Render deployed automatisch.</div>
+        </div></div>
+        <div class="tip">💡 Claude kennt die gesamte Codebasis. Einfach fragen: "Was macht diese Seite?" oder "Füge ein neues Feld hinzu."</div>
       </div>
 
-      <div class="step">
-        <div class="step-num step-num-green">2</div>
-        <div class="step-body">
-          <div class="step-title">Ordnerstruktur verstehen</div>
+      <div class="panel" id="ak-manual">
+        <div class="badge badge-green">Ohne Claude / Manuell</div>
+        <div class="step"><div class="step-num green">1</div><div class="step-body">
+          <div class="step-title">Wichtigste Dateien</div>
           <div class="step-text">
-            <span class="tag">frontend/src/pages/</span> → einzelne App-Seiten (React, .jsx Dateien)<br>
-            <span class="tag">frontend/src/pages/Einstellungen.jsx</span> → Einstellungen-Seite<br>
-            <span class="tag">frontend/src/pages/Messe.jsx</span> → Schnellerfassung<br>
-            <span class="tag">frontend/public/</span> → statische Dateien (Icons, Changelog, Anleitung)<br>
-            <span class="tag">backend/pdf.py</span> → PDF-Generierung<br>
-            <span class="tag">backend/main.py</span> → API-Endpunkte<br>
-            <span class="tag">backend/db.py</span> → Datenbankzugriffe
+            <span class="tag">frontend/src/pages/</span> → App-Seiten (React .jsx)<br>
+            <span class="tag">frontend/public/changelog.json</span> → Release Notes<br>
+            <span class="tag">frontend/public/manual.json</span> → Anleitung<br>
+            <span class="tag">backend/pdf.py</span> → PDF-Layout<br>
+            <span class="tag">backend/main.py</span> → API-Endpunkte
           </div>
-        </div>
-      </div>
-
-      <div class="step">
-        <div class="step-num step-num-green">3</div>
-        <div class="step-body">
-          <div class="step-title">Texte und Inhalte ändern</div>
-          <div class="step-text">
-            Texte in der App: in den <span class="tag">.jsx</span> Dateien suchen und direkt bearbeiten (VS Code empfohlen).<br>
-            Changelog: <span class="tag">frontend/public/changelog.json</span> editieren.<br>
-            Anleitung: <span class="tag">frontend/public/manual.json</span> editieren.<br>
-            Portal: <span class="tag">portal/index.html</span> — TOOLS-Array am Anfang des Scripts.
-          </div>
-        </div>
-      </div>
-
-      <div class="step">
-        <div class="step-num step-num-green">4</div>
-        <div class="step-body">
-          <div class="step-title">Backend-Logik ändern</div>
-          <div class="step-text">
-            Python-Kenntnisse erforderlich. API-Endpunkte in <span class="tag">backend/main.py</span>,
-            PDF-Layout in <span class="tag">backend/pdf.py</span> (ReportLab-Bibliothek).
-            Lokal testen: im <span class="tag">backend/</span> Ordner <span class="tag">uvicorn main:app --reload</span> ausführen.
-          </div>
-        </div>
-      </div>
-
-      <div class="step">
-        <div class="step-num step-num-green">5</div>
-        <div class="step-body">
-          <div class="step-title">Änderungen deployen</div>
-          <div class="step-text">
-            In GitHub Desktop: geänderte Dateien auswählen → kurze Commit-Nachricht → "Commit to main" → "Push origin".
-            Render.com deployed automatisch innerhalb von 1–2 Minuten.
-          </div>
-        </div>
-      </div>
-
-      <div class="warn">
-        ⚠️ Frontend-Dateien (<span class="tag">.jsx</span>) sind React/JavaScript — Grundkenntnisse nötig.
-        Reine Text- und JSON-Änderungen (Changelog, Anleitung, Portal) sind ohne Programmierkenntnisse möglich.
+        </div></div>
+        <div class="step"><div class="step-num green">2</div><div class="step-body">
+          <div class="step-title">Lokal bearbeiten</div>
+          <div class="step-text">VS Code empfohlen. JSON-Dateien (Changelog, Anleitung, Portal) ohne Programmierkenntnisse editierbar.</div>
+        </div></div>
+        <div class="step"><div class="step-num green">3</div><div class="step-body">
+          <div class="step-title">Pushen</div>
+          <div class="step-text">GitHub Desktop → Commit → Push → Render deployed automatisch.</div>
+        </div></div>
+        <div class="warn">⚠️ Frontend-Dateien (.jsx) erfordern React-Kenntnisse. Backend (.py) erfordert Python-Kenntnisse.</div>
       </div>
     </div>
+
+    <div class="card">
+      <h2>🚨 Wenn etwas nicht funktioniert</h2>
+      <table>
+        <thead><tr><th>Problem</th><th>Wo nachschauen</th></tr></thead>
+        <tbody>
+          <tr><td>App lädt nicht</td><td>Render → Frontend Service → Logs</td></tr>
+          <tr><td>PDF wird nicht erstellt</td><td>Render → Backend Service → Logs</td></tr>
+          <tr><td>E-Mails kommen nicht an</td><td>resend.com → Logs · App Einstellungen prüfen</td></tr>
+          <tr><td>Daten fehlen</td><td>Supabase Dashboard → Table Editor</td></tr>
+          <tr><td>Änderung hat App kaputt gemacht</td><td>GitHub Desktop → letzten Commit "Revert" → Push</td></tr>
+        </tbody>
+      </table>
+    </div>
+
   </div>
 
-  <!-- ── Was tun wenn... ──────────────────────────────────────────────────── -->
-  <div class="card">
-    <h2>🚨 Was tun wenn etwas nicht funktioniert?</h2>
-    <table>
-      <thead><tr><th>Problem</th><th>Wo nachschauen</th></tr></thead>
-      <tbody>
-        <tr>
-          <td>App lädt nicht / zeigt Fehler</td>
-          <td>Render Dashboard → Frontend Service → Logs</td>
-        </tr>
-        <tr>
-          <td>PDF wird nicht erstellt</td>
-          <td>Render Dashboard → Backend Service → Logs</td>
-        </tr>
-        <tr>
-          <td>E-Mails kommen nicht an</td>
-          <td>Resend.com → Logs · App Einstellungen → E-Mail Versand prüfen</td>
-        </tr>
-        <tr>
-          <td>Daten fehlen / Datenbank-Fehler</td>
-          <td>Supabase Dashboard → Project → Logs oder Table Editor</td>
-        </tr>
-        <tr>
-          <td>Deployment fehlgeschlagen</td>
-          <td>Render Dashboard → Service → Deploy Logs · GitHub → letzter Commit prüfen</td>
-        </tr>
-        <tr>
-          <td>App nach Änderung kaputt</td>
-          <td>GitHub Desktop → "Revert" des letzten Commits → Push → Render rollt zurück</td>
-        </tr>
-      </tbody>
-    </table>
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <!-- PROJEKT 2: Kiosk                                                        -->
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <div class="project-panel" id="panel-kiosk">
+
+    <div class="card">
+      <div class="project-header">
+        <img class="project-icon" src="https://meierandre130577.github.io/kiosk/icon.jpg" alt=""
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+        <div class="project-icon-fallback" style="display:none;background:#1e1b4b;">🖥️</div>
+        <div>
+          <h2 style="margin-bottom: 2px;">Kiosk
+            <span class="complexity complexity-medium">Mittel</span>
+          </h2>
+          <div style="font-size:13px;color:#71717a;">Digitale Anzeige-Verwaltung · <a href="https://meierandre130577.github.io/kiosk/admin.html" target="_blank">GitHub Pages</a></div>
+        </div>
+      </div>
+      <p style="font-size:14px;line-height:1.7;color:#3f3f46;">
+        Verwaltungsplattform für digitale Kiosk-Displays. Medien hochladen, Geräte registrieren,
+        Inhalte synchronisieren. Zwei Oberflächen: öffentliche Anzeige (<span class="tag">index.html</span>)
+        und Admin-Bereich (<span class="tag">admin.html</span>).
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>🏗️ Architektur</h2>
+      <table>
+        <thead><tr><th>Komponente</th><th>Technologie</th><th>Hosting</th><th>URL / Info</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>Frontend (Anzeige)</b></td>
+            <td>HTML + JavaScript<br><span class="tag">index.html</span></td>
+            <td>GitHub Pages</td>
+            <td><a href="https://meierandre130577.github.io/kiosk/" target="_blank">github.io/kiosk/</a></td>
+          </tr>
+          <tr>
+            <td><b>Admin-Bereich</b></td>
+            <td>HTML + JavaScript<br><span class="tag">admin.html</span></td>
+            <td>GitHub Pages</td>
+            <td><a href="https://meierandre130577.github.io/kiosk/admin.html" target="_blank">github.io/kiosk/admin.html</a></td>
+          </tr>
+          <tr>
+            <td><b>Bildspeicher</b></td>
+            <td>Cloudinary</td>
+            <td>Cloudinary.com</td>
+            <td>API-Key in Konfiguration hinterlegt</td>
+          </tr>
+          <tr>
+            <td><b>Quellcode</b></td>
+            <td>Git</td>
+            <td>GitHub</td>
+            <td><a href="https://github.com/MeierAndre130577/kiosk" target="_blank">github.com/…/kiosk</a></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="info">ℹ️ Kein separater Backend-Server nötig. Die App läuft vollständig im Browser. GitHub Pages deployed automatisch nach jedem Push.</div>
+    </div>
+
+    <div class="card">
+      <h2>🔑 Benötigte Zugänge</h2>
+      <table>
+        <thead><tr><th>Dienst</th><th>Wozu</th></tr></thead>
+        <tbody>
+          <tr><td><b>GitHub</b></td><td>Quellcode + automatisches Deployment via GitHub Pages</td></tr>
+          <tr><td><b>Cloudinary</b> · cloudinary.com</td><td>Bilder/Videos speichern und abrufen – API-Key in Konfiguration</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>🛠️ Änderungen vornehmen</h2>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab(this, 'kiosk-claude', 'kiosk')">Mit Claude (empfohlen)</button>
+        <button class="tab green" onclick="switchTab(this, 'kiosk-manual', 'kiosk')">Ohne Claude</button>
+      </div>
+
+      <div class="panel active" id="kiosk-claude">
+        <div class="badge badge-blue">Mit Claude Code</div>
+        <div class="step"><div class="step-num blue">1</div><div class="step-body">
+          <div class="step-title">Repo klonen & Claude Code öffnen</div>
+          <div class="step-text">GitHub Desktop → Repo <span class="tag">kiosk</span> klonen → in Claude Code öffnen.</div>
+        </div></div>
+        <div class="step"><div class="step-num blue">2</div><div class="step-body">
+          <div class="step-title">Änderung beschreiben</div>
+          <div class="step-text">In normaler Sprache beschreiben was geändert werden soll. Claude bearbeitet <span class="tag">admin.html</span> oder <span class="tag">index.html</span> direkt.</div>
+        </div></div>
+        <div class="step"><div class="step-num blue">3</div><div class="step-body">
+          <div class="step-title">Pushen</div>
+          <div class="step-text">GitHub Desktop → Commit → Push → GitHub Pages deployed automatisch (ca. 1 Minute).</div>
+        </div></div>
+      </div>
+
+      <div class="panel" id="kiosk-manual">
+        <div class="badge badge-green">Ohne Claude / Manuell</div>
+        <div class="step"><div class="step-num green">1</div><div class="step-body">
+          <div class="step-title">Dateien bearbeiten</div>
+          <div class="step-text">
+            <span class="tag">admin.html</span> → Admin-Oberfläche<br>
+            <span class="tag">index.html</span> → öffentliche Anzeige<br>
+            <span class="tag">config.json</span> → Konfiguration (Cloudinary-Keys, Einstellungen)<br>
+            <span class="tag">commands.json</span> → Befehle für Geräte
+          </div>
+        </div></div>
+        <div class="step"><div class="step-num green">2</div><div class="step-body">
+          <div class="step-title">Pushen</div>
+          <div class="step-text">GitHub Desktop → Commit → Push → live nach ca. 1 Minute.</div>
+        </div></div>
+        <div class="warn">⚠️ <span class="tag">admin.html</span> ist eine große Datei (~50 KB). Änderungen sorgfältig durchführen und immer testen.</div>
+      </div>
+    </div>
+
   </div>
 
-  <footer>Erstellt mit Claude Code · Angebotskonfigurator Sielaff Austria · Stand Juni 2026</footer>
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <!-- PROJEKT 3: CSV → DTS Converter                                          -->
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <div class="project-panel" id="panel-csv">
+
+    <div class="card">
+      <div class="project-header">
+        <img class="project-icon" src="https://meierandre130577.github.io/csv-to-dts-converter/favicon.svg" alt=""
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+        <div class="project-icon-fallback" style="display:none;background:#2563eb;">📊</div>
+        <div>
+          <h2 style="margin-bottom: 2px;">CSV → DTS Converter
+            <span class="complexity complexity-easy">Einfach</span>
+          </h2>
+          <div style="font-size:13px;color:#71717a;">Datei-Konverter · <a href="https://meierandre130577.github.io/csv-to-dts-converter/" target="_blank">GitHub Pages</a></div>
+        </div>
+      </div>
+      <p style="font-size:14px;line-height:1.7;color:#3f3f46;">
+        Konvertiert EAN-Listen aus CSV-Dateien ins DTS-Format (VICS/DXS). Datei hochladen,
+        konvertierte Datei herunterladen. Läuft vollständig im Browser, kein Server nötig.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>🏗️ Architektur</h2>
+      <table>
+        <thead><tr><th>Komponente</th><th>Technologie</th><th>Hosting</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>App</b></td>
+            <td>HTML + JavaScript (eine Datei)<br><span class="tag">index.html</span></td>
+            <td>GitHub Pages · <a href="https://meierandre130577.github.io/csv-to-dts-converter/" target="_blank">github.io/csv-to-dts-converter/</a></td>
+          </tr>
+          <tr>
+            <td><b>Quellcode</b></td>
+            <td>Git</td>
+            <td><a href="https://github.com/MeierAndre130577/csv-to-dts-converter" target="_blank">github.com/…/csv-to-dts-converter</a></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="info">ℹ️ Das einfachste der drei Projekte. Alles in einer einzigen <span class="tag">index.html</span> Datei. Kein Backend, keine Datenbank, keine externen Services.</div>
+    </div>
+
+    <div class="card">
+      <h2>🔑 Benötigte Zugänge</h2>
+      <table>
+        <thead><tr><th>Dienst</th><th>Wozu</th></tr></thead>
+        <tbody>
+          <tr><td><b>GitHub</b></td><td>Einziger benötigter Zugang – Quellcode + GitHub Pages Hosting</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>🛠️ Änderungen vornehmen</h2>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab(this, 'csv-claude', 'csv')">Mit Claude (empfohlen)</button>
+        <button class="tab green" onclick="switchTab(this, 'csv-manual', 'csv')">Ohne Claude</button>
+      </div>
+
+      <div class="panel active" id="csv-claude">
+        <div class="badge badge-blue">Mit Claude Code</div>
+        <div class="step"><div class="step-num blue">1</div><div class="step-body">
+          <div class="step-title">Repo klonen & Claude Code öffnen</div>
+          <div class="step-text">GitHub Desktop → Repo <span class="tag">csv-to-dts-converter</span> klonen → in Claude Code öffnen.</div>
+        </div></div>
+        <div class="step"><div class="step-num blue">2</div><div class="step-body">
+          <div class="step-title">Änderung beschreiben & pushen</div>
+          <div class="step-text">Claude bearbeitet <span class="tag">index.html</span> → GitHub Desktop → Push → live.</div>
+        </div></div>
+      </div>
+
+      <div class="panel" id="csv-manual">
+        <div class="badge badge-green">Ohne Claude / Manuell</div>
+        <div class="step"><div class="step-num green">1</div><div class="step-body">
+          <div class="step-title">index.html bearbeiten</div>
+          <div class="step-text">Alles in einer Datei. Mit VS Code oder einem Texteditor öffnen und bearbeiten. JavaScript-Kenntnisse für Logik-Änderungen nötig.</div>
+        </div></div>
+        <div class="step"><div class="step-num green">2</div><div class="step-body">
+          <div class="step-title">Pushen</div>
+          <div class="step-text">GitHub Desktop → Commit → Push → live nach ca. 1 Minute.</div>
+        </div></div>
+        <div class="tip">💡 Das einfachste Projekt zum Bearbeiten — alles in einer Datei, keine Abhängigkeiten.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>Erstellt mit Claude Code · Stand Juni 2026</footer>
 </div>
 
 <script>
-  function switchTab(name) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'))
-    document.querySelector(`[onclick="switchTab('${name}')"]`).classList.add('active')
+  function showProject(name) {
+    document.querySelectorAll('.project-btn').forEach(b => b.classList.remove('active'))
+    document.querySelectorAll('.project-panel').forEach(p => p.classList.remove('active'))
+    document.querySelector(`[onclick="showProject('${name}')"]`).classList.add('active')
     document.getElementById('panel-' + name).classList.add('active')
+  }
+
+  function switchTab(btn, panelId, project) {
+    const card = btn.closest('.card')
+    card.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
+    card.querySelectorAll('.panel').forEach(p => p.classList.remove('active'))
+    btn.classList.add('active')
+    document.getElementById(panelId).classList.add('active')
   }
 </script>
 
