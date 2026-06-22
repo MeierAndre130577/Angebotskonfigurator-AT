@@ -153,6 +153,14 @@
         badge: null,
       },
       {
+        name:  'Projektübergabe',
+        sub:   'Was tun wenn was passiert?',
+        url:   'handover.html',
+        icon:  null,
+        emoji: '📋',
+        badge: null,
+      },
+      {
         name:  'CSV → DTS Converter',
         sub:   'EAN-Listen ins DTS-Format',
         url:   'https://meierandre130577.github.io/csv-to-dts-converter/',
@@ -171,9 +179,10 @@
       a.target = '_blank'
       a.rel = 'noopener noreferrer'
 
+      const fallback = tool.emoji || '🛠️'
       const iconEl = tool.icon
-        ? `<img class="card-icon" src="${tool.icon}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="card-icon-fallback" style="display:none">🛠️</div>`
-        : `<div class="card-icon-fallback">🛠️</div>`
+        ? `<img class="card-icon" src="${tool.icon}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="card-icon-fallback" style="display:none">${fallback}</div>`
+        : `<div class="card-icon-fallback">${fallback}</div>`
 
       a.innerHTML = `
         ${iconEl}
