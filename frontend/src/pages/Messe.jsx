@@ -47,6 +47,7 @@ export default function Messe() {
   const [discountPercent, setDiscountPercent]         = useState(0)
   const [selectedVatCountry, setSelectedVatCountry]   = useState(null)
   const [dupModal, setDupModal]                       = useState(null)  // { matches, onNew }
+  const [newModal, setNewModal]                       = useState(false)
 
   useEffect(() => {
     optionsApi.list().then(opts => {
@@ -252,7 +253,8 @@ export default function Messe() {
         return
       }
     } catch { /* Suche fehlgeschlagen – trotzdem weitermachen */ }
-    await doSaveAndProceed()
+    // Kein Treffer → Bestätigungs-Modal für neuen Kunden
+    setNewModal(true)
   }
 
   function toggleOptional(id) {
@@ -399,7 +401,7 @@ export default function Messe() {
     setSelectedIds(new Set()); setProjectName(''); setOfferNo('')
     setDone(false); setError(''); setCustomPrices({}); setSelectedPaymentTerm('')
     setDeliveryEnabled(false); setDeliveryQuery(''); setDeliveryAddress(''); setDeliverySuggestions([])
-    setDiscountPercent(0); setSelectedVatCountry(null); setDupModal(null)
+    setDiscountPercent(0); setSelectedVatCountry(null); setDupModal(null); setNewModal(false)
   }
 
   // ── Cluster-Gruppen ────────────────────────────────────────────────────────
@@ -558,6 +560,58 @@ export default function Messe() {
                 style={{ background: 'none', border: 'none', fontSize: 12,
                   color: 'var(--muted)', cursor: 'pointer', padding: '4px' }}>
                 Abbrechen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Neuer Kunde Modal ───────────────────────────────────────────────── */}
+      {newModal && (
+        <div onClick={() => setNewModal(false)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
+          zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'white', borderRadius: 20, width: '100%', maxWidth: 440,
+            boxShadow: '0 8px 40px rgba(0,0,0,.2)',
+          }}>
+            <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid var(--line)' }}>
+              <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--dark)', marginBottom: 4 }}>
+                ➕ Neuer Kunde wird angelegt
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+                Kein bestehender Eintrag gefunden. Bitte prüfen und bestätigen.
+              </div>
+            </div>
+            <div style={{ padding: '16px 24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {[
+                  { label: 'Firma',           val: contact.company },
+                  { label: 'Ansprechpartner', val: contact.contactName },
+                  { label: 'E-Mail',          val: contact.email },
+                  { label: 'Position',        val: contact.position },
+                  { label: 'Telefon',         val: contact.phone },
+                  { label: 'Mobil',           val: contact.mobile },
+                  { label: 'Ort',             val: [contact.zip, contact.city].filter(Boolean).join(' ') },
+                  { label: 'Website',         val: contact.website },
+                ].filter(f => f.val?.trim()).map((f, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, fontSize: 13 }}>
+                    <span style={{ color: 'var(--muted)', minWidth: 130, flexShrink: 0 }}>{f.label}:</span>
+                    <span style={{ fontWeight: 600, color: 'var(--dark)' }}>{f.val}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ padding: '0 24px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button className="btn btn-red btn-lg"
+                onClick={() => { setNewModal(false); doSaveAndProceed() }}>
+                ✓ Anlegen & weiter zu den Optionen
+              </button>
+              <button onClick={() => setNewModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: 12,
+                  color: 'var(--muted)', cursor: 'pointer', padding: '4px' }}>
+                Abbrechen – Daten korrigieren
               </button>
             </div>
           </div>
