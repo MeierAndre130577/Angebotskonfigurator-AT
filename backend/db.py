@@ -117,10 +117,13 @@ def _today_year():
 
 def _next_customer_number():
     if USE_SUPABASE:
-        rows = _sb.table("customers").select("customer_number").execute().data
-        nums = [int(r["customer_number"][3:]) for r in rows
-                if (r.get("customer_number") or "").startswith("KD-") and r["customer_number"][3:].isdigit()]
-        return f"KD-{(max(nums, default=0) + 1):04d}"
+        try:
+            rows = _sb.table("customers").select("customer_number").execute().data
+            nums = [int(r["customer_number"][3:]) for r in rows
+                    if (r.get("customer_number") or "").startswith("KD-") and r["customer_number"][3:].isdigit()]
+            return f"KD-{(max(nums, default=0) + 1):04d}"
+        except Exception:
+            return ""  # Spalte existiert noch nicht – Nummer wird nach Migration vergeben
     conn = _get_conn()
     row  = conn.execute("SELECT value FROM customer_counter WHERE id=1").fetchone()
     num  = row[0] if row else 1
@@ -154,7 +157,10 @@ def search_customers(query: str):
     if len(q) < 2:
         return []
     if USE_SUPABASE:
-        return _sb.table("customers").select("*").ilike("company", f"%{q}%").limit(6).execute().data
+        try:
+            return _sb.table("customers").select("*").ilike("company", f"%{q}%").limit(6).execute().data
+        except Exception:
+            return []
     conn = _get_conn()
     rows = conn.execute(
         "SELECT * FROM customers WHERE LOWER(company) LIKE ? LIMIT 6",
@@ -181,7 +187,12 @@ def upsert_customer(data: dict):
     if not data.get("customer_number"):
         data["customer_number"] = _next_customer_number()
     if USE_SUPABASE:
-        return _sb.table("customers").upsert(data).execute().data
+        try:
+            return _sb.table("customers").upsert(data).execute().data
+        except Exception:
+            # Fallback: ohne customer_number speichern wenn Spalte noch nicht existiert
+            data_safe = {k: v for k, v in data.items() if k != "customer_number"}
+            return _sb.table("customers").upsert(data_safe).execute().data
     conn = _get_conn()
     conn.execute("""
         INSERT INTO customers (id, company, contact, email, billing, delivery,
