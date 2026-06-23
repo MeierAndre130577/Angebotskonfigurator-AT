@@ -558,6 +558,14 @@ export default function Messe() {
                       </div>
                     )}
 
+                    {/* Erstkontakt */}
+                    {(c.source || c.created_at) && (
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>
+                        {c.created_at && <span>📅 {fmtDate(c.created_at)}</span>}
+                        {c.source     && <span style={{ marginLeft: c.created_at ? 6 : 0 }}>· {c.source}</span>}
+                      </div>
+                    )}
+
                     {/* Angebote */}
                     {(() => {
                       const co = offersFor(c.company)
