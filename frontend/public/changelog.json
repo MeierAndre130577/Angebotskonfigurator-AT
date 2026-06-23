@@ -1,5 +1,22 @@
 [
   {
+    "date": "23.06.2026",
+    "title": "Login, Kundenverwaltung & PDF-Verbesserungen",
+    "changes": [
+      "Login-Schutz: App ist jetzt passwortgeschützt – Zugangsdaten werden auf dem Gerät gespeichert, kein erneutes Einloggen nötig",
+      "Kundennummer: Jeder Kunde erhält automatisch eine eindeutige 5-stellige Zufallsnummer (KD-XXXXX)",
+      "Duplikaterkennung: Beim Speichern eines Kunden wird geprüft ob er bereits bekannt ist – mit Gegenüberstellung der Unterschiede",
+      "Bekannter Kunde: Daten werden intelligent zusammengeführt – neu eingetragene Felder gewinnen, leere Felder werden aus den Stammdaten ergänzt",
+      "Erstkontakt-Info im Duplikat-Dialog: Wann wurde der Kunde angelegt und woher kommt er",
+      "Angebote je Kunde: In den Kundendaten sieht man alle offenen und archivierten Angebote mit Datum und Angebotsnummer",
+      "Woher kenne ich diesen Kunden: Optionales Feld beim Anlegen – Projektvorlagen werden als Vorschläge angeboten",
+      "Adresssuche: Rechnungs- und Lieferadresse mit OpenStreetMap-Vorschlägen direkt im Kundenstamm",
+      "PDF: Zeilenumbrüche im Leasing-Einleitungstext werden jetzt korrekt dargestellt",
+      "PDF: Angebotsnummer steht jetzt im rechtsverbindlichen Bestelltext",
+      "PDF: Signaturblock bleibt zuverlässig auf derselben Seite – konfigurierbar unter Einstellungen → PDF-Layout"
+    ]
+  },
+  {
     "date": "18.06.2026",
     "title": "MwSt-Länder & Bugfix Rabattierung",
     "changes": [
