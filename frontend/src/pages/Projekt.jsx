@@ -1,17 +1,30 @@
 import { useState, useEffect } from 'react'
 import { customers as customersApi } from '../lib/api'
 
+const BASE = (import.meta.env.VITE_API_URL || '') + '/api'
+
 export default function Projekt() {
   const [list, setList]         = useState([])
-  const [editing, setEditing]   = useState(null)   // Kunden-Objekt im Bearbeitungsmodus
+  const [offers, setOffers]     = useState([])
+  const [editing, setEditing]   = useState(null)
   const [search, setSearch]     = useState('')
   const [busy, setBusy]         = useState(false)
-  const [expanded, setExpanded] = useState(null)   // id des aufgeklappten Kunden
+  const [expanded, setExpanded] = useState(null)
 
   useEffect(() => { load() }, [])
 
   function load() {
     customersApi.list().then(setList).catch(console.warn)
+    fetch(`${BASE}/offers`).then(r => r.json()).then(setOffers).catch(console.warn)
+  }
+
+  function offersFor(company) {
+    return offers.filter(o => (o.project?.customer || '') === company)
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return ''
+    return new Date(iso).toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
   async function save() {
@@ -125,6 +138,35 @@ export default function Projekt() {
                       {c.phone}{c.phone && c.mobile ? ' · ' : ''}{c.mobile}
                     </div>
                   )}
+                  {/* Angebote */}
+                  {(() => {
+                    const co = offersFor(c.company)
+                    if (co.length === 0) return (
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6, fontStyle: 'italic' }}>
+                        Noch kein Angebot
+                      </div>
+                    )
+                    return (
+                      <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {co.map(o => (
+                          <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                            <span style={{
+                              background: o.status === 'active' ? '#f0fdf4' : '#f4f4f5',
+                              color:      o.status === 'active' ? '#16a34a' : '#71717a',
+                              border:     `1px solid ${o.status === 'active' ? '#86efac' : '#e4e4e7'}`,
+                              borderRadius: 5, padding: '1px 6px', fontWeight: 700, flexShrink: 0,
+                            }}>
+                              {o.status === 'active' ? 'Offen' : 'Archiv'}
+                            </span>
+                            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--dark)', fontWeight: 600 }}>
+                              {o.offer_no}
+                            </span>
+                            <span style={{ color: 'var(--muted)' }}>{fmtDate(o.created_at)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
                 </div>
 
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
