@@ -1,7 +1,75 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { customers as customersApi } from '../lib/api'
 
 const BASE = (import.meta.env.VITE_API_URL || '') + '/api'
+
+function AddressSearch({ value, onChange, placeholder }) {
+  const [query, setQuery]           = useState(value || '')
+  const [suggestions, setSuggestions] = useState([])
+  const [loading, setLoading]       = useState(false)
+  const timer = useRef(null)
+
+  useEffect(() => { setQuery(value || '') }, [value])
+
+  function onInput(val) {
+    setQuery(val)
+    onChange(val)
+    if (timer.current) clearTimeout(timer.current)
+    if (val.length < 3) { setSuggestions([]); return }
+    timer.current = setTimeout(async () => {
+      setLoading(true)
+      try {
+        const res  = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&lang=de&limit=6&countrycode=at`)
+        const data = await res.json()
+        setSuggestions(data.features || [])
+      } catch {}
+      setLoading(false)
+    }, 350)
+  }
+
+  function select(feature) {
+    const p = feature.properties
+    const street = [p.street, p.housenumber].filter(Boolean).join(' ')
+    const parts  = [street || p.name, p.postcode, p.city || p.town || p.village].filter(Boolean)
+    const addr   = parts.join(', ')
+    setQuery(addr)
+    onChange(addr)
+    setSuggestions([])
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        value={query}
+        onChange={e => onInput(e.target.value)}
+        placeholder={placeholder}
+        style={{ width: '100%', boxSizing: 'border-box' }}
+      />
+      {loading && <p style={{ fontSize: 11, color: 'var(--muted)', margin: '2px 0 0' }}>Suche …</p>}
+      {suggestions.length > 0 && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+          background: 'white', border: '1px solid var(--line)', borderRadius: 10,
+          boxShadow: '0 4px 16px rgba(0,0,0,.12)', overflow: 'hidden', marginTop: 2 }}>
+          {suggestions.map((f, i) => {
+            const p = f.properties
+            const line1 = [p.street, p.housenumber].filter(Boolean).join(' ') || p.name || ''
+            const line2 = [p.postcode, p.city || p.town || p.village].filter(Boolean).join(' ')
+            return (
+              <div key={i} onClick={() => select(f)}
+                style={{ padding: '9px 14px', cursor: 'pointer', fontSize: 13,
+                  borderBottom: '1px solid var(--line)' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#f8f8f8'}
+                onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+                <b>{line1}</b>
+                {line2 && <span style={{ color: 'var(--muted)', marginLeft: 6 }}>{line2}</span>}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function Projekt() {
   const [list, setList]         = useState([])
@@ -95,8 +163,6 @@ export default function Projekt() {
                   ['Straße',            'street'],
                   ['PLZ',               'zip'],
                   ['Ort',               'city'],
-                  ['Rechnungsadresse',  'billing'],
-                  ['Lieferadresse',     'delivery'],
                 ].map(([label, field]) => (
                   <div key={field} className="field">
                     <label>{label}</label>
@@ -106,6 +172,22 @@ export default function Projekt() {
                     />
                   </div>
                 ))}
+                <div className="field">
+                  <label>Rechnungsadresse</label>
+                  <AddressSearch
+                    value={editing.billing || ''}
+                    onChange={val => setEditing(p => ({ ...p, billing: val }))}
+                    placeholder="Straße, PLZ, Ort suchen …"
+                  />
+                </div>
+                <div className="field">
+                  <label>Lieferadresse</label>
+                  <AddressSearch
+                    value={editing.delivery || ''}
+                    onChange={val => setEditing(p => ({ ...p, delivery: val }))}
+                    placeholder="Straße, PLZ, Ort suchen …"
+                  />
+                </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn btn-red" onClick={save} disabled={busy}>Speichern</button>
