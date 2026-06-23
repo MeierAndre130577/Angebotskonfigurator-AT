@@ -30,100 +30,102 @@ async function uploadDocument(file) {
 }
 
 // ── Sortierbare Tabellenzeile ─────────────────────────────────────────────────
-function SortableRow({ o, onEdit, onDelete, onToggleActive }) {
+function SortableRow({ o, onEdit, onDelete, onToggleActive, onPreviewDoc }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: o.id })
+  const docs = o.documents || []
 
-  const style = {
+  const rowStyle = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
-    background: isDragging ? 'var(--red-light)' : 'white',
+    opacity: isDragging ? 0.4 : (o.active !== false ? 1 : 0.5),
+    background: isDragging ? 'var(--red-light)' : (o.active !== false ? 'white' : '#fafafa'),
     borderBottom: '1px solid var(--line)',
   }
 
   return (
-    <tr ref={setNodeRef} style={style}
+    <tr ref={setNodeRef} style={rowStyle}
       onMouseEnter={e => { if (!isDragging) e.currentTarget.style.background = 'var(--bg)' }}
-      onMouseLeave={e => { if (!isDragging) e.currentTarget.style.background = o.active !== false ? 'white' : '#fafafa' }}
-      style={{ ...style, opacity: o.active !== false ? 1 : 0.5 }}>
+      onMouseLeave={e => { if (!isDragging) e.currentTarget.style.background = o.active !== false ? 'white' : '#fafafa' }}>
 
-      {/* Drag Handle – 3 waagrechte Striche */}
-      <td style={{ padding: '10px 8px', width: 36 }}>
-        <div
-          {...attributes}
-          {...listeners}
-          title="Halten und ziehen zum Sortieren"
-          style={{
-            cursor: 'grab',
-            display: 'flex', flexDirection: 'column', gap: 3,
-            alignItems: 'center', justifyContent: 'center',
-            width: 28, height: 28, borderRadius: 6,
-            padding: '4px 6px',
-            touchAction: 'none', userSelect: 'none',
-            color: 'var(--muted)',
-          }}
-        >
-          {/* 3 echte waagrechte Striche */}
-          {[0,1,2].map(i => (
-            <div key={i} style={{ width: 16, height: 2, background: 'currentColor', borderRadius: 1 }} />
-          ))}
+      {/* Drag Handle */}
+      <td style={{ padding: '10px 4px 10px 10px', width: 28 }}>
+        <div {...attributes} {...listeners} title="Halten und ziehen zum Sortieren"
+          style={{ cursor: 'grab', display: 'flex', flexDirection: 'column', gap: 3,
+            alignItems: 'center', justifyContent: 'center', width: 24, height: 24,
+            touchAction: 'none', userSelect: 'none', color: 'var(--muted)' }}>
+          {[0,1,2].map(i => <div key={i} style={{ width: 14, height: 2, background: 'currentColor', borderRadius: 1 }} />)}
         </div>
       </td>
 
-      <td style={{ padding: '10px 8px', width: 60 }}>
-        {o.image_path
-          ? <img src={o.image_path} alt="" style={{ width: 48, height: 36, objectFit: 'cover', borderRadius: 6 }} />
-          : <div style={{ width: 48, height: 36, background: 'var(--bg)', borderRadius: 6, border: '1px dashed var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--muted)' }}>📷</div>
-        }
-      </td>
-
+      {/* Name + Cluster */}
       <td style={{ padding: '10px 8px' }}>
-        <b style={{ fontSize: 13 }}>{o.name}</b>
-        {(o.documents || []).length > 0 && (
-          <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--muted)' }}>
-            📎 {o.documents.length} Dok.
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{o.name}</div>
+        {o.cluster && (
+          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20,
+            background: 'var(--bg)', color: 'var(--muted)', border: '1px solid var(--line)' }}>
+            {o.cluster}
           </span>
         )}
       </td>
 
+      {/* Preis + Badges */}
+      <td style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
+        <div>
+          {o.price === 0
+            ? <span style={{ color: 'var(--muted)', fontSize: 13 }}>inkl.</span>
+            : o.recurring
+              ? <span style={{ color: 'var(--red)', fontWeight: 700, fontSize: 13 }}>{money(o.price)}/Mo.</span>
+              : <span style={{ fontWeight: 700, fontSize: 13 }}>{money(o.price)}</span>}
+        </div>
+        <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+          {o.price_editable && (
+            <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4,
+              background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8' }}>
+              editierbar
+            </span>
+          )}
+          {o.discountable && (
+            <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4,
+              background: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c' }}>
+              rabattfähig
+            </span>
+          )}
+        </div>
+      </td>
+
+      {/* Dokument-Chips */}
       <td style={{ padding: '10px 8px' }}>
-        <span className="pill">{o.cluster || '—'}</span>
-      </td>
-
-      <td style={{ padding: '10px 8px', color: 'var(--muted)', maxWidth: 220, fontSize: 12 }}>
-        <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-          {o.short_text || '—'}
-        </span>
-      </td>
-
-      <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>
-        {o.price === 0
-          ? <span style={{ color: 'var(--muted)' }}>inkl.</span>
-          : o.recurring
-            ? <span style={{ color: 'var(--red)' }}>{money(o.price)}/Mo.</span>
-            : money(o.price)}
+        {docs.length === 0
+          ? <span style={{ fontSize: 11, color: 'var(--muted)', fontStyle: 'italic' }}>—</span>
+          : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {docs.map(doc => (
+                <button key={doc.id} onClick={() => onPreviewDoc(doc)}
+                  title={doc.file_name}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11,
+                    padding: '3px 8px', borderRadius: 6, border: '1px solid var(--line)',
+                    background: 'white', color: 'var(--muted)', cursor: 'pointer', transition: '.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#fff1f2'; e.currentTarget.style.borderColor = 'var(--red)'; e.currentTarget.style.color = 'var(--red)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.color = 'var(--muted)' }}>
+                  📄 {doc.title || doc.file_name}
+                </button>
+              ))}
+            </div>}
       </td>
 
       {/* Aktiv Toggle */}
       <td style={{ padding: '10px 8px', textAlign: 'center' }}>
-        <button
-          onClick={() => onToggleActive(o)}
-          style={{
-            width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+        <button onClick={() => onToggleActive(o)}
+          style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
             background: o.active !== false ? 'var(--red)' : 'var(--line)',
-            position: 'relative', transition: '.2s',
-          }}
-        >
-          <div style={{
-            width: 18, height: 18, borderRadius: '50%', background: 'white',
-            position: 'absolute', top: 3,
-            left: o.active !== false ? 23 : 3,
-            transition: '.2s',
-          }} />
+            position: 'relative', transition: '.2s' }}>
+          <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'white',
+            position: 'absolute', top: 3, left: o.active !== false ? 23 : 3, transition: '.2s' }} />
         </button>
       </td>
+
+      {/* Aktionen */}
       <td style={{ padding: '10px 8px', textAlign: 'right' }}>
-        <div className="row" style={{ justifyContent: 'flex-end' }}>
+        <div className="row" style={{ justifyContent: 'flex-end', gap: 4 }}>
           <button className="btn" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => onEdit(o)}>✏️</button>
           <button className="btn" style={{ padding: '6px 12px', fontSize: 12, color: 'var(--red)' }} onClick={() => onDelete(o.id)}>🗑️</button>
         </div>
@@ -179,6 +181,7 @@ export default function Bibliothek() {
   const [showTemplates, setShowTemplates] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState(null)
   const [newTplName, setNewTplName]           = useState('')
+  const [previewDoc, setPreviewDoc]           = useState(null)
   const [defaultTemplateId, setDefaultTemplateId] = useState(
     () => localStorage.getItem('bibliothek_default_template') || null
   )
@@ -392,6 +395,49 @@ export default function Bibliothek() {
           color: 'white', padding: '12px 20px', borderRadius: 12,
           fontSize: 13, fontWeight: 600, zIndex: 9999
         }}>{toast}</div>
+      )}
+
+      {/* ── PDF Vorschau Modal ───────────────────────────────────────────────── */}
+      {previewDoc && (
+        <div onClick={() => setPreviewDoc(null)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)',
+          zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'white', borderRadius: 16, width: '100%', maxWidth: 800,
+            height: '88vh', display: 'flex', flexDirection: 'column',
+            boxShadow: '0 24px 60px rgba(0,0,0,.3)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '14px 20px', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>📄 {previewDoc.title || previewDoc.file_name}</div>
+                {previewDoc.title && previewDoc.file_name !== previewDoc.title && (
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>{previewDoc.file_name}</div>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {previewDoc.file_url && (
+                  <a href={previewDoc.file_url} target="_blank" rel="noopener noreferrer"
+                    className="btn" style={{ fontSize: 12, padding: '6px 14px', textDecoration: 'none' }}>
+                    ↗ Neues Tab
+                  </a>
+                )}
+                <button className="btn" onClick={() => setPreviewDoc(null)}
+                  style={{ fontSize: 16, padding: '6px 12px', color: 'var(--muted)' }}>✕</button>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflow: 'hidden', borderRadius: '0 0 16px 16px' }}>
+              {previewDoc.file_url
+                ? <iframe src={previewDoc.file_url} title={previewDoc.file_name}
+                    style={{ width: '100%', height: '100%', border: 'none' }} />
+                : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    height: '100%', color: 'var(--muted)', fontSize: 13 }}>
+                    Keine Vorschau verfügbar
+                  </div>}
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="page-header">
@@ -715,21 +761,19 @@ export default function Bibliothek() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--line)', background: 'var(--bg)' }}>
-                <th style={{ width: 36, padding: '12px 8px' }}></th>
-                <th style={{ padding: '12px 8px', width: 60, textAlign: 'left', fontWeight: 700, color: 'var(--muted)' }}>Bild</th>
-                <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 700, color: 'var(--muted)' }}>Option</th>
-                <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 700, color: 'var(--muted)' }}>Cluster</th>
-                <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 700, color: 'var(--muted)' }}>Beschreibung</th>
-                <th style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 700, color: 'var(--muted)' }}>Preis</th>
-                <th style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 700, color: 'var(--muted)' }}>Aktiv</th>
-                <th style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 700, color: 'var(--muted)' }}></th>
+                <th style={{ width: 28, padding: '10px 4px 10px 10px' }}></th>
+                <th style={{ padding: '10px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Option · Cluster</th>
+                <th style={{ padding: '10px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Preis</th>
+                <th style={{ padding: '10px 8px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Dokumente</th>
+                <th style={{ padding: '10px 8px', textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Aktiv</th>
+                <th style={{ padding: '10px 8px' }}></th>
               </tr>
             </thead>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={filtered.map(o => o.id)} strategy={verticalListSortingStrategy}>
                 <tbody>
                   {filtered.map(o => (
-                    <SortableRow key={o.id} o={o} onEdit={startEdit} onDelete={handleDelete} onToggleActive={toggleActive} />
+                    <SortableRow key={o.id} o={o} onEdit={startEdit} onDelete={handleDelete} onToggleActive={toggleActive} onPreviewDoc={setPreviewDoc} />
                   ))}
                 </tbody>
               </SortableContext>
