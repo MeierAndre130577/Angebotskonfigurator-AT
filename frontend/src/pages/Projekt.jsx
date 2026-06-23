@@ -32,6 +32,11 @@ export default function Projekt() {
     load()
   }
 
+  async function assignNumbers() {
+    await fetch((import.meta.env.VITE_API_URL || '') + '/api/customers/assign-numbers', { method: 'POST' })
+    load()
+  }
+
   const filtered = list.filter(c =>
     [c.company, c.contact, c.email, c.city].some(v => (v || '').toLowerCase().includes(search.toLowerCase()))
   )
@@ -43,6 +48,9 @@ export default function Projekt() {
           <h1>👤 Kundendaten</h1>
           <p className="subtitle">Alle Kontakte aus der Schnellerfassung</p>
         </div>
+        <button className="btn" onClick={assignNumbers} style={{ fontSize: 12 }}>
+          🔢 Kundennummern vergeben
+        </button>
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
