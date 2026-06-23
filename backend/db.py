@@ -9,6 +9,7 @@ import os
 import json
 import uuid
 import datetime
+import random
 
 # ── Supabase oder SQLite? ─────────────────────────────────────────────────────
 
@@ -116,20 +117,26 @@ def _today_year():
     return datetime.date.today().year
 
 def _next_customer_number():
+    def _random_kd(existing: set) -> str:
+        for _ in range(100):
+            num = random.randint(10000, 99999)
+            candidate = f"KD-{num}"
+            if candidate not in existing:
+                return candidate
+        return f"KD-{random.randint(10000, 99999)}"  # Notfall-Fallback
+
     if USE_SUPABASE:
         try:
             rows = _sb.table("customers").select("customer_number").execute().data
-            nums = [int(r["customer_number"][3:]) for r in rows
-                    if (r.get("customer_number") or "").startswith("KD-") and r["customer_number"][3:].isdigit()]
-            return f"KD-{(max(nums, default=0) + 1):04d}"
+            existing = {r.get("customer_number", "") for r in rows}
+            return _random_kd(existing)
         except Exception:
-            return ""  # Spalte existiert noch nicht – Nummer wird nach Migration vergeben
+            return ""
     conn = _get_conn()
-    row  = conn.execute("SELECT value FROM customer_counter WHERE id=1").fetchone()
-    num  = row[0] if row else 1
-    conn.execute("UPDATE customer_counter SET value=? WHERE id=1", (num + 1,))
-    conn.commit(); conn.close()
-    return f"KD-{num:04d}"
+    rows = conn.execute("SELECT customer_number FROM customers").fetchall()
+    existing = {r[0] for r in rows}
+    conn.close()
+    return _random_kd(existing)
 
 # ── Kunden ────────────────────────────────────────────────────────────────────
 
