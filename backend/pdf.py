@@ -1110,7 +1110,7 @@ def generate_design_pdf(data: dict) -> dict:
             ('BOTTOMPADDING',(0,0),(-1,-1),8),
         ]),
     ]
-    story.append(_BottomPush(62 * mm))  # 62mm ≈ Höhe des Signaturblocks
+    story.append(_BottomPush(80 * mm))  # 80mm ≈ Höhe des Signaturblocks inkl. Spacer
     story.append(KeepTogether(sig_block))
     story.append(PageBreak())
 
