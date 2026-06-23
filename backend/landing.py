@@ -419,16 +419,21 @@ nav a{{display:inline-block;padding:10px 16px;color:rgba(255,255,255,.7);font-si
 nav a:hover{{color:#fff;border-bottom-color:#c1121f;text-decoration:none}}
 
 /* ── Hero / Cover ────────────────── */
-.hero{{min-height:260px;background:linear-gradient(140deg,#7a0010 0%,#c1121f 55%,#e63946 100%);color:#fff;padding:36px 24px;display:flex;flex-direction:column;justify-content:flex-end;position:relative;overflow:hidden}}
-.hero-bg{{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.35}}
-.hero-inner{{position:relative}}
-.hero-label{{font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:.7;margin-bottom:6px}}
-.hero-offer{{font-size:30px;font-weight:700;letter-spacing:-.5px;line-height:1.1}}
-.hero-sub{{font-size:15px;opacity:.85;margin-top:4px}}
-.hero-chips{{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}}
-.chip{{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:4px 12px;font-size:12px}}
-.chip.valid{{background:rgba(74,222,128,.2);border-color:rgba(74,222,128,.4)}}
-.vdot{{width:6px;height:6px;border-radius:50%;background:#4ade80;flex-shrink:0}}
+.hero{{background:linear-gradient(140deg,#7a0010 0%,#c1121f 55%,#e63946 100%);color:#fff;position:relative;overflow:hidden}}
+.hero-bg{{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.25}}
+.hero-top{{position:relative;padding:32px 24px 20px}}
+.hero-label{{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;opacity:.7;margin-bottom:8px;font-weight:600}}
+.hero-offer{{font-size:32px;font-weight:800;letter-spacing:-.5px;line-height:1.1}}
+.hero-sub{{font-size:15px;opacity:.9;margin-top:6px;font-weight:500}}
+.hero-infobar{{position:relative;background:rgba(0,0,0,.25);backdrop-filter:blur(6px);padding:0 24px}}
+.info-grid{{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid rgba(255,255,255,.15)}}
+.info-cell{{padding:14px 0;border-right:1px solid rgba(255,255,255,.1)}}
+.info-cell:last-child{{border-right:none}}
+.info-cell:nth-child(3n){{border-right:none}}
+.info-lbl{{font-size:10px;text-transform:uppercase;letter-spacing:.6px;opacity:.6;margin-bottom:4px;font-weight:600}}
+.info-val{{font-size:13px;font-weight:600;line-height:1.3}}
+.info-val.valid-val{{color:#4ade80}}
+.info-val.hi{{font-size:15px}}
 
 /* ── Wrapper ─────────────────────── */
 .wrap{{max-width:760px;margin:0 auto;padding:0 0 60px}}
@@ -541,8 +546,10 @@ nav a:hover{{color:#fff;border-bottom-color:#c1121f;text-decoration:none}}
 
 /* ── Responsive ──────────────────── */
 @media(max-width:520px){{
-  .hero{{min-height:200px;padding:24px 16px}}
+  .hero-top{{padding:24px 16px 16px}}
   .hero-offer{{font-size:22px}}
+  .hero-infobar{{padding:0 16px}}
+  .info-grid{{grid-template-columns:1fr 1fr}}
   .sec{{margin:12px 10px 0;padding:16px}}
   .order-box{{margin:12px 10px 0;padding:20px 16px}}
   .legal-sec{{margin:12px 10px 0}}
@@ -575,14 +582,22 @@ nav a:hover{{color:#fff;border-bottom-color:#c1121f;text-decoration:none}}
   <!-- ── Hero / Cover ──────────────────────────────────────────────────── -->
   <div class="hero" style="{cover_style}">
     {f'<div class="hero-bg" style="background-image:url(\\"{_e(cover_src)}\\")"></div>' if cover_src else ''}
-    <div class="hero-inner">
+    <div class="hero-top">
       <div class="hero-label">{_e(provider_name)} &middot; Persönliches Angebot</div>
       <div class="hero-offer">{_e(offer_no)}</div>
-      <div class="hero-sub">{_e(project_name + " · " + customer if project_name else customer)}</div>
-      <div class="hero-chips">
-        {f'<span class="chip valid"><span class="vdot"></span> Gültig bis {_e(valid_date)}</span>' if valid_date else ''}
-        {f'<span class="chip">&#128197; {_e(date_created)}</span>' if date_created else ''}
-        {f'<span class="chip">Version {_e(version)}</span>' if version and version != "1.0" else ''}
+      <div class="hero-sub">{_e((project_name + " · " + customer) if project_name else customer)}</div>
+    </div>
+    <div class="hero-infobar">
+      <div class="info-grid">
+        <div class="info-cell">
+          <div class="info-lbl">Angebotsnummer</div>
+          <div class="info-val hi">{_e(offer_no)}</div>
+        </div>
+        {'<div class="info-cell"><div class="info-lbl">Datum</div><div class="info-val">' + _e(date_created) + '</div></div>' if date_created else '<div class="info-cell"></div>'}
+        {'<div class="info-cell"><div class="info-lbl">Gültig bis</div><div class="info-val valid-val">' + _e(valid_date) + '</div></div>' if valid_date else '<div class="info-cell"></div>'}
+        {'<div class="info-cell"><div class="info-lbl">Kunde</div><div class="info-val">' + _e(customer) + '</div></div>' if customer else '<div class="info-cell"></div>'}
+        {'<div class="info-cell"><div class="info-lbl">Ansprechpartner</div><div class="info-val">' + _e(contact_name) + '</div></div>' if contact_name else '<div class="info-cell"></div>'}
+        {'<div class="info-cell"><div class="info-lbl">Projekt</div><div class="info-val">' + _e(project_name) + '</div></div>' if project_name else '<div class="info-cell"></div>'}
       </div>
     </div>
   </div>
