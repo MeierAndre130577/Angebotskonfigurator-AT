@@ -196,7 +196,7 @@ export default function Vorschau() {
   function getLandingUrl() {
     if (!offerData?.offer_no) return ''
     const backendBase = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-    return `${backendBase}/landing/${encodeURIComponent(offerData.offer_no)}`
+    return `${backendBase}/api/offers/${encodeURIComponent(offerData.offer_no)}/landing`
   }
 
   function openLanding() {

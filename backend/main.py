@@ -281,7 +281,7 @@ def archive_expired():
     db.archive_expired_offers()
     return {"ok": True}
 
-@app.get("/landing/{offer_no}")
+@app.get("/api/offers/{offer_no}/landing")
 async def serve_landing_page(offer_no: str):
     """Liefert die HTML Landing Page direkt mit korrektem Content-Type."""
     from fastapi.responses import HTMLResponse
