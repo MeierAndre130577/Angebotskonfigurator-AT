@@ -162,6 +162,9 @@ export default function Projekt() {
                               {o.offer_no}
                             </span>
                             <span style={{ color: 'var(--muted)' }}>{fmtDate(o.created_at)}</span>
+                            {o.project?.project && (
+                              <span style={{ color: 'var(--muted)' }}>· {o.project.project}</span>
+                            )}
                           </div>
                         ))}
                       </div>
