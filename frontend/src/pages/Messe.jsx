@@ -50,6 +50,7 @@ export default function Messe() {
   const [newModal, setNewModal]                       = useState(false)
   const [newCustomerSource, setNewCustomerSource]     = useState('')
   const [allOffers, setAllOffers]                     = useState([])
+  const [customerNumber, setCustomerNumber]           = useState('')
 
   useEffect(() => {
     optionsApi.list().then(opts => {
@@ -166,7 +167,7 @@ export default function Messe() {
       } catch { /* nicht kritisch */ }
     }
     try {
-      await customersApi.upsert({
+      const saved = await customersApi.upsert({
         company:        contact.company,
         contact:        contact.contactName,
         email:          contact.email,
@@ -181,6 +182,7 @@ export default function Messe() {
         logo_url:       (logoUrl && !logoUrl.startsWith('__')) ? logoUrl : '',
         source:         source || '',
       })
+      if (saved?.customer_number) setCustomerNumber(saved.customer_number)
     } catch { /* nicht kritisch */ }
     setStep(1)
   }
@@ -200,6 +202,7 @@ export default function Messe() {
       website:     contact.website.trim()      || c.website   || '',
     }
     setContact(merged)
+    if (c.customer_number) setCustomerNumber(c.customer_number)
     // Kunden mit zusammengeführten Daten + ID aktualisieren (bekommt Nummer falls noch keine)
     try {
       await customersApi.upsert({
@@ -289,7 +292,8 @@ export default function Messe() {
     setPreviewing(true)
     try {
       const proj    = { customer: contact.company, contact: contact.contactName,
-                        customerEmail: contact.email, project: projectName || 'Vorschau', date: '' }
+                        customerEmail: contact.email, project: projectName || 'Vorschau', date: '',
+                        customer_number: customerNumber || undefined }
       const items   = allOptions.filter(o => selectedIds.has(o.id))
       const res     = await fetch(`${BASE}/pdf/preview`, {
         method: 'POST',
@@ -359,6 +363,7 @@ export default function Messe() {
         customer_city:      contact.city      || undefined,
         customer_website:   contact.website   || undefined,
         customer_logo:      effectiveLogo     || undefined,
+        customer_number:    customerNumber    || undefined,
         delivery_address:   deliveryEnabled && deliveryAddress ? deliveryAddress : undefined,
         discount_percent:   discountActive ? discountPercent : undefined,
         vat_country:        selectedVatCountry?.country || undefined,

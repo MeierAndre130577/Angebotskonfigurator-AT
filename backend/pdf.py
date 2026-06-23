@@ -968,6 +968,7 @@ def generate_design_pdf(data: dict) -> dict:
 
     # Kundendaten aufbauen
     cust_name    = project.get('customer', '')
+    cust_kd_nr   = project.get('customer_number', '')
     cust_contact = project.get('contact', '')
     cust_pos     = project.get('customer_position', '')
     cust_email   = project.get('customerEmail', '')
@@ -979,7 +980,11 @@ def generate_design_pdf(data: dict) -> dict:
     cust_web     = project.get('customer_website', '')
 
     cust_cells = []
-    if cust_name:    cust_cells.append(Paragraph(f'<b>{cust_name}</b>', S['h2']))
+    if cust_name:
+        name_line = f'<b>{cust_name}</b>'
+        if cust_kd_nr:
+            name_line += f'  <font size="9" color="#888888">{cust_kd_nr}</font>'
+        cust_cells.append(Paragraph(name_line, S['h2']))
     if cust_contact:
         contact_line = cust_contact + (f', {cust_pos}' if cust_pos else '')
         cust_cells.append(Paragraph(contact_line, S['body']))
