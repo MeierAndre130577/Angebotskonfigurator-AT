@@ -225,6 +225,8 @@ export default function Messe() {
       { label: 'E-Mail',          userVal: contact.email,       storedVal: c.email    },
       { label: 'Telefon',         userVal: contact.phone,       storedVal: c.phone    },
       { label: 'Mobil',           userVal: contact.mobile,      storedVal: c.mobile   },
+      { label: 'Straße',          userVal: contact.street,      storedVal: c.street   },
+      { label: 'PLZ',             userVal: contact.zip,         storedVal: c.zip      },
       { label: 'Ort',             userVal: contact.city,        storedVal: c.city     },
       { label: 'Website',         userVal: contact.website,     storedVal: c.website  },
     ].filter(f => {
