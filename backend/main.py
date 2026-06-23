@@ -123,6 +123,11 @@ def list_customers():
 def search_customers(q: str = ""):
     return db.search_customers(q)
 
+@app.post("/api/customers/assign-numbers")
+def assign_customer_numbers():
+    count = db.assign_missing_customer_numbers()
+    return {"ok": True, "assigned": count}
+
 @app.post("/api/customers")
 def upsert_customer(data: CustomerIn):
     return db.upsert_customer(data.model_dump())

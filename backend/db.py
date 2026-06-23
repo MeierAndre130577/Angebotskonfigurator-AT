@@ -116,27 +116,26 @@ def _new_id():
 def _today_year():
     return datetime.date.today().year
 
-def _next_customer_number():
-    def _random_kd(existing: set) -> str:
-        for _ in range(100):
-            num = random.randint(10000, 99999)
-            candidate = f"KD-{num}"
-            if candidate not in existing:
-                return candidate
-        return f"KD-{random.randint(10000, 99999)}"  # Notfall-Fallback
+def _random_kd_unique(existing: set) -> str:
+    for _ in range(100):
+        candidate = f"KD-{random.randint(10000, 99999)}"
+        if candidate not in existing:
+            return candidate
+    return f"KD-{random.randint(10000, 99999)}"
 
+def _next_customer_number():
     if USE_SUPABASE:
         try:
             rows = _sb.table("customers").select("customer_number").execute().data
             existing = {r.get("customer_number", "") for r in rows}
-            return _random_kd(existing)
+            return _random_kd_unique(existing)
         except Exception:
             return ""
     conn = _get_conn()
     rows = conn.execute("SELECT customer_number FROM customers").fetchall()
     existing = {r[0] for r in rows}
     conn.close()
-    return _random_kd(existing)
+    return _random_kd_unique(existing)
 
 # ── Kunden ────────────────────────────────────────────────────────────────────
 
@@ -158,6 +157,32 @@ def get_customer_by_email(email: str):
     row = conn.execute("SELECT * FROM customers WHERE email=?", (email,)).fetchone()
     conn.close()
     return dict(row) if row else None
+
+def assign_missing_customer_numbers() -> int:
+    """Weist allen Kunden ohne Kundennummer eine zufällige KD-XXXXX zu. Gibt Anzahl zurück."""
+    if USE_SUPABASE:
+        rows = _sb.table("customers").select("id,customer_number").execute().data
+        existing = {r.get("customer_number", "") for r in rows if r.get("customer_number")}
+        count = 0
+        for r in rows:
+            if not r.get("customer_number"):
+                num = _random_kd_unique(existing)
+                existing.add(num)
+                _sb.table("customers").update({"customer_number": num}).eq("id", r["id"]).execute()
+                count += 1
+        return count
+    conn = _get_conn()
+    rows = conn.execute("SELECT id, customer_number FROM customers").fetchall()
+    existing = {r[1] for r in rows if r[1]}
+    count = 0
+    for r in rows:
+        if not r[1]:
+            num = _random_kd_unique(existing)
+            existing.add(num)
+            conn.execute("UPDATE customers SET customer_number=? WHERE id=?", (num, r[0]))
+            count += 1
+    conn.commit(); conn.close()
+    return count
 
 def search_customers(query: str):
     q = (query or "").strip().lower()
