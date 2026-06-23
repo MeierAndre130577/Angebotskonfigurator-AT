@@ -263,7 +263,7 @@ def draw_leasing_section(story: list, leasing: dict, s: dict, S: dict, CW: float
     PINK_BG = colors.HexColor('#fff1f2')
 
     # Intro-Text (optional, aus Einstellungen)
-    intro_text = (s.get('leasing_intro_text') or '').strip()
+    intro_text = (s.get('leasing_intro_text') or '').strip().replace('\n', '<br/>')
     if intro_text:
         story.append(Paragraph(intro_text, S['body']))
         story.append(Spacer(1, 4 * mm))
