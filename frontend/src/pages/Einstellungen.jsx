@@ -574,12 +574,12 @@ export default function Einstellungen() {
         <div style={{ borderTop: '1px solid var(--line)', paddingTop: 16, marginTop: 4 }}>
           <div className="card-title" style={{ fontSize: 13 }}>Signaturblock</div>
           <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
-            Legt fest, wieviel Platz am Seitenende freigehalten wird, damit der Signaturblock auf derselben Seite bleibt.
-            Kleinerer Wert → Block kann weiter unten stehen; größerer Wert → Block wird früher auf eine neue Seite gehoben.
+            Muss mindestens so groß sein wie der Signaturblock selbst (~77 mm). Zu klein → Block springt auf neue Seite.
+            Größerer Wert → Block steht weiter oben auf der Seite.
           </p>
           <div className="grid2">
-            <Field label="Mindestabstand vom Seitenende (mm)" hint="Standard: 80 mm">
-              <NumberInput value={settings.sig_block_margin_mm ?? 80} min={40} max={200}
+            <Field label="Reservierter Platz für Signaturblock (mm)" hint="Empfehlung: 80–95 mm">
+              <NumberInput value={settings.sig_block_margin_mm ?? 80} min={60} max={200}
                 onChange={v => set('sig_block_margin_mm', v)} />
             </Field>
           </div>

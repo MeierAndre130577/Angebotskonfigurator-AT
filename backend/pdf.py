@@ -1083,8 +1083,8 @@ def generate_design_pdf(data: dict) -> dict:
 
     # Unterschrift / Rechtsverbindliche Bestellung – immer am Seitenende
     order_style = ParagraphStyle('order', fontName='Helvetica-Bold', fontSize=11, textColor=DARK)
+    story.append(Spacer(1, 14*mm))  # Abstand ausserhalb KeepTogether, sonst zu hoch für reserved
     sig_block = [
-        Spacer(1, 14*mm),
         Table([[Paragraph('Rechtsverbindliche Bestellung', order_style)]],
               colWidths=[CW],
               style=[('BACKGROUND',(0,0),(-1,-1),BG),
