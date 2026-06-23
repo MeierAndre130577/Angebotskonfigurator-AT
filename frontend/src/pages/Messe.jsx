@@ -48,6 +48,7 @@ export default function Messe() {
   const [selectedVatCountry, setSelectedVatCountry]   = useState(null)
   const [dupModal, setDupModal]                       = useState(null)
   const [newModal, setNewModal]                       = useState(false)
+  const [newCustomerSource, setNewCustomerSource]     = useState('')
   const [allOffers, setAllOffers]                     = useState([])
 
   useEffect(() => {
@@ -154,7 +155,7 @@ export default function Messe() {
     })
   }
 
-  async function doSaveAndProceed() {
+  async function doSaveAndProceed(source = '') {
     let cardImageUrl = ''
     if (cardImageFile) {
       try {
@@ -177,7 +178,8 @@ export default function Messe() {
         city:           contact.city,
         website:        contact.website,
         card_image_url: cardImageUrl,
-        logo_url: (logoUrl && !logoUrl.startsWith('__')) ? logoUrl : '',
+        logo_url:       (logoUrl && !logoUrl.startsWith('__')) ? logoUrl : '',
+        source:         source || '',
       })
     } catch { /* nicht kritisch */ }
     setStep(1)
@@ -414,7 +416,7 @@ export default function Messe() {
     setSelectedIds(new Set()); setProjectName(''); setOfferNo('')
     setDone(false); setError(''); setCustomPrices({}); setSelectedPaymentTerm('')
     setDeliveryEnabled(false); setDeliveryQuery(''); setDeliveryAddress(''); setDeliverySuggestions([])
-    setDiscountPercent(0); setSelectedVatCountry(null); setDupModal(null); setNewModal(false)
+    setDiscountPercent(0); setSelectedVatCountry(null); setDupModal(null); setNewModal(false); setNewCustomerSource('')
   }
 
   // ── Cluster-Gruppen ────────────────────────────────────────────────────────
@@ -631,7 +633,7 @@ export default function Messe() {
               </div>
             </div>
             <div style={{ padding: '16px 24px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
                 {[
                   { label: 'Firma',           val: contact.company },
                   { label: 'Ansprechpartner', val: contact.contactName },
@@ -648,10 +650,28 @@ export default function Messe() {
                   </div>
                 ))}
               </div>
+              <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)',
+                  display: 'block', marginBottom: 6 }}>
+                  Woher kenne ich diesen Kunden? (optional)
+                </label>
+                <input
+                  value={newCustomerSource}
+                  onChange={e => setNewCustomerSource(e.target.value)}
+                  placeholder="z.B. Messe Wien 2026, Empfehlung, …"
+                  list="source-vorschlaege"
+                  style={{ width: '100%', boxSizing: 'border-box' }}
+                />
+                <datalist id="source-vorschlaege">
+                  {(leasingSettings?.project_templates || []).map(t => (
+                    <option key={t.id} value={t.label} />
+                  ))}
+                </datalist>
+              </div>
             </div>
             <div style={{ padding: '0 24px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               <button className="btn btn-red btn-lg"
-                onClick={() => { setNewModal(false); doSaveAndProceed() }}>
+                onClick={() => { setNewModal(false); doSaveAndProceed(newCustomerSource) }}>
                 ✓ Anlegen & weiter zu den Optionen
               </button>
               <button onClick={() => setNewModal(false)}

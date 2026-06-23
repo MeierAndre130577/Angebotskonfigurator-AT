@@ -215,6 +215,12 @@ export default function Projekt() {
                   </div>
                   {c.contact  && <div style={{ fontSize: 13, marginTop: 2 }}>{c.contact}{c.position ? ` · ${c.position}` : ''}</div>}
                   {c.email    && <div style={{ fontSize: 12, color: 'var(--muted)' }}>{c.email}</div>}
+                  {(c.source || c.created_at) && (
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>
+                      {c.created_at && <span>📅 {fmtDate(c.created_at)}</span>}
+                      {c.source     && <span style={{ marginLeft: c.created_at ? 6 : 0 }}>· {c.source}</span>}
+                    </div>
+                  )}
                   {(c.phone || c.mobile) && (
                     <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
                       {c.phone}{c.phone && c.mobile ? ' · ' : ''}{c.mobile}

@@ -100,6 +100,7 @@ else:
             "card_image_url":  'TEXT DEFAULT ""',
             "logo_url":        'TEXT DEFAULT ""',
             "customer_number": 'TEXT DEFAULT ""',
+            "source":          'TEXT DEFAULT ""',
         }
         for col, defn in new_cols.items():
             if col not in existing:
@@ -202,7 +203,7 @@ def search_customers(query: str):
     return [dict(r) for r in rows]
 
 def upsert_customer(data: dict):
-    for f in ["position", "phone", "mobile", "street", "zip", "city", "website", "card_image_url", "logo_url", "customer_number"]:
+    for f in ["position", "phone", "mobile", "street", "zip", "city", "website", "card_image_url", "logo_url", "customer_number", "source"]:
         data.setdefault(f, "")
     is_new = True
     # Deduplizierung über E-Mail
@@ -228,16 +229,18 @@ def upsert_customer(data: dict):
     conn = _get_conn()
     conn.execute("""
         INSERT INTO customers (id, company, contact, email, billing, delivery,
-            position, phone, mobile, street, zip, city, website, card_image_url, logo_url, customer_number)
+            position, phone, mobile, street, zip, city, website, card_image_url, logo_url, customer_number, source)
         VALUES (:id,:company,:contact,:email,:billing,:delivery,
-            :position,:phone,:mobile,:street,:zip,:city,:website,:card_image_url,:logo_url,:customer_number)
+            :position,:phone,:mobile,:street,:zip,:city,:website,:card_image_url,:logo_url,:customer_number,:source)
         ON CONFLICT(id) DO UPDATE SET
             company=excluded.company, contact=excluded.contact,
             email=excluded.email, billing=excluded.billing, delivery=excluded.delivery,
             position=excluded.position, phone=excluded.phone, mobile=excluded.mobile,
             street=excluded.street, zip=excluded.zip, city=excluded.city,
             website=excluded.website, card_image_url=excluded.card_image_url,
-            logo_url=excluded.logo_url, customer_number=COALESCE(NULLIF(customers.customer_number,''), excluded.customer_number)
+            logo_url=excluded.logo_url,
+            customer_number=COALESCE(NULLIF(customers.customer_number,''), excluded.customer_number),
+            source=COALESCE(NULLIF(customers.source,''), excluded.source)
     """, data)
     conn.commit(); conn.close()
     return data

@@ -114,6 +114,7 @@ class CustomerIn(BaseModel):
     card_image_url: Optional[str] = ""
     logo_url: Optional[str] = ""
     customer_number: Optional[str] = ""
+    source: Optional[str] = ""
 
 @app.get("/api/customers")
 def list_customers():
