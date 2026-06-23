@@ -46,8 +46,9 @@ export default function Messe() {
   const [selectedPaymentTerm, setSelectedPaymentTerm] = useState('')
   const [discountPercent, setDiscountPercent]         = useState(0)
   const [selectedVatCountry, setSelectedVatCountry]   = useState(null)
-  const [dupModal, setDupModal]                       = useState(null)  // { matches, onNew }
+  const [dupModal, setDupModal]                       = useState(null)
   const [newModal, setNewModal]                       = useState(false)
+  const [allOffers, setAllOffers]                     = useState([])
 
   useEffect(() => {
     optionsApi.list().then(opts => {
@@ -65,6 +66,7 @@ export default function Messe() {
       }
     }).catch(console.warn)
     customersApi.list().then(setAllCustomers).catch(console.warn)
+    fetch(`${BASE}/offers`).then(r => r.json()).then(setAllOffers).catch(console.warn)
     fetch((import.meta.env.VITE_API_URL || '') + '/api/settings')
       .then(r => r.json()).then(data => {
         setLeasingSettings(data)
@@ -216,6 +218,15 @@ export default function Messe() {
     } catch { /* nicht kritisch */ }
     setDupModal(null)
     setStep(1)
+  }
+
+  function offersFor(company) {
+    return allOffers.filter(o => (o.project?.customer || '') === company)
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return ''
+    return new Date(iso).toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
   function getContactDiffs(c) {
@@ -544,6 +555,39 @@ export default function Messe() {
                         Keine neuen Angaben gegenüber dem gespeicherten Eintrag.
                       </div>
                     )}
+
+                    {/* Angebote */}
+                    {(() => {
+                      const co = offersFor(c.company)
+                      if (co.length === 0) return (
+                        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8, fontStyle: 'italic' }}>
+                          Noch kein Angebot
+                        </div>
+                      )
+                      return (
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          {co.map(o => (
+                            <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
+                              <span style={{
+                                background: o.status === 'active' ? '#f0fdf4' : '#f4f4f5',
+                                color:      o.status === 'active' ? '#16a34a' : '#71717a',
+                                border:     `1px solid ${o.status === 'active' ? '#86efac' : '#e4e4e7'}`,
+                                borderRadius: 5, padding: '1px 6px', fontWeight: 700, flexShrink: 0,
+                              }}>
+                                {o.status === 'active' ? 'Offen' : 'Archiv'}
+                              </span>
+                              <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--dark)', fontWeight: 600 }}>
+                                {o.offer_no}
+                              </span>
+                              <span style={{ color: 'var(--muted)' }}>{fmtDate(o.created_at)}</span>
+                              {o.project?.project && (
+                                <span style={{ color: 'var(--muted)' }}>· {o.project.project}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </div>
                 )
               })}
