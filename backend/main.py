@@ -243,8 +243,6 @@ class OfferIn(BaseModel):
     zip_expires_at: Optional[str] = None
     pdf_url: Optional[str] = ""
     qr_url: Optional[str] = ""
-    landing_url: Optional[str] = ""
-    leasing: Optional[dict] = None
 
 
 @app.get("/api/offers")
@@ -274,7 +272,7 @@ async def delete_offer_zip(offer_id: str):
     offer = next((o for o in rows if o["id"] == offer_id), None)
     if offer and offer.get("zip_filename"):
         _dl.delete_zip(offer["zip_filename"])
-        db.upsert_offer({**offer, "zip_url": "", "zip_filename": "", "landing_url": "", "status": "archived"})
+        db.upsert_offer({**offer, "zip_url": "", "zip_filename": "", "status": "archived"})
     return {"ok": True}
 
 @app.post("/api/offers/archive-expired")
@@ -283,47 +281,21 @@ def archive_expired():
     db.archive_expired_offers()
     return {"ok": True}
 
-@app.post("/api/offers/{offer_no}/landing")
-async def generate_landing_page(offer_no: str):
-    """Generiert eine HTML Landing Page und lädt sie in Supabase Storage hoch."""
+@app.get("/landing/{offer_no}")
+async def serve_landing_page(offer_no: str):
+    """Liefert die HTML Landing Page direkt mit korrektem Content-Type."""
+    from fastapi.responses import HTMLResponse
     import landing as _landing
 
     offer = db.get_offer_by_number(offer_no)
     if not offer:
         raise HTTPException(status_code=404, detail="Angebot nicht gefunden")
     if offer.get("status") != "active":
-        raise HTTPException(status_code=400, detail="Landing Page nur für aktive Angebote verfügbar")
+        raise HTTPException(status_code=410, detail="Dieses Angebot ist nicht mehr aktiv.")
 
     s = db.get_settings()
     html_content = _landing.generate_html(offer, s)
-    html_bytes = html_content.encode("utf-8")
-
-    supabase_url = os.environ.get("SUPABASE_URL")
-    service_key  = os.environ.get("SUPABASE_SERVICE_KEY")
-    filename = f"landings/{offer_no}.html"
-
-    if supabase_url and service_key:
-        upload_url = f"{supabase_url}/storage/v1/object/images/{filename}"
-        headers = {
-            "Authorization": f"Bearer {service_key}",
-            "Content-Type": "text/html; charset=utf-8",
-            "x-upsert": "true",
-        }
-        async with httpx.AsyncClient() as client:
-            res = await client.post(upload_url, content=html_bytes, headers=headers)
-        if res.status_code not in (200, 201):
-            raise HTTPException(status_code=500, detail=f"Upload fehlgeschlagen: {res.text}")
-        landing_url = f"{supabase_url}/storage/v1/object/public/images/{filename}"
-    else:
-        local_dir = os.path.join(os.path.dirname(__file__), "uploads", "landings")
-        os.makedirs(local_dir, exist_ok=True)
-        safe_no = offer_no.replace("/", "_").replace("\\", "_")
-        with open(os.path.join(local_dir, f"{safe_no}.html"), "wb") as f:
-            f.write(html_bytes)
-        landing_url = f"/uploads/landings/{safe_no}.html"
-
-    db.upsert_offer({**offer, "landing_url": landing_url})
-    return {"ok": True, "landing_url": landing_url}
+    return HTMLResponse(content=html_content, status_code=200)
 
 
 @app.post("/api/offers/number")
@@ -444,7 +416,6 @@ async def generate_full_offer(data: dict):
         "pdf_url":       pdf_download_url,
         "qr_url":        qr_url,
         "leasing":       data.get("leasing") or {},
-        "landing_url":   "",
     }
     db.upsert_offer(offer_data)
 
