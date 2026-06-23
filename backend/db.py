@@ -398,6 +398,7 @@ def upsert_offer(data: dict):
             "zip_expires_at":data.get("zip_expires_at"),
             "pdf_url":       data.get("pdf_url", ""),
             "qr_url":        data.get("qr_url", ""),
+            "landing_url":   data.get("landing_url", ""),
             "updated_at":    data["updated_at"],
         }
         return _sb.table("offers").upsert(payload).execute().data

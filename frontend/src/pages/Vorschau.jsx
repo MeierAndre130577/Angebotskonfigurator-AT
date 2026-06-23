@@ -30,6 +30,9 @@ export default function Vorschau() {
   const [copied, setCopied]           = useState(false)
   const [loadingLatest, setLoadingLatest] = useState(false)
   const [settings, setSettings]           = useState(null)
+  const [landingUrl, setLandingUrl]       = useState('')
+  const [landingBusy, setLandingBusy]     = useState(false)
+  const [landingCopied, setLandingCopied] = useState(false)
   const [emailModal, setEmailModal]       = useState(false)
   const [emailTo, setEmailTo]             = useState('')
   const [emailHtml, setEmailHtml]         = useState('')
@@ -170,7 +173,7 @@ export default function Vorschau() {
   async function doLoad(no) {
     const num = (no || offerNo || '').trim()
     if (!num) return
-    setLoading(true); setError(''); setOfferData(null); setPdfUrl(''); setPackageUrl('')
+    setLoading(true); setError(''); setOfferData(null); setPdfUrl(''); setPackageUrl(''); setLandingUrl('')
     try {
       const data = await offers.getByNumber(num)
       setOfferData(data)
@@ -185,11 +188,42 @@ export default function Vorschau() {
       if (data.zip_url) {
         setPackageUrl(data.zip_url)
       }
+      if (data.landing_url) {
+        setLandingUrl(data.landing_url)
+      } else {
+        setLandingUrl('')
+      }
     } catch(e) {
       setError(`Angebot „${num}" nicht gefunden`)
     } finally {
       setLoading(false)
     }
+  }
+
+  async function generateLanding() {
+    if (!offerData || landingBusy) return
+    setLandingBusy(true)
+    try {
+      const res = await fetch(`${BASE}/offers/${encodeURIComponent(offerData.offer_no)}/landing`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || `Fehler ${res.status}`)
+      setLandingUrl(data.landing_url)
+      navigator.clipboard.writeText(data.landing_url).catch(() => {})
+      setLandingCopied(true)
+      setTimeout(() => setLandingCopied(false), 3000)
+      showToast('Landing Page erstellt ✓')
+    } catch(e) {
+      showToast('Fehler: ' + e.message)
+    } finally {
+      setLandingBusy(false)
+    }
+  }
+
+  function copyLandingUrl() {
+    if (!landingUrl) return
+    navigator.clipboard.writeText(landingUrl)
+    setLandingCopied(true)
+    setTimeout(() => setLandingCopied(false), 2000)
   }
 
   async function generatePdf() {
@@ -350,8 +384,8 @@ export default function Vorschau() {
                   📄 PDF öffnen
                 </a>
 
-                {/* 2×2 Grid: sekundäre Aktionen */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {/* 3×2 Grid: sekundäre Aktionen */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
 
                   <a href={packageUrl || '#'} target="_blank" rel="noopener noreferrer"
                     className="btn" style={{ textDecoration: 'none', justifyContent: 'center',
@@ -389,6 +423,31 @@ export default function Vorschau() {
                     <span style={{ fontSize: 20 }}>🔳</span>
                     <span style={{ fontSize: 12 }}>QR-Code</span>
                   </button>
+
+                  {/* Landing Page – nur für aktive Angebote */}
+                  {offerData?.status === 'active' && (
+                    landingUrl ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <a href={landingUrl} target="_blank" rel="noopener noreferrer"
+                          className="btn" style={{ textDecoration: 'none', justifyContent: 'center',
+                            flexDirection: 'column', gap: 4, padding: '14px 10px',
+                            background: 'var(--red-light)', border: '1px solid var(--red)' }}>
+                          <span style={{ fontSize: 20 }}>🌐</span>
+                          <span style={{ fontSize: 12, color: 'var(--red)' }}>Landing Page</span>
+                        </a>
+                        <button className="btn" onClick={copyLandingUrl}
+                          style={{ fontSize: 11, padding: '6px', justifyContent: 'center' }}>
+                          {landingCopied ? '✅ Link kopiert' : '📋 Link kopieren'}
+                        </button>
+                      </div>
+                    ) : (
+                      <button className="btn" onClick={generateLanding} disabled={landingBusy}
+                        style={{ flexDirection: 'column', gap: 4, padding: '14px 10px', justifyContent: 'center' }}>
+                        <span style={{ fontSize: 20 }}>{landingBusy ? '⏳' : '🌐'}</span>
+                        <span style={{ fontSize: 12 }}>{landingBusy ? 'Wird erstellt…' : 'Landing Page'}</span>
+                      </button>
+                    )
+                  )}
 
                 </div>
 

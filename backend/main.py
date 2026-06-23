@@ -6,6 +6,7 @@ Sielaff Austria GmbH
 from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
 import os, uuid, httpx
@@ -242,6 +243,8 @@ class OfferIn(BaseModel):
     zip_expires_at: Optional[str] = None
     pdf_url: Optional[str] = ""
     qr_url: Optional[str] = ""
+    landing_url: Optional[str] = ""
+    leasing: Optional[dict] = None
 
 
 @app.get("/api/offers")
@@ -271,7 +274,7 @@ async def delete_offer_zip(offer_id: str):
     offer = next((o for o in rows if o["id"] == offer_id), None)
     if offer and offer.get("zip_filename"):
         _dl.delete_zip(offer["zip_filename"])
-        db.upsert_offer({**offer, "zip_url": "", "zip_filename": "", "status": "archived"})
+        db.upsert_offer({**offer, "zip_url": "", "zip_filename": "", "landing_url": "", "status": "archived"})
     return {"ok": True}
 
 @app.post("/api/offers/archive-expired")
@@ -279,6 +282,49 @@ def archive_expired():
     """Archiviert Angebote mit abgelaufenem ZIP."""
     db.archive_expired_offers()
     return {"ok": True}
+
+@app.post("/api/offers/{offer_no}/landing")
+async def generate_landing_page(offer_no: str):
+    """Generiert eine HTML Landing Page und lädt sie in Supabase Storage hoch."""
+    import landing as _landing
+
+    offer = db.get_offer_by_number(offer_no)
+    if not offer:
+        raise HTTPException(status_code=404, detail="Angebot nicht gefunden")
+    if offer.get("status") != "active":
+        raise HTTPException(status_code=400, detail="Landing Page nur für aktive Angebote verfügbar")
+
+    s = db.get_settings()
+    html_content = _landing.generate_html(offer, s)
+    html_bytes = html_content.encode("utf-8")
+
+    supabase_url = os.environ.get("SUPABASE_URL")
+    service_key  = os.environ.get("SUPABASE_SERVICE_KEY")
+    filename = f"landings/{offer_no}.html"
+
+    if supabase_url and service_key:
+        upload_url = f"{supabase_url}/storage/v1/object/images/{filename}"
+        headers = {
+            "Authorization": f"Bearer {service_key}",
+            "Content-Type": "text/html; charset=utf-8",
+            "x-upsert": "true",
+        }
+        async with httpx.AsyncClient() as client:
+            res = await client.post(upload_url, content=html_bytes, headers=headers)
+        if res.status_code not in (200, 201):
+            raise HTTPException(status_code=500, detail=f"Upload fehlgeschlagen: {res.text}")
+        landing_url = f"{supabase_url}/storage/v1/object/public/images/{filename}"
+    else:
+        local_dir = os.path.join(os.path.dirname(__file__), "uploads", "landings")
+        os.makedirs(local_dir, exist_ok=True)
+        safe_no = offer_no.replace("/", "_").replace("\\", "_")
+        with open(os.path.join(local_dir, f"{safe_no}.html"), "wb") as f:
+            f.write(html_bytes)
+        landing_url = f"/uploads/landings/{safe_no}.html"
+
+    db.upsert_offer({**offer, "landing_url": landing_url})
+    return {"ok": True, "landing_url": landing_url}
+
 
 @app.post("/api/offers/number")
 def generate_offer_number():
@@ -397,6 +443,8 @@ async def generate_full_offer(data: dict):
         "zip_expires_at":pkg.get("expires_at"),
         "pdf_url":       pdf_download_url,
         "qr_url":        qr_url,
+        "leasing":       data.get("leasing") or {},
+        "landing_url":   "",
     }
     db.upsert_offer(offer_data)
 
@@ -907,6 +955,10 @@ async def email_send_endpoint(request: Request):
         raise HTTPException(status_code=500,
             detail=f"E-Mail konnte nicht gesendet werden: {ex}")
 
+
+_uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(_uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=_uploads_dir), name="uploads")
 
 from fastapi.responses import FileResponse
 
