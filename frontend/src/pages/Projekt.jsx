@@ -86,8 +86,12 @@ export default function Projekt() {
     fetch(`${BASE}/offers`).then(r => r.json()).then(setOffers).catch(console.warn)
   }
 
-  function offersFor(company) {
-    return offers.filter(o => (o.project?.customer || '') === company)
+  function offersFor(c) {
+    return offers.filter(o => {
+      if (c.customer_number && o.project?.customer_number)
+        return o.project.customer_number === c.customer_number
+      return (o.project?.customer || '') === c.company
+    })
   }
 
   function fmtDate(iso) {
@@ -228,7 +232,7 @@ export default function Projekt() {
                   )}
                   {/* Angebote */}
                   {(() => {
-                    const co = offersFor(c.company)
+                    const co = offersFor(c)
                     if (co.length === 0) return (
                       <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6, fontStyle: 'italic' }}>
                         Noch kein Angebot
