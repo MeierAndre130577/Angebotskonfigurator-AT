@@ -14,9 +14,20 @@ from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
-                                 TableStyle, PageBreak, Image as RLImage, KeepTogether)
+                                 TableStyle, PageBreak, Image as RLImage, KeepTogether, Flowable)
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
+
+class _BottomPush(Flowable):
+    """Füllt den verbleibenden Seitenraum, sodass der nächste Block ans Seitenende gedrückt wird."""
+    def __init__(self, reserved_height):
+        Flowable.__init__(self)
+        self._reserved = reserved_height
+    def wrap(self, aW, aH):
+        self._h = max(aH - self._reserved, 0)
+        return (aW, self._h)
+    def draw(self):
+        pass
 
 RED   = colors.HexColor('#E30613')
 DARK  = colors.HexColor('#1D1D1B')
@@ -1070,7 +1081,7 @@ def generate_design_pdf(data: dict) -> dict:
         story.append(Paragraph('<b>Lieferadresse</b>', S['h3']))
         story.append(Paragraph(delivery_address, S['body']))
 
-    # Unterschrift / Rechtsverbindliche Bestellung
+    # Unterschrift / Rechtsverbindliche Bestellung – immer am Seitenende
     order_style = ParagraphStyle('order', fontName='Helvetica-Bold', fontSize=11, textColor=DARK)
     sig_block = [
         Spacer(1, 14*mm),
@@ -1098,6 +1109,7 @@ def generate_design_pdf(data: dict) -> dict:
             ('BOTTOMPADDING',(0,0),(-1,-1),8),
         ]),
     ]
+    story.append(_BottomPush(62 * mm))  # 62mm ≈ Höhe des Signaturblocks
     story.append(KeepTogether(sig_block))
     story.append(PageBreak())
 
