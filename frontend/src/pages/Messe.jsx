@@ -47,6 +47,7 @@ export default function Messe() {
   const [selectedPaymentTerm, setSelectedPaymentTerm] = useState('')
   const [discountPercent, setDiscountPercent]         = useState(0)
   const [selectedVatCountry, setSelectedVatCountry]   = useState(null)
+  const [dupModal, setDupModal]                       = useState(null)  // { matches, onNew }
 
   useEffect(() => {
     optionsApi.list().then(opts => {
@@ -152,60 +153,72 @@ export default function Messe() {
     })
   }
 
+  async function doSaveAndProceed() {
+    let cardImageUrl = ''
+    if (cardImageFile) {
+      try {
+        const fd = new FormData()
+        fd.append('file', cardImageFile)
+        const r = await fetch(`${BASE}/upload/card-image`, { method: 'POST', body: fd })
+        if (r.ok) cardImageUrl = (await r.json()).url || ''
+      } catch { /* nicht kritisch */ }
+    }
+    try {
+      await customersApi.upsert({
+        company:        contact.company,
+        contact:        contact.contactName,
+        email:          contact.email,
+        position:       contact.position,
+        phone:          contact.phone,
+        mobile:         contact.mobile,
+        street:         contact.street,
+        zip:            contact.zip,
+        city:           contact.city,
+        website:        contact.website,
+        card_image_url: cardImageUrl,
+        logo_url: (logoUrl && !logoUrl.startsWith('__')) ? logoUrl : '',
+      })
+    } catch { /* nicht kritisch */ }
+    setStep(1)
+  }
+
+  function useExistingCustomer(c) {
+    setContact(p => ({
+      ...p,
+      company:     c.company     || p.company,
+      contactName: c.contact     || '',
+      email:       c.email       || '',
+      position:    c.position    || '',
+      phone:       c.phone       || '',
+      mobile:      c.mobile      || '',
+      street:      c.street      || '',
+      zip:         c.zip         || '',
+      city:        c.city        || '',
+      website:     c.website     || '',
+    }))
+    setDupModal(null)
+    setStep(1)
+  }
+
   async function goToOptions() {
     if (!contact.company.trim()) { setError('Firma ist erforderlich'); return }
     if (!contact.email.trim() || !contact.email.includes('@')) { setError('Bitte gültige E-Mail angeben'); return }
     setError('')
 
     if (saveCustomer) {
-      // Duplikat-Check: existiert der Kunde bereits und hat sich nichts geändert?
-      const existing = allCustomers.find(c => c.email?.toLowerCase() === contact.email.toLowerCase())
-      if (existing && !cardImageFile) {
-        const unchanged =
-          (existing.company  || '') === contact.company.trim() &&
-          (existing.contact  || '') === contact.contactName.trim() &&
-          (existing.phone    || '') === contact.phone.trim() &&
-          (existing.mobile   || '') === contact.mobile.trim() &&
-          (existing.street   || '') === contact.street.trim() &&
-          (existing.zip      || '') === contact.zip.trim() &&
-          (existing.city     || '') === contact.city.trim() &&
-          (existing.website  || '') === contact.website.trim()
-        if (unchanged) {
-          const ok = window.confirm(
-            `"${contact.company}" ist bereits gespeichert und hat sich nicht verändert.\nTrotzdem neu speichern?`
-          )
-          if (!ok) { setStep(1); return }
-        }
-      }
-
-      let cardImageUrl = ''
-      if (cardImageFile) {
-        try {
-          const fd = new FormData()
-          fd.append('file', cardImageFile)
-          const r = await fetch(`${BASE}/upload/card-image`, { method: 'POST', body: fd })
-          if (r.ok) cardImageUrl = (await r.json()).url || ''
-        } catch { /* nicht kritisch */ }
-      }
+      // Ähnliche Kunden suchen
       try {
-        await customersApi.upsert({
-          company:        contact.company,
-          contact:        contact.contactName,
-          email:          contact.email,
-          position:       contact.position,
-          phone:          contact.phone,
-          mobile:         contact.mobile,
-          street:         contact.street,
-          zip:            contact.zip,
-          city:           contact.city,
-          website:        contact.website,
-          card_image_url: cardImageUrl,
-          logo_url: (logoUrl && !logoUrl.startsWith('__')) ? logoUrl : '',
-        })
-      } catch { /* nicht kritisch */ }
+        const res = await fetch(`${BASE}/customers/search?q=${encodeURIComponent(contact.company.trim())}`)
+        const matches = await res.json()
+        if (matches.length > 0) {
+          setDupModal({ matches, onNew: doSaveAndProceed })
+          return
+        }
+      } catch { /* Suche fehlgeschlagen – trotzdem weitermachen */ }
+      await doSaveAndProceed()
+    } else {
+      setStep(1)
     }
-
-    setStep(1)
   }
 
   function toggleOptional(id) {
@@ -402,6 +415,75 @@ export default function Messe() {
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
+
+      {/* ── Duplikat-Modal ──────────────────────────────────────────────────── */}
+      {dupModal && (
+        <div onClick={() => setDupModal(null)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
+          zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'white', borderRadius: 20, width: '100%', maxWidth: 480,
+            maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+            boxShadow: '0 8px 40px rgba(0,0,0,.2)',
+          }}>
+            <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid var(--line)' }}>
+              <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--dark)', marginBottom: 4 }}>
+                🔍 Kunde bereits bekannt?
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+                Wir haben ähnliche Einträge gefunden. Bitte prüfen und entscheiden.
+              </div>
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              {dupModal.matches.map(c => (
+                <div key={c.id} style={{ padding: '14px 24px', borderBottom: '1px solid var(--line)',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <b style={{ fontSize: 14, color: 'var(--dark)' }}>{c.company}</b>
+                      {c.customer_number && (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)',
+                          background: 'var(--bg)', border: '1px solid var(--line)',
+                          borderRadius: 6, padding: '1px 6px' }}>{c.customer_number}</span>
+                      )}
+                    </div>
+                    {c.contact && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{c.contact}</div>}
+                    {(c.email || c.city) && (
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
+                        {[c.email, c.city].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => useExistingCustomer(c)}
+                    className="btn btn-red"
+                    style={{ fontSize: 12, padding: '6px 14px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    Diesen verwenden
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: '16px 24px', borderTop: '1px solid var(--line)',
+              display: 'flex', gap: 10, flexDirection: 'column' }}>
+              <button
+                onClick={() => { setDupModal(null); dupModal.onNew() }}
+                style={{ background: 'none', border: '1px solid var(--line)', borderRadius: 10,
+                  padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  color: 'var(--text)', width: '100%' }}>
+                ➕ Keiner passt – als neuen Kunden anlegen
+              </button>
+              <button
+                onClick={() => setDupModal(null)}
+                style={{ background: 'none', border: 'none', fontSize: 12,
+                  color: 'var(--muted)', cursor: 'pointer', padding: '4px' }}>
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="page-header">
         <div>

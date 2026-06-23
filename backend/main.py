@@ -113,10 +113,15 @@ class CustomerIn(BaseModel):
     website: Optional[str] = ""
     card_image_url: Optional[str] = ""
     logo_url: Optional[str] = ""
+    customer_number: Optional[str] = ""
 
 @app.get("/api/customers")
 def list_customers():
     return db.get_customers()
+
+@app.get("/api/customers/search")
+def search_customers(q: str = ""):
+    return db.search_customers(q)
 
 @app.post("/api/customers")
 def upsert_customer(data: CustomerIn):

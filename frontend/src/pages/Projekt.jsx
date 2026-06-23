@@ -103,11 +103,18 @@ export default function Projekt() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     {c.logo_url && (
                       <img src={c.logo_url} alt="" style={{ height: 24, maxWidth: 60, objectFit: 'contain' }} />
                     )}
                     <strong style={{ fontSize: 15 }}>{c.company}</strong>
+                    {c.customer_number && (
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)',
+                        background: 'var(--bg)', border: '1px solid var(--line)',
+                        borderRadius: 6, padding: '1px 6px', fontFamily: 'var(--font-mono)' }}>
+                        {c.customer_number}
+                      </span>
+                    )}
                     {c.city && <span className="muted small">{c.zip ? `${c.zip} ` : ''}{c.city}</span>}
                   </div>
                   {c.contact  && <div style={{ fontSize: 13, marginTop: 2 }}>{c.contact}{c.position ? ` · ${c.position}` : ''}</div>}

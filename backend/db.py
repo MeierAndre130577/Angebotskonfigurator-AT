@@ -38,6 +38,11 @@ else:
                 contact TEXT, email TEXT, billing TEXT, delivery TEXT,
                 created_at TEXT DEFAULT (datetime('now'))
             );
+            CREATE TABLE IF NOT EXISTS customer_counter (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                value INTEGER DEFAULT 1
+            );
+            INSERT OR IGNORE INTO customer_counter (id, value) VALUES (1, 1);
             CREATE TABLE IF NOT EXISTS options (
                 id TEXT PRIMARY KEY,
                 cluster TEXT, name TEXT NOT NULL,
@@ -84,15 +89,16 @@ else:
         conn = _get_conn()
         existing = [row[1] for row in conn.execute("PRAGMA table_info(customers)").fetchall()]
         new_cols = {
-            "position":      'TEXT DEFAULT ""',
-            "phone":         'TEXT DEFAULT ""',
-            "mobile":        'TEXT DEFAULT ""',
-            "street":        'TEXT DEFAULT ""',
-            "zip":           'TEXT DEFAULT ""',
-            "city":          'TEXT DEFAULT ""',
-            "website":       'TEXT DEFAULT ""',
-            "card_image_url":'TEXT DEFAULT ""',
-            "logo_url":      'TEXT DEFAULT ""',
+            "position":        'TEXT DEFAULT ""',
+            "phone":           'TEXT DEFAULT ""',
+            "mobile":          'TEXT DEFAULT ""',
+            "street":          'TEXT DEFAULT ""',
+            "zip":             'TEXT DEFAULT ""',
+            "city":            'TEXT DEFAULT ""',
+            "website":         'TEXT DEFAULT ""',
+            "card_image_url":  'TEXT DEFAULT ""',
+            "logo_url":        'TEXT DEFAULT ""',
+            "customer_number": 'TEXT DEFAULT ""',
         }
         for col, defn in new_cols.items():
             if col not in existing:
@@ -108,6 +114,19 @@ def _new_id():
 
 def _today_year():
     return datetime.date.today().year
+
+def _next_customer_number():
+    if USE_SUPABASE:
+        rows = _sb.table("customers").select("customer_number").execute().data
+        nums = [int(r["customer_number"][3:]) for r in rows
+                if (r.get("customer_number") or "").startswith("KD-") and r["customer_number"][3:].isdigit()]
+        return f"KD-{(max(nums, default=0) + 1):04d}"
+    conn = _get_conn()
+    row  = conn.execute("SELECT value FROM customer_counter WHERE id=1").fetchone()
+    num  = row[0] if row else 1
+    conn.execute("UPDATE customer_counter SET value=? WHERE id=1", (num + 1,))
+    conn.commit(); conn.close()
+    return f"KD-{num:04d}"
 
 # ── Kunden ────────────────────────────────────────────────────────────────────
 
@@ -130,31 +149,52 @@ def get_customer_by_email(email: str):
     conn.close()
     return dict(row) if row else None
 
+def search_customers(query: str):
+    q = (query or "").strip().lower()
+    if len(q) < 2:
+        return []
+    if USE_SUPABASE:
+        return _sb.table("customers").select("*").ilike("company", f"%{q}%").limit(6).execute().data
+    conn = _get_conn()
+    rows = conn.execute(
+        "SELECT * FROM customers WHERE LOWER(company) LIKE ? LIMIT 6",
+        (f"%{q}%",)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
 def upsert_customer(data: dict):
-    for f in ["position", "phone", "mobile", "street", "zip", "city", "website", "card_image_url", "logo_url"]:
+    for f in ["position", "phone", "mobile", "street", "zip", "city", "website", "card_image_url", "logo_url", "customer_number"]:
         data.setdefault(f, "")
+    is_new = True
     # Deduplizierung über E-Mail
     if not data.get("id") and data.get("email"):
         existing = get_customer_by_email(data["email"])
         if existing:
             data["id"] = existing["id"]
+            if not data.get("customer_number"):
+                data["customer_number"] = existing.get("customer_number", "")
+            is_new = False
     if not data.get("id"):
         data["id"] = _new_id()
+    # Neue Kundennummer vergeben
+    if is_new and not data.get("customer_number"):
+        data["customer_number"] = _next_customer_number()
     if USE_SUPABASE:
         return _sb.table("customers").upsert(data).execute().data
     conn = _get_conn()
     conn.execute("""
         INSERT INTO customers (id, company, contact, email, billing, delivery,
-            position, phone, mobile, street, zip, city, website, card_image_url, logo_url)
+            position, phone, mobile, street, zip, city, website, card_image_url, logo_url, customer_number)
         VALUES (:id,:company,:contact,:email,:billing,:delivery,
-            :position,:phone,:mobile,:street,:zip,:city,:website,:card_image_url,:logo_url)
+            :position,:phone,:mobile,:street,:zip,:city,:website,:card_image_url,:logo_url,:customer_number)
         ON CONFLICT(id) DO UPDATE SET
             company=excluded.company, contact=excluded.contact,
             email=excluded.email, billing=excluded.billing, delivery=excluded.delivery,
             position=excluded.position, phone=excluded.phone, mobile=excluded.mobile,
             street=excluded.street, zip=excluded.zip, city=excluded.city,
             website=excluded.website, card_image_url=excluded.card_image_url,
-            logo_url=excluded.logo_url
+            logo_url=excluded.logo_url, customer_number=COALESCE(NULLIF(customers.customer_number,''), excluded.customer_number)
     """, data)
     conn.commit(); conn.close()
     return data
