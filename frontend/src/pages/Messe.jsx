@@ -13,7 +13,6 @@ function money(n) {
 export default function Messe() {
   const [step, setStep]               = useState(0)
   const [contact, setContact]         = useState({ company: '', contactName: '', email: '', position: '', phone: '', mobile: '', street: '', zip: '', city: '', website: '' })
-  const [saveCustomer, setSaveCustomer] = useState(true)
   const [scanning, setScanning]       = useState(false)
   const [cardImageFile, setCardImageFile] = useState(null)
   const [logoUrl, setLogoUrl]         = useState('')
@@ -61,7 +60,6 @@ export default function Messe() {
           if (pre.contact) setContact(p => ({ ...p, ...pre.contact }))
           if (pre.offerNo) { setOfferNo(pre.offerNo); revisionNoRef.current = pre.offerNo }
           if (pre.itemIds?.length) setSelectedIds(new Set(pre.itemIds))
-          if (pre.mode === 'revision' || pre.mode === 'template') setSaveCustomer(false)
         } catch {}
       }
     }).catch(console.warn)
@@ -183,19 +181,36 @@ export default function Messe() {
   }
 
   function useExistingCustomer(c) {
-    setContact(p => ({
-      ...p,
-      company:     c.company     || p.company,
-      contactName: c.contact     || '',
-      email:       c.email       || '',
-      position:    c.position    || '',
-      phone:       c.phone       || '',
-      mobile:      c.mobile      || '',
-      street:      c.street      || '',
-      zip:         c.zip         || '',
-      city:        c.city        || '',
-      website:     c.website     || '',
-    }))
+    // Eingetippte Daten gewinnen – Stammdaten füllen nur leere Felder auf
+    const merged = {
+      company:     contact.company.trim()      || c.company   || '',
+      contactName: contact.contactName.trim()  || c.contact   || '',
+      email:       contact.email.trim()        || c.email     || '',
+      position:    contact.position.trim()     || c.position  || '',
+      phone:       contact.phone.trim()        || c.phone     || '',
+      mobile:      contact.mobile.trim()       || c.mobile    || '',
+      street:      contact.street.trim()       || c.street    || '',
+      zip:         contact.zip.trim()          || c.zip       || '',
+      city:        contact.city.trim()         || c.city      || '',
+      website:     contact.website.trim()      || c.website   || '',
+    }
+    setContact(merged)
+    // Kunden mit zusammengeführten Daten aktualisieren
+    customersApi.upsert({
+      id:              c.id,
+      customer_number: c.customer_number || '',
+      company:         merged.company,
+      contact:         merged.contactName,
+      email:           merged.email,
+      position:        merged.position,
+      phone:           merged.phone,
+      mobile:          merged.mobile,
+      street:          merged.street,
+      zip:             merged.zip,
+      city:            merged.city,
+      website:         merged.website,
+      logo_url:        (logoUrl && !logoUrl.startsWith('__')) ? logoUrl : (c.logo_url || ''),
+    }).catch(() => {})
     setDupModal(null)
     setStep(1)
   }
@@ -205,20 +220,16 @@ export default function Messe() {
     if (!contact.email.trim() || !contact.email.includes('@')) { setError('Bitte gültige E-Mail angeben'); return }
     setError('')
 
-    if (saveCustomer) {
-      // Ähnliche Kunden suchen
-      try {
-        const res = await fetch(`${BASE}/customers/search?q=${encodeURIComponent(contact.company.trim())}`)
-        const matches = await res.json()
-        if (matches.length > 0) {
-          setDupModal({ matches, onNew: doSaveAndProceed })
-          return
-        }
-      } catch { /* Suche fehlgeschlagen – trotzdem weitermachen */ }
-      await doSaveAndProceed()
-    } else {
-      setStep(1)
-    }
+    // Ähnliche Kunden suchen
+    try {
+      const res = await fetch(`${BASE}/customers/search?q=${encodeURIComponent(contact.company.trim())}`)
+      const matches = await res.json()
+      if (matches.length > 0) {
+        setDupModal({ matches, onNew: doSaveAndProceed })
+        return
+      }
+    } catch { /* Suche fehlgeschlagen – trotzdem weitermachen */ }
+    await doSaveAndProceed()
   }
 
   function toggleOptional(id) {
@@ -365,7 +376,7 @@ export default function Messe() {
     setSelectedIds(new Set()); setProjectName(''); setOfferNo('')
     setDone(false); setError(''); setCustomPrices({}); setSelectedPaymentTerm('')
     setDeliveryEnabled(false); setDeliveryQuery(''); setDeliveryAddress(''); setDeliverySuggestions([])
-    setDiscountPercent(0); setSelectedVatCountry(null)
+    setDiscountPercent(0); setSelectedVatCountry(null); setDupModal(null)
   }
 
   // ── Cluster-Gruppen ────────────────────────────────────────────────────────
@@ -642,23 +653,6 @@ export default function Messe() {
           </div>
 
           {error && <p style={{ color: 'var(--red)', fontSize: 13, marginBottom: 12 }}>⚠ {error}</p>}
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            <div onClick={() => setSaveCustomer(v => !v)} style={{
-              width: 40, height: 22, borderRadius: 11, cursor: 'pointer', flexShrink: 0,
-              background: saveCustomer ? 'var(--red)' : 'var(--border)',
-              transition: 'background .2s', position: 'relative',
-            }}>
-              <div style={{
-                position: 'absolute', top: 3, left: saveCustomer ? 21 : 3,
-                width: 16, height: 16, borderRadius: '50%', background: '#fff',
-                transition: 'left .2s',
-              }} />
-            </div>
-            <span style={{ fontSize: 13, color: saveCustomer ? 'var(--text)' : 'var(--muted)' }}>
-              Kunden anlegen
-            </span>
-          </div>
 
           <button className="btn btn-red btn-lg" onClick={goToOptions}>
             Weiter zu den Optionen →
