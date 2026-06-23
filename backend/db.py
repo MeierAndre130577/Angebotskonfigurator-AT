@@ -177,8 +177,8 @@ def upsert_customer(data: dict):
             is_new = False
     if not data.get("id"):
         data["id"] = _new_id()
-    # Neue Kundennummer vergeben
-    if is_new and not data.get("customer_number"):
+    # Kundennummer vergeben wenn noch keine vorhanden (gilt auch für alte Kunden ohne Nummer)
+    if not data.get("customer_number"):
         data["customer_number"] = _next_customer_number()
     if USE_SUPABASE:
         return _sb.table("customers").upsert(data).execute().data

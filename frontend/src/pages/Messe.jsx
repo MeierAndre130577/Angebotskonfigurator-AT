@@ -180,7 +180,7 @@ export default function Messe() {
     setStep(1)
   }
 
-  function useExistingCustomer(c) {
+  async function useExistingCustomer(c) {
     // Eingetippte Daten gewinnen – Stammdaten füllen nur leere Felder auf
     const merged = {
       company:     contact.company.trim()      || c.company   || '',
@@ -195,24 +195,47 @@ export default function Messe() {
       website:     contact.website.trim()      || c.website   || '',
     }
     setContact(merged)
-    // Kunden mit zusammengeführten Daten aktualisieren
-    customersApi.upsert({
-      id:              c.id,
-      customer_number: c.customer_number || '',
-      company:         merged.company,
-      contact:         merged.contactName,
-      email:           merged.email,
-      position:        merged.position,
-      phone:           merged.phone,
-      mobile:          merged.mobile,
-      street:          merged.street,
-      zip:             merged.zip,
-      city:            merged.city,
-      website:         merged.website,
-      logo_url:        (logoUrl && !logoUrl.startsWith('__')) ? logoUrl : (c.logo_url || ''),
-    }).catch(() => {})
+    // Kunden mit zusammengeführten Daten + ID aktualisieren (bekommt Nummer falls noch keine)
+    try {
+      await customersApi.upsert({
+        id:              c.id,
+        customer_number: c.customer_number || '',
+        company:         merged.company,
+        contact:         merged.contactName,
+        email:           merged.email,
+        position:        merged.position,
+        phone:           merged.phone,
+        mobile:          merged.mobile,
+        street:          merged.street,
+        zip:             merged.zip,
+        city:            merged.city,
+        website:         merged.website,
+        logo_url:        (logoUrl && !logoUrl.startsWith('__')) ? logoUrl : (c.logo_url || ''),
+      })
+    } catch { /* nicht kritisch */ }
     setDupModal(null)
     setStep(1)
+  }
+
+  function getContactDiffs(c) {
+    return [
+      { label: 'Ansprechpartner', userVal: contact.contactName, storedVal: c.contact  },
+      { label: 'Position',        userVal: contact.position,    storedVal: c.position },
+      { label: 'E-Mail',          userVal: contact.email,       storedVal: c.email    },
+      { label: 'Telefon',         userVal: contact.phone,       storedVal: c.phone    },
+      { label: 'Mobil',           userVal: contact.mobile,      storedVal: c.mobile   },
+      { label: 'Ort',             userVal: contact.city,        storedVal: c.city     },
+      { label: 'Website',         userVal: contact.website,     storedVal: c.website  },
+    ].filter(f => {
+      const u = (f.userVal || '').trim()
+      const s = (f.storedVal || '').trim()
+      return u && u !== s
+    }).map(f => ({
+      label:    f.label,
+      userVal:  (f.userVal || '').trim(),
+      storedVal:(f.storedVal || '').trim(),
+      isNew:    !(f.storedVal || '').trim(),
+    }))
   }
 
   async function goToOptions() {
@@ -434,7 +457,7 @@ export default function Messe() {
           zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
         }}>
           <div onClick={e => e.stopPropagation()} style={{
-            background: 'white', borderRadius: 20, width: '100%', maxWidth: 480,
+            background: 'white', borderRadius: 20, width: '100%', maxWidth: 520,
             maxHeight: '85vh', display: 'flex', flexDirection: 'column',
             boxShadow: '0 8px 40px rgba(0,0,0,.2)',
           }}>
@@ -446,35 +469,82 @@ export default function Messe() {
                 Wir haben ähnliche Einträge gefunden. Bitte prüfen und entscheiden.
               </div>
             </div>
+
             <div style={{ overflowY: 'auto', flex: 1 }}>
-              {dupModal.matches.map(c => (
-                <div key={c.id} style={{ padding: '14px 24px', borderBottom: '1px solid var(--line)',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <b style={{ fontSize: 14, color: 'var(--dark)' }}>{c.company}</b>
-                      {c.customer_number && (
-                        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)',
-                          background: 'var(--bg)', border: '1px solid var(--line)',
-                          borderRadius: 6, padding: '1px 6px' }}>{c.customer_number}</span>
-                      )}
+              {dupModal.matches.map(c => {
+                const diffs = getContactDiffs(c)
+                return (
+                  <div key={c.id} style={{ padding: '16px 24px', borderBottom: '1px solid var(--line)' }}>
+                    {/* Kopfzeile */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <b style={{ fontSize: 15, color: 'var(--dark)' }}>{c.company}</b>
+                          {c.customer_number
+                            ? <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--red)',
+                                background: '#fff1f2', border: '1px solid #fecdd3',
+                                borderRadius: 6, padding: '1px 7px', fontFamily: 'var(--font-mono)' }}>
+                                {c.customer_number}
+                              </span>
+                            : <span style={{ fontSize: 10, color: 'var(--muted)', fontStyle: 'italic' }}>
+                                noch keine Kundennummer
+                              </span>
+                          }
+                        </div>
+                        {/* Gespeicherte Kerndaten */}
+                        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4, lineHeight: 1.6 }}>
+                          {[c.contact, c.position].filter(Boolean).join(' · ')}
+                          {c.email && <><br />{c.email}</>}
+                          {c.city  && <> · {c.zip ? `${c.zip} ` : ''}{c.city}</>}
+                        </div>
+                      </div>
+                      <button onClick={() => useExistingCustomer(c)} className="btn btn-red"
+                        style={{ fontSize: 12, padding: '7px 14px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        Diesen verwenden
+                      </button>
                     </div>
-                    {c.contact && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{c.contact}</div>}
-                    {(c.email || c.city) && (
-                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
-                        {[c.email, c.city].filter(Boolean).join(' · ')}
+
+                    {/* Diff-Anzeige */}
+                    {diffs.length > 0 && (
+                      <div style={{ background: '#f8faff', border: '1px solid #e0e7ff',
+                        borderRadius: 10, padding: '10px 14px' }}>
+                        <div style={{ fontSize: 10, fontWeight: 800, color: '#4f46e5',
+                          textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>
+                          Neue Angaben von dir
+                        </div>
+                        {diffs.map((d, i) => (
+                          <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12,
+                            marginBottom: i < diffs.length - 1 ? 5 : 0, alignItems: 'baseline' }}>
+                            <span style={{ flexShrink: 0, fontWeight: 700,
+                              color: d.isNew ? '#16a34a' : '#d97706' }}>
+                              {d.isNew ? '➕' : '✏️'}
+                            </span>
+                            <span style={{ color: 'var(--muted)', minWidth: 110, flexShrink: 0 }}>
+                              {d.label}:
+                            </span>
+                            <span style={{ fontWeight: 700,
+                              color: d.isNew ? '#16a34a' : '#d97706' }}>
+                              {d.userVal}
+                            </span>
+                            {!d.isNew && (
+                              <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                                (war: {d.storedVal})
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {diffs.length === 0 && (
+                      <div style={{ fontSize: 11, color: 'var(--muted)', fontStyle: 'italic' }}>
+                        Keine neuen Angaben gegenüber dem gespeicherten Eintrag.
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={() => useExistingCustomer(c)}
-                    className="btn btn-red"
-                    style={{ fontSize: 12, padding: '6px 14px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    Diesen verwenden
-                  </button>
-                </div>
-              ))}
+                )
+              })}
             </div>
+
             <div style={{ padding: '16px 24px', borderTop: '1px solid var(--line)',
               display: 'flex', gap: 10, flexDirection: 'column' }}>
               <button
@@ -484,8 +554,7 @@ export default function Messe() {
                   color: 'var(--text)', width: '100%' }}>
                 ➕ Keiner passt – als neuen Kunden anlegen
               </button>
-              <button
-                onClick={() => setDupModal(null)}
+              <button onClick={() => setDupModal(null)}
                 style={{ background: 'none', border: 'none', fontSize: 12,
                   color: 'var(--muted)', cursor: 'pointer', padding: '4px' }}>
                 Abbrechen
