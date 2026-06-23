@@ -71,6 +71,8 @@ Mit freundlichen Grüßen
   vat_countries: [],
   // Cluster
   clusters: ['Farmer Shop', 'Wein Shop', 'Maxibar', 'Erweiterungen', 'Zahlungssysteme', 'Zubehör', 'Service', 'Sonstiges'],
+  // PDF Signaturblock
+  sig_block_margin_mm: 80,
 }
 
 function Field({ label, hint, children }) {
@@ -565,6 +567,20 @@ export default function Einstellungen() {
             <Field label="Abstand rechts">
               <NumberInput value={settings.margin_right_mm} min={8} max={30}
                 onChange={v => set('margin_right_mm', v)} />
+            </Field>
+          </div>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--line)', paddingTop: 16, marginTop: 4 }}>
+          <div className="card-title" style={{ fontSize: 13 }}>Signaturblock</div>
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+            Legt fest, wieviel Platz am Seitenende freigehalten wird, damit der Signaturblock auf derselben Seite bleibt.
+            Kleinerer Wert → Block kann weiter unten stehen; größerer Wert → Block wird früher auf eine neue Seite gehoben.
+          </p>
+          <div className="grid2">
+            <Field label="Mindestabstand vom Seitenende (mm)" hint="Standard: 80 mm">
+              <NumberInput value={settings.sig_block_margin_mm ?? 80} min={40} max={200}
+                onChange={v => set('sig_block_margin_mm', v)} />
             </Field>
           </div>
         </div>

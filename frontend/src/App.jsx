@@ -7,7 +7,8 @@ import Bibliothek    from './pages/Bibliothek'
 import Vorschau      from './pages/Vorschau'
 import Angebote      from './pages/Angebote'
 import Einstellungen from './pages/Einstellungen'
-import Anleitung    from './pages/Anleitung'
+import Anleitung     from './pages/Anleitung'
+import Login         from './pages/Login'
 
 
 const NAV = [
@@ -30,16 +31,17 @@ const NAV = [
 ]
 
 export default function App() {
+  const [authed, setAuthed]                   = useState(() => localStorage.getItem('sielaff_auth') === '1')
   const [sidebarOpen, setSidebarOpen]         = useState(false)
   const [changelog, setChangelog]             = useState([])
   const [changelogOpen, setChangelogOpen]     = useState(false)
   const [changelogModal, setChangelogModal]   = useState(false)
+  const [isMobile, setIsMobile]               = useState(window.innerWidth < 768)
   const location = useLocation()
 
   useEffect(() => {
     fetch('/changelog.json').then(r => r.json()).then(setChangelog).catch(() => {})
   }, [])
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
   useEffect(() => { setSidebarOpen(false) }, [location.pathname])
 
@@ -48,6 +50,13 @@ export default function App() {
     window.addEventListener('resize', handler)
     return () => window.removeEventListener('resize', handler)
   }, [])
+
+  function logout() {
+    localStorage.removeItem('sielaff_auth')
+    setAuthed(false)
+  }
+
+  if (!authed) return <Login onLogin={() => setAuthed(true)} />
 
   const showSidebar = !isMobile || sidebarOpen
 
@@ -83,9 +92,21 @@ export default function App() {
               ))}
             </div>
           ))}
+          {/* Logout + Changelog – zusammen am Seitenende */}
+          <div style={{ marginTop: 'auto' }}>
+          <div style={{ padding: '8px 12px', borderTop: '1px solid var(--line)' }}>
+            <button
+              onClick={logout}
+              style={{ width: '100%', background: 'none', border: '1px solid var(--line)',
+                borderRadius: 8, padding: '5px 10px', fontSize: 11, color: 'var(--muted)',
+                cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 6 }}>
+              🔓 Abmelden
+            </button>
+          </div>
+
           {/* Changelog */}
           {changelog.length > 0 && (
-            <div style={{ marginTop: 'auto', borderTop: '1px solid var(--line)' }}>
+            <div style={{ borderTop: '1px solid var(--line)' }}>
               <div style={{ padding: '8px 16px 0' }}>
                 <button
                   onClick={() => setChangelogModal(true)}
@@ -132,6 +153,7 @@ export default function App() {
               )}
             </div>
           )}
+          </div>{/* Ende Logout+Changelog Wrapper */}
         </aside>
       )}
 

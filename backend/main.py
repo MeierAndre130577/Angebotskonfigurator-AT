@@ -32,6 +32,20 @@ app.add_middleware(
 def health():
     return {"ok": True, "version": "3.0.0"}
 
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+class LoginIn(BaseModel):
+    username: str
+    password: str
+
+@app.post("/api/login")
+def login(body: LoginIn):
+    expected_user = os.environ.get("APP_USERNAME", "admin")
+    expected_pass = os.environ.get("APP_PASSWORD", "sielaff2025")
+    if body.username == expected_user and body.password == expected_pass:
+        return {"ok": True}
+    raise HTTPException(status_code=401, detail="Ungültige Zugangsdaten")
+
 # ── Bild Upload ───────────────────────────────────────────────────────────────
 
 @app.post("/api/upload/image")
