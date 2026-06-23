@@ -833,10 +833,15 @@ def generate_design_pdf(data: dict) -> dict:
     content_buf = io.BytesIO()
     MyCanvas    = make_canvas_class(project, provider, h_h, m_l, m_r, f_d)
 
+    kd_nr = project.get('customer_number', '')
     doc = SimpleDocTemplate(
         content_buf, pagesize=A4,
         leftMargin=m_l, rightMargin=m_r,
         topMargin=m_t,  bottomMargin=m_b,
+        title=f"Angebot {project.get('offerNo', '')} – {project.get('customer', '')}",
+        author='Sielaff Austria GmbH',
+        subject=kd_nr,
+        keywords=kd_nr,
     )
 
     S   = get_styles()
@@ -981,10 +986,7 @@ def generate_design_pdf(data: dict) -> dict:
 
     cust_cells = []
     if cust_name:
-        name_line = f'<b>{cust_name}</b>'
-        if cust_kd_nr:
-            name_line += f'  <font size="9" color="#888888">{cust_kd_nr}</font>'
-        cust_cells.append(Paragraph(name_line, S['h2']))
+        cust_cells.append(Paragraph(f'<b>{cust_name}</b>', S['h2']))
     if cust_contact:
         contact_line = cust_contact + (f', {cust_pos}' if cust_pos else '')
         cust_cells.append(Paragraph(contact_line, S['body']))
