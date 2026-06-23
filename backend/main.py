@@ -400,12 +400,12 @@ async def generate_full_offer(data: dict):
     }
     db.upsert_offer(offer_data)
 
-    # Kunde speichern
+    # Kunde speichern / aktualisieren (Deduplizierung via E-Mail in upsert_customer)
     cust = {
-        "id":      str(_uuid.uuid4()),
-        "company": project.get("customer",""),
-        "contact": project.get("contact",""),
-        "email":   project.get("customerEmail",""),
+        "company":         project.get("customer", ""),
+        "contact":         project.get("contact", ""),
+        "email":           project.get("customerEmail", ""),
+        "customer_number": project.get("customer_number", ""),
         "billing": "", "delivery": "",
     }
     if cust["company"]:
