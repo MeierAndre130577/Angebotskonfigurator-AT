@@ -1093,9 +1093,10 @@ def generate_design_pdf(data: dict) -> dict:
                      ('BOTTOMPADDING',(0,0),(-1,-1),7)]),
         Spacer(1, 3*mm),
         Paragraph(
-            'Mit meiner Unterschrift bestätige ich die Richtigkeit der oben angeführten Angaben '
-            'und beauftrage Sielaff Austria GmbH rechtsverbindlich mit der Lieferung der '
-            'aufgeführten Produkte und Dienstleistungen zu den genannten Konditionen.',
+            f'Mit meiner Unterschrift bestätige ich die Richtigkeit der oben angeführten Angaben '
+            f'und beauftrage Sielaff Austria GmbH rechtsverbindlich mit der Lieferung der '
+            f'aufgeführten Produkte und Dienstleistungen gemäß <b>Angebot Nr. {project.get("offerNo", "")}</b> '
+            f'zu den genannten Konditionen.',
             S['muted']),
         Spacer(1, 14*mm),
         Table([
