@@ -414,9 +414,9 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
 .header-right{{font-size:11px;color:#888;text-align:right;line-height:1.4}}
 
 /* ── Nav ─────────────────────────── */
-nav{{background:#1a1a1a;position:sticky;top:56px;z-index:99;overflow-x:auto;white-space:nowrap}}
-nav a{{display:inline-block;padding:10px 16px;color:rgba(255,255,255,.7);font-size:13px;font-weight:500;text-decoration:none;border-bottom:2px solid transparent;transition:all .15s}}
-nav a:hover{{color:#fff;border-bottom-color:#c1121f;text-decoration:none}}
+.hero-nav{{position:relative;background:rgba(0,0,0,.35);backdrop-filter:blur(8px);border-top:1px solid rgba(255,255,255,.15);overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}}
+.hero-nav a{{display:inline-block;padding:13px 20px;color:rgba(255,255,255,.75);font-size:13px;font-weight:600;text-decoration:none;border-bottom:3px solid transparent;letter-spacing:.2px;transition:all .15s}}
+.hero-nav a:hover{{color:#fff;border-bottom-color:#fff;text-decoration:none}}
 
 /* ── Hero / Cover ────────────────── */
 .hero{{background:linear-gradient(140deg,#7a0010 0%,#c1121f 55%,#e63946 100%);color:#fff;position:relative;overflow:hidden}}
@@ -550,6 +550,7 @@ nav a:hover{{color:#fff;border-bottom-color:#c1121f;text-decoration:none}}
   .hero-offer{{font-size:22px}}
   .hero-infobar{{padding:0 16px}}
   .info-grid{{grid-template-columns:1fr 1fr}}
+  .hero-nav a{{padding:11px 14px;font-size:12px}}
   .sec{{margin:12px 10px 0;padding:16px}}
   .order-box{{margin:12px 10px 0;padding:20px 16px}}
   .legal-sec{{margin:12px 10px 0}}
@@ -574,9 +575,6 @@ nav a:hover{{color:#fff;border-bottom-color:#c1121f;text-decoration:none}}
   </div>
 </header>
 
-<!-- ── Nav ───────────────────────────────────────────────────────────────── -->
-<nav>{nav_items}</nav>
-
 <div class="wrap">
 
   <!-- ── Hero / Cover ──────────────────────────────────────────────────── -->
@@ -599,6 +597,9 @@ nav a:hover{{color:#fff;border-bottom-color:#c1121f;text-decoration:none}}
         {'<div class="info-cell"><div class="info-lbl">Ansprechpartner</div><div class="info-val">' + _e(contact_name) + '</div></div>' if contact_name else '<div class="info-cell"></div>'}
         {'<div class="info-cell"><div class="info-lbl">Projekt</div><div class="info-val">' + _e(project_name) + '</div></div>' if project_name else '<div class="info-cell"></div>'}
       </div>
+    </div>
+    <div class="hero-nav">
+      {nav_items}
     </div>
   </div>
 
