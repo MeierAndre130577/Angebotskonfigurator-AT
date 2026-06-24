@@ -88,6 +88,11 @@ else:
 
     def _migrate_sqlite():
         conn = _get_conn()
+        # Offers-Tabelle migrieren
+        offers_cols = [row[1] for row in conn.execute("PRAGMA table_info(offers)").fetchall()]
+        if "leasing" not in offers_cols:
+            conn.execute('ALTER TABLE offers ADD COLUMN leasing TEXT DEFAULT "{}"')
+        conn.commit()
         existing = [row[1] for row in conn.execute("PRAGMA table_info(customers)").fetchall()]
         new_cols = {
             "position":        'TEXT DEFAULT ""',
@@ -398,24 +403,26 @@ def upsert_offer(data: dict):
             "zip_expires_at":data.get("zip_expires_at"),
             "pdf_url":       data.get("pdf_url", ""),
             "qr_url":        data.get("qr_url", ""),
+            "leasing":       data.get("leasing") or {},
             "updated_at":    data["updated_at"],
         }
         return _sb.table("offers").upsert(payload).execute().data
     conn = _get_conn()
     conn.execute("""
-        INSERT INTO offers (id,offer_no,project,purchase,pages,offer_items,status,updated_at)
-        VALUES (:id,:offer_no,:project,:purchase,:pages,:offer_items,:status,:updated_at)
+        INSERT INTO offers (id,offer_no,project,purchase,pages,offer_items,leasing,status,updated_at)
+        VALUES (:id,:offer_no,:project,:purchase,:pages,:offer_items,:leasing,:status,:updated_at)
         ON CONFLICT(id) DO UPDATE SET
             offer_no=excluded.offer_no, project=excluded.project,
             purchase=excluded.purchase, pages=excluded.pages,
-            offer_items=excluded.offer_items, status=excluded.status,
-            updated_at=excluded.updated_at
+            offer_items=excluded.offer_items, leasing=excluded.leasing,
+            status=excluded.status, updated_at=excluded.updated_at
     """, {
         **data,
         "project":     json.dumps(data.get("project") or {}),
         "purchase":    json.dumps(data.get("purchase") or {}),
         "pages":       json.dumps(data.get("pages") or []),
         "offer_items": json.dumps(data.get("offer_items") or []),
+        "leasing":     json.dumps(data.get("leasing") or {}),
     })
     conn.commit(); conn.close()
     return data
@@ -430,12 +437,12 @@ def get_offer_by_number(offer_no: str):
     if not row:
         return None
     d = dict(row)
-    for key in ("project", "purchase", "pages", "offer_items"):
+    for key in ("project", "purchase", "pages", "offer_items", "leasing"):
         if isinstance(d.get(key), str):
             try:
                 d[key] = json.loads(d[key])
             except Exception:
-                d[key] = {} if key in ("project", "purchase") else []
+                d[key] = {} if key in ("project", "purchase", "leasing") else []
     return d
 
 def increment_zip_downloads(offer_id: str):
