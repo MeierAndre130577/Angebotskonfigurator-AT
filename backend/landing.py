@@ -29,9 +29,16 @@ def _img_src(url: str, backend_base: str = "") -> str:
     return url
 
 
+_DEFAULT_LEASING_FACTORS = {
+    "36": {"10000": 3.2,  "20000": 3.2,  "30000": 3.2,  "50000": 3.2,  "999999": 3.2},
+    "48": {"10000": 2.41, "20000": 2.41, "30000": 2.41, "50000": 2.41, "999999": 2.41},
+    "60": {"10000": 2.0,  "20000": 2.0,  "30000": 2.0,  "50000": 2.0,  "999999": 2.0},
+}
+
+
 def _calc_leasing(kaufpreis: float, settings: dict) -> list:
     durations = [36, 48, 60]
-    raw_factors = settings.get("leasing_factors") or {}
+    raw_factors = settings.get("leasing_factors") or _DEFAULT_LEASING_FACTORS
     fee = float(settings.get("leasing_processing_fee") or 100)
     vat = float(settings.get("leasing_vat") or 20) / 100
     breaks = [10000, 20000, 30000, 50000, 999999]
