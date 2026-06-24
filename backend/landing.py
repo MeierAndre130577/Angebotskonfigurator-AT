@@ -134,14 +134,15 @@ def generate_html(offer: dict, settings: dict) -> str:
         if cover_src else ""
     )
 
-    # ── Nav (spiegelt PDF-Inhaltsverzeichnis) ──────────────────────────────────
-    nav_items = '<a href="#uebersicht">Übersicht</a>'
+    # ── Nav-Tabs (zeigen/verstecken per JS) ────────────────────────────────────
+    nav_items = '<a href="#" onclick="showTab(\'uebersicht\');return false" data-tab="uebersicht" class="nav-active">Übersicht</a>'
     if leasing_rows:
-        nav_items += '<a href="#leasing">Leasing</a>'
-    nav_items += '<a href="#preise">Preiszusammenfassung</a><a href="#details">Detailbeschreibungen</a>'
+        nav_items += '<a href="#" onclick="showTab(\'leasing\');return false" data-tab="leasing">Leasing</a>'
+    nav_items += '<a href="#" onclick="showTab(\'preise\');return false" data-tab="preise">Preiszusammenfassung</a>'
+    nav_items += '<a href="#" onclick="showTab(\'details\');return false" data-tab="details">Detailbeschreibungen</a>'
     if docs:
-        nav_items += '<a href="#anhaenge">Anhänge</a>'
-    nav_items += '<a href="#bestellen">Bestellen</a>'
+        nav_items += '<a href="#" onclick="showTab(\'anhaenge\');return false" data-tab="anhaenge">Anhänge</a>'
+    nav_items += '<a href="#" onclick="showTab(\'bestellen\');return false" data-tab="bestellen">Bestellen</a>'
 
     # ── Angebotsübersicht-Tabelle (wie PDF) ────────────────────────────────────
     overview_rows = ""
@@ -302,7 +303,7 @@ def generate_html(offer: dict, settings: dict) -> str:
               {badge}
             </div>"""
         leasing_section = f"""
-      <div class="sec" id="leasing">
+      <div class="sec tab-section" data-tab="leasing">
         <div class="sec-label">2 · Leasing-Finanzierung</div>
         <div class="sec-title">Ihre Finanzierungsoptionen</div>
         <p class="muted small" style="margin-bottom:16px">Finanzierungsbetrag {_money(one_time)} &middot; vorbehaltlich Bonitätsprüfung</p>
@@ -325,7 +326,7 @@ def generate_html(offer: dict, settings: dict) -> str:
             <iframe src="{_e(doc['url'])}" title="{_e(doc['title'])}" loading="lazy"></iframe>
           </div>"""
         docs_section = f"""
-      <div class="sec" id="anhaenge">
+      <div class="sec tab-section" data-tab="anhaenge">
         <div class="sec-label">5 · Anhänge</div>
         <div class="sec-title">Produktunterlagen &amp; Dokumente</div>
         {doc_items}
@@ -426,8 +427,10 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
 
 /* ── Nav (Zeile 3) ───────────────── */
 .sticky-nav{{background:#1d1d1d;position:fixed;top:88px;left:0;right:0;z-index:100;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}}
-.sticky-nav a{{display:inline-block;padding:10px 16px;color:rgba(255,255,255,.65);font-size:12px;font-weight:600;text-decoration:none;border-bottom:2px solid transparent;letter-spacing:.2px;transition:color .15s,border-color .15s}}
-.sticky-nav a:hover{{color:#fff;border-bottom-color:#c1121f;text-decoration:none}}
+.sticky-nav a{{display:inline-block;padding:10px 16px;color:rgba(255,255,255,.65);font-size:12px;font-weight:600;text-decoration:none;border-bottom:2px solid transparent;letter-spacing:.2px;transition:color .15s,border-color .15s;cursor:pointer}}
+.sticky-nav a:hover{{color:#fff;border-bottom-color:rgba(193,18,31,.6);text-decoration:none}}
+.sticky-nav a.nav-active{{color:#fff;border-bottom-color:#c1121f}}
+.tab-section{{display:none}}.tab-section.tab-visible{{display:block}}
 
 /* ── Wrapper ─────────────────────── */
 .wrap{{max-width:760px;margin:0 auto;padding:0 0 60px}}
@@ -581,7 +584,7 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
 <div class="wrap">
 
   <!-- ── 1. Angebotsübersicht ──────────────────────────────────────────── -->
-  <div class="sec" id="uebersicht">
+  <div class="sec tab-section tab-visible" data-tab="uebersicht">
     <div class="sec-label">1 · Angebotsübersicht</div>
     <div class="sec-title">Positionen auf einen Blick</div>
     <table class="overview-table">
@@ -601,7 +604,7 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
   {leasing_section}
 
   <!-- ── 3. Preiszusammenfassung ────────────────────────────────────────── -->
-  <div class="sec" id="preise">
+  <div class="sec tab-section" data-tab="preise">
     <div class="sec-label">{f'3' if leasing_rows else '2'} · Preiszusammenfassung</div>
     <div class="sec-title">Ihre Investition</div>
     <div class="kd-header" style="margin-bottom:16px">
@@ -620,7 +623,7 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
   </div>
 
   <!-- ── 4. Detailbeschreibungen ────────────────────────────────────────── -->
-  <div class="sec" id="details">
+  <div class="sec tab-section" data-tab="details">
     <div class="sec-label">{f'4' if leasing_rows else '3'} · Detailbeschreibungen</div>
     <div class="sec-title">Alle Leistungen im Detail</div>
     {detail_blocks}
@@ -630,7 +633,7 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
   {docs_section}
 
   <!-- ── Bestellen ──────────────────────────────────────────────────────── -->
-  <div class="order-box" id="bestellen">
+  <div class="order-box tab-section" data-tab="bestellen">
     <div class="order-label">Angebot annehmen</div>
     <div class="order-title">Jetzt verbindlich bestellen</div>
     <div class="order-sub">
@@ -654,8 +657,8 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
     </div>
   </div>
 
-  <!-- ── Rechtliche Hinweise ────────────────────────────────────────────── -->
-  <div class="legal-sec">
+  <!-- ── Rechtliche Hinweise (immer sichtbar unter Bestellen) ──────────── -->
+  <div class="legal-sec tab-section" data-tab="bestellen">
     <div class="sec-label">Rechtliche Hinweise</div>
     {legal_paras}
   </div>
@@ -666,5 +669,16 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
   </div>
 
 </div>
+<script>
+function showTab(id) {{
+  document.querySelectorAll('.tab-section').forEach(function(el) {{
+    el.classList.toggle('tab-visible', el.dataset.tab === id);
+  }});
+  document.querySelectorAll('.sticky-nav a').forEach(function(a) {{
+    a.classList.toggle('nav-active', a.dataset.tab === id);
+  }});
+  window.scrollTo({{top: 0, behavior: 'smooth'}});
+}}
+</script>
 </body>
 </html>"""
