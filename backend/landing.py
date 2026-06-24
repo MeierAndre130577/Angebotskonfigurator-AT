@@ -76,6 +76,9 @@ def generate_html(offer: dict, settings: dict) -> str:
     cust_logo_url = project.get("customer_logo") or ""
     version      = project.get("version") or "1.0"
 
+    zip_url      = offer.get("zip_url") or ""
+    zip_filename = offer.get("zip_filename") or "Angebot.zip"
+
     provider_name    = settings.get("company") or "Sielaff Austria GmbH"
     provider_email   = settings.get("email") or "info@at.sielaff.com"
     provider_phone   = settings.get("phone") or ""
@@ -140,8 +143,9 @@ def generate_html(offer: dict, settings: dict) -> str:
         nav_items += '<a href="#" onclick="showTab(\'leasing\');return false" data-tab="leasing">Leasing</a>'
     nav_items += '<a href="#" onclick="showTab(\'preise\');return false" data-tab="preise">Preiszusammenfassung</a>'
     nav_items += '<a href="#" onclick="showTab(\'details\');return false" data-tab="details">Detailbeschreibungen</a>'
-    if docs:
-        nav_items += '<a href="#" onclick="showTab(\'anhaenge\');return false" data-tab="anhaenge">Anhänge</a>'
+    for di, doc in enumerate(docs):
+        short_label = doc["title"] if len(doc["title"]) <= 22 else doc["title"][:20] + "…"
+        nav_items += f'<a href="#" onclick="showTab(\'doc-{di}\');return false" data-tab="doc-{di}">&#128196; {_e(short_label)}</a>'
     nav_items += '<a href="#" onclick="showTab(\'bestellen\');return false" data-tab="bestellen">Bestellen</a>'
 
     # ── Angebotsübersicht-Tabelle (wie PDF) ────────────────────────────────────
@@ -311,25 +315,34 @@ def generate_html(offer: dict, settings: dict) -> str:
         <p class="fn">Alle Raten zzgl. MwSt. Angaben unverbindlich. Leasingrate = Kaufpreis × Faktor / 100.</p>
       </div>"""
 
-    # ── Dokumente ──────────────────────────────────────────────────────────────
+    # ── Dokumente: je ein Tab pro Dokument + ZIP-Block ────────────────────────
     docs_section = ""
     if docs:
-        doc_items = ""
-        for doc in docs:
-            doc_items += f"""
-          <div class="doc-row">
-            <div class="doc-icon">&#128196;</div>
-            <div class="doc-name">{_e(doc['title'])}</div>
-            <a href="{_e(doc['url'])}" target="_blank" rel="noopener" class="doc-dl">&#8659; Download</a>
+        for di, doc in enumerate(docs):
+            n_label = f"{di + 1} / {len(docs)}"
+            docs_section += f"""
+      <div class="sec tab-section" data-tab="doc-{di}">
+        <div class="doc-tab-header">
+          <div>
+            <div class="sec-label">Anhang {n_label}</div>
+            <div class="sec-title" style="margin-bottom:10px">{_e(doc['title'])}</div>
           </div>
-          <div class="pdf-frame">
-            <iframe src="{_e(doc['url'])}" title="{_e(doc['title'])}" loading="lazy"></iframe>
-          </div>"""
-        docs_section = f"""
-      <div class="sec tab-section" data-tab="anhaenge">
-        <div class="sec-label">5 · Anhänge</div>
-        <div class="sec-title">Produktunterlagen &amp; Dokumente</div>
-        {doc_items}
+          <a href="{_e(doc['url'])}" target="_blank" rel="noopener" class="doc-dl-btn">&#8659; Herunterladen</a>
+        </div>
+        <div class="pdf-frame">
+          <iframe src="{_e(doc['url'])}" title="{_e(doc['title'])}" loading="lazy"></iframe>
+        </div>
+      </div>"""
+        # ZIP-Download als eigene Sektion, die bei jedem Doc-Tab mit angezeigt wird
+        if zip_url:
+            docs_section += f"""
+      <div class="zip-bar tab-section" data-tab="{'|'.join(f'doc-{i}' for i in range(len(docs)))}">
+        <div class="zip-icon">&#128230;</div>
+        <div class="zip-text">
+          <div class="zip-title">Alle Anhänge als ZIP herunterladen</div>
+          <div class="zip-sub">{_e(zip_filename)}</div>
+        </div>
+        <a href="{_e(zip_url)}" class="zip-btn" download>&#8659; ZIP laden</a>
       </div>"""
 
     # ── Kundenadresse ──────────────────────────────────────────────────────────
@@ -509,13 +522,20 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
 .fn{{font-size:11px;color:#888;line-height:1.6;margin-top:6px}}
 
 /* ── Dokumente ───────────────────── */
-.doc-row{{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#f9f9f9;border:1px solid #e4e4e7;border-radius:9px;margin-bottom:8px}}
-.doc-icon{{font-size:22px;flex-shrink:0}}
-.doc-name{{flex:1;font-size:13px;font-weight:500}}
-.doc-dl{{font-size:12px;color:#c1121f;white-space:nowrap;border:1px solid currentColor;border-radius:6px;padding:4px 10px}}
-.doc-dl:hover{{background:#fff0f0;text-decoration:none}}
-.pdf-frame{{border:1px solid #e4e4e7;border-radius:10px;overflow:hidden;margin-bottom:14px;height:420px}}
+.doc-tab-header{{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}}
+.doc-dl-btn{{display:inline-block;font-size:13px;font-weight:600;color:#c1121f;white-space:nowrap;border:1.5px solid #c1121f;border-radius:8px;padding:8px 14px;flex-shrink:0;text-decoration:none}}
+.doc-dl-btn:hover{{background:#fff0f0;text-decoration:none}}
+.pdf-frame{{border:1px solid #e4e4e7;border-radius:10px;overflow:hidden;height:520px}}
 .pdf-frame iframe{{width:100%;height:100%;border:none;display:block}}
+/* ── ZIP-Bar ─────────────────────── */
+.zip-bar{{display:flex;align-items:center;gap:14px;background:#fff;border:1.5px solid #e4e4e7;border-radius:14px;margin:16px 16px 0;padding:16px 20px}}
+.zip-bar.tab-visible{{display:flex}}
+.zip-icon{{font-size:28px;flex-shrink:0}}
+.zip-text{{flex:1}}
+.zip-title{{font-size:14px;font-weight:600;color:#1a1a1a}}
+.zip-sub{{font-size:11px;color:#888;margin-top:2px}}
+.zip-btn{{display:inline-block;background:#c1121f;color:#fff;font-size:13px;font-weight:700;padding:10px 18px;border-radius:9px;white-space:nowrap;text-decoration:none}}
+.zip-btn:hover{{background:#a50f18;text-decoration:none;color:#fff}}
 
 /* ── Bestellen ───────────────────── */
 .order-box{{background:linear-gradient(140deg,#7a0010 0%,#c1121f 60%,#e63946 100%);border-radius:14px;margin:16px 16px 0;padding:30px 24px;color:#fff;scroll-margin-top:138px}}
@@ -672,7 +692,8 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
 <script>
 function showTab(id) {{
   document.querySelectorAll('.tab-section').forEach(function(el) {{
-    el.classList.toggle('tab-visible', el.dataset.tab === id);
+    var tabs = (el.dataset.tab || '').split('|');
+    el.classList.toggle('tab-visible', tabs.indexOf(id) !== -1);
   }});
   document.querySelectorAll('.sticky-nav a').forEach(function(a) {{
     a.classList.toggle('nav-active', a.dataset.tab === id);
