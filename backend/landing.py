@@ -405,19 +405,19 @@ def generate_html(offer: dict, settings: dict) -> str:
 <title>Angebot {_e(offer_no)} – {_e(customer)}</title>
 <style>
 *{{box-sizing:border-box;margin:0;padding:0}}
-body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f4f4f5;color:#1a1a1a;line-height:1.6}}
+body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f4f4f5;color:#1a1a1a;line-height:1.6;padding-top:88px}}
 a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
 
 /* ── Header ──────────────────────── */
-.site-header{{background:#fff;border-bottom:1px solid #e4e4e7;padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06)}}
-.header-logo{{height:36px;max-width:120px;object-fit:contain}}
-.logo-fallback{{width:36px;height:36px;background:#c1121f;border-radius:8px;color:#fff;font-weight:700;font-size:18px;display:flex;align-items:center;justify-content:center}}
-.header-right{{font-size:11px;color:#888;text-align:right;line-height:1.4}}
+.site-header{{background:#fff;border-bottom:1px solid #e4e4e7;padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:44px;position:fixed;top:0;left:0;right:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.08)}}
+.header-logo{{height:26px;max-width:90px;object-fit:contain}}
+.logo-fallback{{width:26px;height:26px;background:#c1121f;border-radius:6px;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}}
+.header-right{{font-size:10px;color:#888;text-align:right;line-height:1.4}}
 
 /* ── Nav ─────────────────────────── */
-.hero-nav{{position:relative;background:rgba(0,0,0,.35);backdrop-filter:blur(8px);border-top:1px solid rgba(255,255,255,.15);overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}}
-.hero-nav a{{display:inline-block;padding:13px 20px;color:rgba(255,255,255,.75);font-size:13px;font-weight:600;text-decoration:none;border-bottom:3px solid transparent;letter-spacing:.2px;transition:all .15s}}
-.hero-nav a:hover{{color:#fff;border-bottom-color:#fff;text-decoration:none}}
+.sticky-nav{{background:#1d1d1d;position:fixed;top:44px;left:0;right:0;z-index:99;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;box-shadow:0 2px 8px rgba(0,0,0,.25)}}
+.sticky-nav a{{display:inline-block;padding:11px 18px;color:rgba(255,255,255,.7);font-size:13px;font-weight:600;text-decoration:none;border-bottom:3px solid transparent;letter-spacing:.2px;transition:color .15s,border-color .15s}}
+.sticky-nav a:hover{{color:#fff;border-bottom-color:#c1121f;text-decoration:none}}
 
 /* ── Hero / Cover ────────────────── */
 .hero{{background:linear-gradient(140deg,#7a0010 0%,#c1121f 55%,#e63946 100%);color:#fff;position:relative;overflow:hidden}}
@@ -440,7 +440,7 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
 .wrap{{max-width:760px;margin:0 auto;padding:0 0 60px}}
 
 /* ── Sektionen ───────────────────── */
-.sec{{background:#fff;border:1px solid #e4e4e7;border-radius:14px;margin:16px 16px 0;padding:22px 24px;scroll-margin-top:120px}}
+.sec{{background:#fff;border:1px solid #e4e4e7;border-radius:14px;margin:16px 16px 0;padding:22px 24px;scroll-margin-top:96px}}
 .sec-label{{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#c1121f;margin-bottom:4px}}
 .sec-title{{font-size:18px;font-weight:700;color:#1a1a1a;margin-bottom:16px}}
 .muted{{color:#71717a}}
@@ -522,7 +522,7 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
 .pdf-frame iframe{{width:100%;height:100%;border:none;display:block}}
 
 /* ── Bestellen ───────────────────── */
-.order-box{{background:linear-gradient(140deg,#7a0010 0%,#c1121f 60%,#e63946 100%);border-radius:14px;margin:16px 16px 0;padding:30px 24px;color:#fff;scroll-margin-top:120px}}
+.order-box{{background:linear-gradient(140deg,#7a0010 0%,#c1121f 60%,#e63946 100%);border-radius:14px;margin:16px 16px 0;padding:30px 24px;color:#fff;scroll-margin-top:96px}}
 .order-label{{font-size:10px;text-transform:uppercase;letter-spacing:1px;opacity:.7;margin-bottom:6px}}
 .order-title{{font-size:22px;font-weight:700;margin-bottom:8px}}
 .order-sub{{font-size:14px;opacity:.85;margin-bottom:22px;line-height:1.65}}
@@ -571,10 +571,12 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
 <header class="site-header">
   {logo_html}
   <div class="header-right">
-    <div><strong>{_e(provider_name)}</strong></div>
-    {f'<div>{_e(provider_address)}</div>' if provider_address else ''}
+    <strong>{_e(provider_name)}</strong>{f' &middot; {_e(provider_address)}' if provider_address else ''}
   </div>
 </header>
+
+<!-- ── Sticky Nav ──────────────────────────────────────────────────────────── -->
+<div class="sticky-nav">{nav_items}</div>
 
 <div class="wrap">
 
@@ -598,9 +600,6 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
         {'<div class="info-cell"><div class="info-lbl">Ansprechpartner</div><div class="info-val">' + _e(contact_name) + '</div></div>' if contact_name else '<div class="info-cell"></div>'}
         {'<div class="info-cell"><div class="info-lbl">Projekt</div><div class="info-val">' + _e(project_name) + '</div></div>' if project_name else '<div class="info-cell"></div>'}
       </div>
-    </div>
-    <div class="hero-nav">
-      {nav_items}
     </div>
   </div>
 
