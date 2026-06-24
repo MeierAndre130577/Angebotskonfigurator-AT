@@ -134,12 +134,13 @@ def generate_html(offer: dict, settings: dict) -> str:
         if cover_src else ""
     )
 
-    # ── Nav ────────────────────────────────────────────────────────────────────
-    nav_items = '<a href="#uebersicht">Übersicht</a><a href="#details">Details</a>'
+    # ── Nav (spiegelt PDF-Inhaltsverzeichnis) ──────────────────────────────────
+    nav_items = '<a href="#uebersicht">Übersicht</a>'
     if leasing_rows:
         nav_items += '<a href="#leasing">Leasing</a>'
+    nav_items += '<a href="#preise">Preiszusammenfassung</a><a href="#details">Detailbeschreibungen</a>'
     if docs:
-        nav_items += '<a href="#dokumente">Dokumente</a>'
+        nav_items += '<a href="#anhaenge">Anhänge</a>'
     nav_items += '<a href="#bestellen">Bestellen</a>'
 
     # ── Angebotsübersicht-Tabelle (wie PDF) ────────────────────────────────────
@@ -302,7 +303,7 @@ def generate_html(offer: dict, settings: dict) -> str:
             </div>"""
         leasing_section = f"""
       <div class="sec" id="leasing">
-        <div class="sec-label">Leasing-Finanzierung</div>
+        <div class="sec-label">2 · Leasing-Finanzierung</div>
         <div class="sec-title">Ihre Finanzierungsoptionen</div>
         <p class="muted small" style="margin-bottom:16px">Finanzierungsbetrag {_money(one_time)} &middot; vorbehaltlich Bonitätsprüfung</p>
         <div class="lc-grid">{cards}</div>
@@ -324,9 +325,9 @@ def generate_html(offer: dict, settings: dict) -> str:
             <iframe src="{_e(doc['url'])}" title="{_e(doc['title'])}" loading="lazy"></iframe>
           </div>"""
         docs_section = f"""
-      <div class="sec" id="dokumente">
-        <div class="sec-label">Dokumente &amp; Anhänge</div>
-        <div class="sec-title">Produktunterlagen</div>
+      <div class="sec" id="anhaenge">
+        <div class="sec-label">5 · Anhänge</div>
+        <div class="sec-title">Produktunterlagen &amp; Dokumente</div>
         {doc_items}
       </div>"""
 
@@ -603,19 +604,10 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
     </div>
   </div>
 
-  <!-- ── Empfänger ──────────────────────────────────────────────────────── -->
-  <div class="sec">
-    <div class="sec-label">Empfänger</div>
-    <div class="kd-header">
-      <div style="flex:1">{kd_rows and '<div class="kd-grid">' + kd_rows + '</div>'}</div>
-      {cust_logo_html}
-    </div>
-  </div>
-
-  <!-- ── Angebotsübersicht ──────────────────────────────────────────────── -->
+  <!-- ── 1. Angebotsübersicht ──────────────────────────────────────────── -->
   <div class="sec" id="uebersicht">
-    <div class="sec-label">Angebotsübersicht</div>
-    <div class="sec-title">Ihre Positionen auf einen Blick</div>
+    <div class="sec-label">1 · Angebotsübersicht</div>
+    <div class="sec-title">Positionen auf einen Blick</div>
     <table class="overview-table">
       <thead>
         <tr>
@@ -629,17 +621,17 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
     </table>
   </div>
 
-  <!-- ── Detailbeschreibungen ───────────────────────────────────────────── -->
-  <div class="sec" id="details">
-    <div class="sec-label">Detailbeschreibungen</div>
-    <div class="sec-title">Alle Leistungen im Detail</div>
-    {detail_blocks}
-  </div>
+  <!-- ── 2. Leasing (optional) ──────────────────────────────────────────── -->
+  {leasing_section}
 
-  <!-- ── Preiszusammenfassung ───────────────────────────────────────────── -->
-  <div class="sec">
-    <div class="sec-label">Preiszusammenfassung</div>
+  <!-- ── 3. Preiszusammenfassung ────────────────────────────────────────── -->
+  <div class="sec" id="preise">
+    <div class="sec-label">{f'3' if leasing_rows else '2'} · Preiszusammenfassung</div>
     <div class="sec-title">Ihre Investition</div>
+    <div class="kd-header" style="margin-bottom:16px">
+      <div style="flex:1"><div class="kd-grid">{kd_rows}</div></div>
+      {cust_logo_html}
+    </div>
     <div class="price-boxes">
       <div class="price-box">
         <div class="price-box-lbl">Einmalig netto</div>
@@ -651,7 +643,14 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
     {price_rows}
   </div>
 
-  {leasing_section}
+  <!-- ── 4. Detailbeschreibungen ────────────────────────────────────────── -->
+  <div class="sec" id="details">
+    <div class="sec-label">{f'4' if leasing_rows else '3'} · Detailbeschreibungen</div>
+    <div class="sec-title">Alle Leistungen im Detail</div>
+    {detail_blocks}
+  </div>
+
+  <!-- ── 5. Anhänge ─────────────────────────────────────────────────────── -->
   {docs_section}
 
   <!-- ── Bestellen ──────────────────────────────────────────────────────── -->
