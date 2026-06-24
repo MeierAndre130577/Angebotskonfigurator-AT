@@ -405,42 +405,35 @@ def generate_html(offer: dict, settings: dict) -> str:
 <title>Angebot {_e(offer_no)} – {_e(customer)}</title>
 <style>
 *{{box-sizing:border-box;margin:0;padding:0}}
-body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f4f4f5;color:#1a1a1a;line-height:1.6;padding-top:88px}}
+body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f4f4f5;color:#1a1a1a;line-height:1.6;padding-top:130px}}
 a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
 
-/* ── Header ──────────────────────── */
-.site-header{{background:#fff;border-bottom:1px solid #e4e4e7;padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:44px;position:fixed;top:0;left:0;right:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.08)}}
-.header-logo{{height:26px;max-width:90px;object-fit:contain}}
-.logo-fallback{{width:26px;height:26px;background:#c1121f;border-radius:6px;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}}
-.header-right{{font-size:10px;color:#888;text-align:right;line-height:1.4}}
+/* ── Header (Zeile 1) ────────────── */
+.site-header{{background:#fff;border-bottom:1px solid #e4e4e7;padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:42px;position:fixed;top:0;left:0;right:0;z-index:102;box-shadow:0 1px 3px rgba(0,0,0,.06)}}
+.header-logo{{height:24px;max-width:80px;object-fit:contain}}
+.logo-fallback{{width:24px;height:24px;background:#c1121f;border-radius:5px;color:#fff;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}}
+.header-offer{{font-size:13px;font-weight:700;color:#1a1a1a;letter-spacing:-.2px}}
+.header-meta{{font-size:11px;color:#888}}
 
-/* ── Nav ─────────────────────────── */
-.sticky-nav{{background:#1d1d1d;position:fixed;top:44px;left:0;right:0;z-index:99;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;box-shadow:0 2px 8px rgba(0,0,0,.25)}}
-.sticky-nav a{{display:inline-block;padding:11px 18px;color:rgba(255,255,255,.7);font-size:13px;font-weight:600;text-decoration:none;border-bottom:3px solid transparent;letter-spacing:.2px;transition:color .15s,border-color .15s}}
+/* ── Info-Bar (Zeile 2) ──────────── */
+.info-bar{{background:linear-gradient(90deg,#7a0010,#c1121f);position:fixed;top:42px;left:0;right:0;z-index:101;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}}
+.info-bar-inner{{display:inline-flex;padding:0 16px;min-width:100%}}
+.ib-cell{{display:inline-flex;flex-direction:column;justify-content:center;padding:8px 16px 8px 0;border-right:1px solid rgba(255,255,255,.15);margin-right:16px}}
+.ib-cell:last-child{{border-right:none;margin-right:0}}
+.ib-lbl{{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:rgba(255,255,255,.6);font-weight:700;margin-bottom:2px}}
+.ib-val{{font-size:12px;font-weight:700;color:#fff;line-height:1.2}}
+.ib-val.green{{color:#4ade80}}
+
+/* ── Nav (Zeile 3) ───────────────── */
+.sticky-nav{{background:#1d1d1d;position:fixed;top:88px;left:0;right:0;z-index:100;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}}
+.sticky-nav a{{display:inline-block;padding:10px 16px;color:rgba(255,255,255,.65);font-size:12px;font-weight:600;text-decoration:none;border-bottom:2px solid transparent;letter-spacing:.2px;transition:color .15s,border-color .15s}}
 .sticky-nav a:hover{{color:#fff;border-bottom-color:#c1121f;text-decoration:none}}
-
-/* ── Hero / Cover ────────────────── */
-.hero{{background:linear-gradient(140deg,#7a0010 0%,#c1121f 55%,#e63946 100%);color:#fff;position:relative;overflow:hidden}}
-.hero-bg{{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.25}}
-.hero-top{{position:relative;padding:32px 24px 20px}}
-.hero-label{{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;opacity:.7;margin-bottom:8px;font-weight:600}}
-.hero-offer{{font-size:32px;font-weight:800;letter-spacing:-.5px;line-height:1.1}}
-.hero-sub{{font-size:15px;opacity:.9;margin-top:6px;font-weight:500}}
-.hero-infobar{{position:relative;background:rgba(0,0,0,.25);backdrop-filter:blur(6px);padding:0 24px}}
-.info-grid{{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid rgba(255,255,255,.15)}}
-.info-cell{{padding:14px 0;border-right:1px solid rgba(255,255,255,.1)}}
-.info-cell:last-child{{border-right:none}}
-.info-cell:nth-child(3n){{border-right:none}}
-.info-lbl{{font-size:10px;text-transform:uppercase;letter-spacing:.6px;opacity:.6;margin-bottom:4px;font-weight:600}}
-.info-val{{font-size:13px;font-weight:600;line-height:1.3}}
-.info-val.valid-val{{color:#4ade80}}
-.info-val.hi{{font-size:15px}}
 
 /* ── Wrapper ─────────────────────── */
 .wrap{{max-width:760px;margin:0 auto;padding:0 0 60px}}
 
 /* ── Sektionen ───────────────────── */
-.sec{{background:#fff;border:1px solid #e4e4e7;border-radius:14px;margin:16px 16px 0;padding:22px 24px;scroll-margin-top:96px}}
+.sec{{background:#fff;border:1px solid #e4e4e7;border-radius:14px;margin:16px 16px 0;padding:22px 24px;scroll-margin-top:138px}}
 .sec-label{{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#c1121f;margin-bottom:4px}}
 .sec-title{{font-size:18px;font-weight:700;color:#1a1a1a;margin-bottom:16px}}
 .muted{{color:#71717a}}
@@ -522,7 +515,7 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
 .pdf-frame iframe{{width:100%;height:100%;border:none;display:block}}
 
 /* ── Bestellen ───────────────────── */
-.order-box{{background:linear-gradient(140deg,#7a0010 0%,#c1121f 60%,#e63946 100%);border-radius:14px;margin:16px 16px 0;padding:30px 24px;color:#fff;scroll-margin-top:96px}}
+.order-box{{background:linear-gradient(140deg,#7a0010 0%,#c1121f 60%,#e63946 100%);border-radius:14px;margin:16px 16px 0;padding:30px 24px;color:#fff;scroll-margin-top:138px}}
 .order-label{{font-size:10px;text-transform:uppercase;letter-spacing:1px;opacity:.7;margin-bottom:6px}}
 .order-title{{font-size:22px;font-weight:700;margin-bottom:8px}}
 .order-sub{{font-size:14px;opacity:.85;margin-bottom:22px;line-height:1.65}}
@@ -547,11 +540,7 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
 
 /* ── Responsive ──────────────────── */
 @media(max-width:520px){{
-  .hero-top{{padding:24px 16px 16px}}
-  .hero-offer{{font-size:22px}}
-  .hero-infobar{{padding:0 16px}}
-  .info-grid{{grid-template-columns:1fr 1fr}}
-  .hero-nav a{{padding:11px 14px;font-size:12px}}
+  body{{padding-top:120px}}
   .sec{{margin:12px 10px 0;padding:16px}}
   .order-box{{margin:12px 10px 0;padding:20px 16px}}
   .legal-sec{{margin:12px 10px 0}}
@@ -567,41 +556,29 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
 </head>
 <body>
 
-<!-- ── Site-Header ────────────────────────────────────────────────────────── -->
+<!-- Zeile 1: Header ──────────────────────────────────────────────────────── -->
 <header class="site-header">
   {logo_html}
-  <div class="header-right">
-    <strong>{_e(provider_name)}</strong>{f' &middot; {_e(provider_address)}' if provider_address else ''}
-  </div>
+  <div class="header-offer">{_e(offer_no)}</div>
+  <div class="header-meta">{_e(provider_name)}</div>
 </header>
 
-<!-- ── Sticky Nav ──────────────────────────────────────────────────────────── -->
+<!-- Zeile 2: Info-Bar ────────────────────────────────────────────────────── -->
+<div class="info-bar">
+  <div class="info-bar-inner">
+    {'<div class="ib-cell"><div class="ib-lbl">Angebotsnr.</div><div class="ib-val">' + _e(offer_no) + '</div></div>' if offer_no else ''}
+    {'<div class="ib-cell"><div class="ib-lbl">Datum</div><div class="ib-val">' + _e(date_created) + '</div></div>' if date_created else ''}
+    {'<div class="ib-cell"><div class="ib-lbl">Gültig bis</div><div class="ib-val green">' + _e(valid_date) + '</div></div>' if valid_date else ''}
+    {'<div class="ib-cell"><div class="ib-lbl">Kunde</div><div class="ib-val">' + _e(customer) + '</div></div>' if customer else ''}
+    {'<div class="ib-cell"><div class="ib-lbl">Ansprechpartner</div><div class="ib-val">' + _e(contact_name) + '</div></div>' if contact_name else ''}
+    {'<div class="ib-cell"><div class="ib-lbl">Projekt</div><div class="ib-val">' + _e(project_name) + '</div></div>' if project_name else ''}
+  </div>
+</div>
+
+<!-- Zeile 3: Navigation ──────────────────────────────────────────────────── -->
 <div class="sticky-nav">{nav_items}</div>
 
 <div class="wrap">
-
-  <!-- ── Hero / Cover ──────────────────────────────────────────────────── -->
-  <div class="hero" style="{cover_style}">
-    {f'<div class="hero-bg" style="background-image:url(\\"{_e(cover_src)}\\")"></div>' if cover_src else ''}
-    <div class="hero-top">
-      <div class="hero-label">{_e(provider_name)} &middot; Persönliches Angebot</div>
-      <div class="hero-offer">{_e(offer_no)}</div>
-      <div class="hero-sub">{_e((project_name + " · " + customer) if project_name else customer)}</div>
-    </div>
-    <div class="hero-infobar">
-      <div class="info-grid">
-        <div class="info-cell">
-          <div class="info-lbl">Angebotsnummer</div>
-          <div class="info-val hi">{_e(offer_no)}</div>
-        </div>
-        {'<div class="info-cell"><div class="info-lbl">Datum</div><div class="info-val">' + _e(date_created) + '</div></div>' if date_created else '<div class="info-cell"></div>'}
-        {'<div class="info-cell"><div class="info-lbl">Gültig bis</div><div class="info-val valid-val">' + _e(valid_date) + '</div></div>' if valid_date else '<div class="info-cell"></div>'}
-        {'<div class="info-cell"><div class="info-lbl">Kunde</div><div class="info-val">' + _e(customer) + '</div></div>' if customer else '<div class="info-cell"></div>'}
-        {'<div class="info-cell"><div class="info-lbl">Ansprechpartner</div><div class="info-val">' + _e(contact_name) + '</div></div>' if contact_name else '<div class="info-cell"></div>'}
-        {'<div class="info-cell"><div class="info-lbl">Projekt</div><div class="info-val">' + _e(project_name) + '</div></div>' if project_name else '<div class="info-cell"></div>'}
-      </div>
-    </div>
-  </div>
 
   <!-- ── 1. Angebotsübersicht ──────────────────────────────────────────── -->
   <div class="sec" id="uebersicht">
