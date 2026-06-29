@@ -320,21 +320,17 @@ def cleanup_downloads(dry_run: bool = True):
         raise HTTPException(status_code=500, detail=f"Bucket-Listing fehlgeschlagen: {res.text}")
 
     files      = res.json()
-    cutoff     = _dt.datetime.utcnow() - _dt.timedelta(days=30)
+    offers     = db.list_offers()
+    known_nos  = {o["offer_no"] for o in offers if o.get("offer_no")}
     to_delete  = []
     to_keep    = []
 
     for f in files:
-        name       = f.get("name", "")
-        created_at = f.get("created_at", "")
-        try:
-            created = _dt.datetime.fromisoformat(created_at.replace("Z", "+00:00")).replace(tzinfo=None)
-            if created < cutoff:
-                to_delete.append(name)
-            else:
-                to_keep.append(name)
-        except Exception:
+        name = f.get("name", "")
+        if any(no in name for no in known_nos):
             to_keep.append(name)
+        else:
+            to_delete.append(name)
 
     deleted = []
     if not dry_run and to_delete:
@@ -350,9 +346,10 @@ def cleanup_downloads(dry_run: bool = True):
 
     return {
         "dry_run":         dry_run,
+        "known_offers":    len(known_nos),
         "total_files":     len(files),
-        "older_30_days":   len(to_delete),
         "to_keep":         len(to_keep),
+        "to_delete":       len(to_delete),
         "deleted":         len(deleted),
         "files_to_delete": to_delete if dry_run else deleted,
     }
