@@ -297,6 +297,66 @@ def archive_expired():
     db.archive_expired_offers()
     return {"ok": True}
 
+@app.get("/api/admin/cleanup-downloads")
+def cleanup_downloads(dry_run: bool = True):
+    """
+    Löscht ZIPs aus dem downloads-Bucket die älter als 30 Tage sind.
+    dry_run=true (Standard): nur anzeigen. dry_run=false: wirklich löschen.
+    """
+    import httpx as _httpx, datetime as _dt
+    supabase_url = os.environ.get("SUPABASE_URL", "")
+    service_key  = os.environ.get("SUPABASE_SERVICE_KEY", "")
+    if not supabase_url or not service_key:
+        raise HTTPException(status_code=500, detail="Supabase nicht konfiguriert")
+
+    headers = {"Authorization": f"Bearer {service_key}", "Content-Type": "application/json"}
+    res = _httpx.post(
+        f"{supabase_url}/storage/v1/object/list/downloads",
+        headers=headers,
+        json={"prefix": "", "limit": 10000},
+        timeout=30,
+    )
+    if res.status_code != 200:
+        raise HTTPException(status_code=500, detail=f"Bucket-Listing fehlgeschlagen: {res.text}")
+
+    files      = res.json()
+    cutoff     = _dt.datetime.utcnow() - _dt.timedelta(days=30)
+    to_delete  = []
+    to_keep    = []
+
+    for f in files:
+        name       = f.get("name", "")
+        created_at = f.get("created_at", "")
+        try:
+            created = _dt.datetime.fromisoformat(created_at.replace("Z", "+00:00")).replace(tzinfo=None)
+            if created < cutoff:
+                to_delete.append(name)
+            else:
+                to_keep.append(name)
+        except Exception:
+            to_keep.append(name)
+
+    deleted = []
+    if not dry_run and to_delete:
+        del_res = _httpx.request(
+            "DELETE",
+            f"{supabase_url}/storage/v1/object/downloads",
+            headers=headers,
+            json={"prefixes": to_delete},
+            timeout=60,
+        )
+        if del_res.status_code in (200, 204):
+            deleted = to_delete
+
+    return {
+        "dry_run":         dry_run,
+        "total_files":     len(files),
+        "older_30_days":   len(to_delete),
+        "to_keep":         len(to_keep),
+        "deleted":         len(deleted),
+        "files_to_delete": to_delete if dry_run else deleted,
+    }
+
 @app.get("/api/admin/cleanup-pdfs")
 def cleanup_pdfs(dry_run: bool = True):
     """
