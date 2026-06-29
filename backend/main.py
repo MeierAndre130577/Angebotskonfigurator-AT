@@ -324,14 +324,16 @@ def cleanup_pdfs(dry_run: bool = True):
 
     deleted = []
     if not dry_run and to_delete:
-        for name in to_delete:
-            del_res = _httpx.delete(
-                f"{supabase_url}/storage/v1/object/pdfs/{name}",
-                headers=headers,
-                timeout=15,
-            )
-            if del_res.status_code in (200, 204):
-                deleted.append(name)
+        # Supabase Bulk-Delete: DELETE /object/{bucket} mit JSON-Body
+        del_res = _httpx.request(
+            "DELETE",
+            f"{supabase_url}/storage/v1/object/pdfs",
+            headers=headers,
+            json={"prefixes": to_delete},
+            timeout=60,
+        )
+        if del_res.status_code in (200, 204):
+            deleted = to_delete
 
     return {
         "dry_run":       dry_run,
