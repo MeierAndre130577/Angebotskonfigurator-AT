@@ -17,3 +17,13 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Temporäre / generierte Datendateien
+runs.json
+runs2.json
+cache.json
+live_img.json
+live_vid.json
+store_img.json
+store_vid.json
+*temp_openapi.json
