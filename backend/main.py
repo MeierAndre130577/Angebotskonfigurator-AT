@@ -251,22 +251,29 @@ def list_offers():
 
 @app.delete("/api/offers/{offer_id}")
 def delete_offer(offer_id: str):
-    # PDF aus Supabase löschen bevor der DB-Eintrag weg ist
+    # PDF + ZIP aus Supabase löschen bevor der DB-Eintrag weg ist
+    import downloads as _dl
     rows = db.list_offers()
     offer = next((o for o in rows if o["id"] == offer_id), None)
-    if offer and offer.get("pdf_url"):
-        try:
-            import re as _re, httpx as _hx
-            m = _re.search(r"/pdfs/([^?]+)", offer["pdf_url"])
-            if m:
-                su = os.environ.get("SUPABASE_URL", "")
-                sk = os.environ.get("SUPABASE_SERVICE_KEY", "")
-                if su and sk:
-                    _hx.request("DELETE", f"{su}/storage/v1/object/pdfs",
-                        headers={"Authorization": f"Bearer {sk}", "Content-Type": "application/json"},
-                        json={"prefixes": [m.group(1)]}, timeout=15)
-        except Exception:
-            pass
+    if offer:
+        if offer.get("zip_filename"):
+            try:
+                _dl.delete_zip(offer["zip_filename"])
+            except Exception:
+                pass
+        if offer.get("pdf_url"):
+            try:
+                import re as _re, httpx as _hx
+                m = _re.search(r"/pdfs/([^?]+)", offer["pdf_url"])
+                if m:
+                    su = os.environ.get("SUPABASE_URL", "")
+                    sk = os.environ.get("SUPABASE_SERVICE_KEY", "")
+                    if su and sk:
+                        _hx.request("DELETE", f"{su}/storage/v1/object/pdfs",
+                            headers={"Authorization": f"Bearer {sk}", "Content-Type": "application/json"},
+                            json={"prefixes": [m.group(1)]}, timeout=15)
+            except Exception:
+                pass
     db.delete_offer(offer_id)
     return {"ok": True}
 
@@ -499,8 +506,13 @@ async def generate_full_offer(data: dict):
     if s.get("website"):
         provider = {**provider, "website": s["website"]}
 
-    # Altes PDF löschen wenn dieses eine Revision eines bestehenden Angebots ist
+    # Altes PDF + ZIP löschen wenn dieses eine Revision eines bestehenden Angebots ist
     existing = db.get_offer_by_number(offer_no)
+    if existing and existing.get("zip_filename"):
+        try:
+            _dl.delete_zip(existing["zip_filename"])
+        except Exception:
+            pass
     if existing and existing.get("pdf_url"):
         old_url = existing["pdf_url"]
         # Dateiname aus URL extrahieren (nach /pdfs/ und vor ?)
