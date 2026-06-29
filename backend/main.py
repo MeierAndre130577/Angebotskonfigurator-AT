@@ -281,6 +281,68 @@ def archive_expired():
     db.archive_expired_offers()
     return {"ok": True}
 
+@app.get("/api/admin/cleanup-pdfs")
+def cleanup_pdfs(dry_run: bool = True):
+    """
+    Listet/löscht verwaiste PDFs aus dem Supabase pdfs-Bucket.
+    Dateien die zu keinem bekannten Angebot gehören werden gelöscht.
+    dry_run=true (Standard): nur anzeigen, nichts löschen.
+    dry_run=false: wirklich löschen.
+    """
+    supabase_url = os.environ.get("SUPABASE_URL", "")
+    service_key  = os.environ.get("SUPABASE_SERVICE_KEY", "")
+    if not supabase_url or not service_key:
+        raise HTTPException(status_code=500, detail="Supabase nicht konfiguriert")
+
+    # 1. Alle bekannten Angebotsnummern aus der DB
+    offers     = db.list_offers()
+    known_nos  = {o["offer_no"] for o in offers if o.get("offer_no")}
+
+    # 2. Alle Dateien im pdfs-Bucket auflisten
+    import httpx as _httpx
+    headers = {"Authorization": f"Bearer {service_key}", "Content-Type": "application/json"}
+    res = _httpx.post(
+        f"{supabase_url}/storage/v1/object/list/pdfs",
+        headers=headers,
+        json={"prefix": "", "limit": 10000},
+        timeout=30,
+    )
+    if res.status_code != 200:
+        raise HTTPException(status_code=500, detail=f"Bucket-Listing fehlgeschlagen: {res.text}")
+
+    files      = res.json()
+    to_keep    = []
+    to_delete  = []
+
+    for f in files:
+        name = f.get("name", "")
+        # Datei behalten wenn sie eine bekannte Angebotsnummer enthält
+        if any(no in name for no in known_nos):
+            to_keep.append(name)
+        else:
+            to_delete.append(name)
+
+    deleted = []
+    if not dry_run and to_delete:
+        for name in to_delete:
+            del_res = _httpx.delete(
+                f"{supabase_url}/storage/v1/object/pdfs/{name}",
+                headers=headers,
+                timeout=15,
+            )
+            if del_res.status_code in (200, 204):
+                deleted.append(name)
+
+    return {
+        "dry_run":       dry_run,
+        "known_offers":  len(known_nos),
+        "total_files":   len(files),
+        "to_keep":       len(to_keep),
+        "to_delete":     len(to_delete),
+        "deleted":       len(deleted),
+        "files_to_delete": to_delete if dry_run else deleted,
+    }
+
 @app.get("/api/offers/{offer_no}/landing")
 async def serve_landing_page(offer_no: str):
     """Liefert die HTML Landing Page direkt mit korrektem Content-Type."""
