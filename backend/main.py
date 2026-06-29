@@ -251,6 +251,22 @@ def list_offers():
 
 @app.delete("/api/offers/{offer_id}")
 def delete_offer(offer_id: str):
+    # PDF aus Supabase löschen bevor der DB-Eintrag weg ist
+    rows = db.list_offers()
+    offer = next((o for o in rows if o["id"] == offer_id), None)
+    if offer and offer.get("pdf_url"):
+        try:
+            import re as _re, httpx as _hx
+            m = _re.search(r"/pdfs/([^?]+)", offer["pdf_url"])
+            if m:
+                su = os.environ.get("SUPABASE_URL", "")
+                sk = os.environ.get("SUPABASE_SERVICE_KEY", "")
+                if su and sk:
+                    _hx.request("DELETE", f"{su}/storage/v1/object/pdfs",
+                        headers={"Authorization": f"Bearer {sk}", "Content-Type": "application/json"},
+                        json={"prefixes": [m.group(1)]}, timeout=15)
+        except Exception:
+            pass
     db.delete_offer(offer_id)
     return {"ok": True}
 
@@ -425,6 +441,30 @@ async def generate_full_offer(data: dict):
         provider = {**provider, "logo_image": s["logo_image"]}
     if s.get("website"):
         provider = {**provider, "website": s["website"]}
+
+    # Altes PDF löschen wenn dieses eine Revision eines bestehenden Angebots ist
+    existing = db.get_offer_by_number(offer_no)
+    if existing and existing.get("pdf_url"):
+        old_url = existing["pdf_url"]
+        # Dateiname aus URL extrahieren (nach /pdfs/ und vor ?)
+        try:
+            import re as _re
+            m = _re.search(r"/pdfs/([^?]+)", old_url)
+            if m:
+                old_filename = m.group(1)
+                supabase_url_tmp = os.environ.get("SUPABASE_URL", "")
+                service_key_tmp  = os.environ.get("SUPABASE_SERVICE_KEY", "")
+                if supabase_url_tmp and service_key_tmp:
+                    import httpx as _httpx_tmp
+                    _httpx_tmp.request(
+                        "DELETE",
+                        f"{supabase_url_tmp}/storage/v1/object/pdfs",
+                        headers={"Authorization": f"Bearer {service_key_tmp}", "Content-Type": "application/json"},
+                        json={"prefixes": [old_filename]},
+                        timeout=15,
+                    )
+        except Exception:
+            pass  # Cleanup-Fehler blockieren nie die Angebotserstellung
 
     # 3. PDF generieren
     import traceback as _tb
