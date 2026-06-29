@@ -57,7 +57,7 @@ def _calc_leasing(kaufpreis: float, settings: dict) -> list:
 
 def generate_html(offer: dict, settings: dict) -> str:
     import os
-    backend_base = os.environ.get("BACKEND_BASE_URL", "").rstrip("/")
+    backend_base = os.environ.get("BACKEND_BASE_URL", "https://ak-backend-um54.onrender.com").rstrip("/")
 
     project = offer.get("project") or {}
     items = offer.get("offer_items") or []
@@ -154,6 +154,9 @@ def generate_html(offer: dict, settings: dict) -> str:
         short_label = doc["title"] if len(doc["title"]) <= 22 else doc["title"][:20] + "…"
         nav_items += f'<a href="#" onclick="showTab(\'doc-{di}\');return false" data-tab="doc-{di}">&#128196; {_e(short_label)}</a>'
     nav_items += '<a href="#" onclick="showTab(\'bestellen\');return false" data-tab="bestellen">Bestellen</a>'
+
+    # ── Landing-Page-URL (für QR-Code) ────────────────────────────────────────
+    landing_url = f"{backend_base}/api/offers/{offer_no}/landing" if offer_no else ""
 
     # ── Angebotsübersicht-Tabelle (wie PDF) ────────────────────────────────────
     overview_rows = ""
@@ -418,6 +421,43 @@ def generate_html(offer: dict, settings: dict) -> str:
         for p in legal_notice.split("\n") if p.strip()
     )
 
+    # ── Übersicht: ZIP + QR-Code Block ────────────────────────────────────────
+    ov_zip_html = ""
+    if zip_url:
+        ov_zip_html = (
+            f'<a href="{_e(zip_url)}" class="ov-zip-btn" download>'
+            f'<span class="ov-zip-icon">&#128230;</span>'
+            f'<div class="ov-zip-text">'
+            f'<div class="ov-zip-title">Angebotspaket herunterladen</div>'
+            f'<div class="ov-zip-sub">{_e(zip_filename)}</div>'
+            f'</div>'
+            f'<span class="ov-zip-arrow">&#8659; ZIP</span>'
+            f'</a>'
+        )
+
+    ov_qr_html = ""
+    if landing_url:
+        qr_img_url = f"https://api.qrserver.com/v1/create-qr-code/?size=160x160&ecc=H&data={_e(landing_url)}"
+        logo_overlay = (
+            f'<img src="{_e(logo_src)}" alt="Logo" class="ov-qr-logo">'
+            if logo_src else
+            '<div class="ov-qr-logo-fb">S</div>'
+        )
+        ov_qr_html = (
+            f'<div class="ov-qr-wrap">'
+            f'<div class="ov-qr-frame">'
+            f'<img src="{_e(qr_img_url)}" alt="QR zur Landing Page" class="ov-qr-img">'
+            f'{logo_overlay}'
+            f'</div>'
+            f'<div class="ov-qr-label">Landing Page</div>'
+            f'<div class="ov-qr-no">{_e(offer_no)}</div>'
+            f'</div>'
+        )
+
+    ov_actions_html = ""
+    if ov_zip_html or ov_qr_html:
+        ov_actions_html = f'<div class="ov-actions">{ov_zip_html}{ov_qr_html}</div>'
+
     return f"""<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -568,6 +608,23 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
 /* ── Footer ──────────────────────── */
 .footer{{text-align:center;padding:20px 16px 0;font-size:11px;color:#aaa;line-height:1.8}}
 
+/* ── Übersicht: ZIP + QR ─────────────── */
+.ov-actions{{display:flex;align-items:flex-start;gap:16px;margin-top:20px;padding-top:18px;border-top:1px solid #e4e4e7;flex-wrap:wrap}}
+.ov-zip-btn{{display:flex;align-items:center;gap:12px;flex:1;min-width:220px;background:#f9f9f9;border:1.5px solid #e4e4e7;border-radius:12px;padding:14px 16px;text-decoration:none;color:#1a1a1a;transition:border-color .15s,background .15s}}
+.ov-zip-btn:hover{{border-color:#c1121f;background:#fff5f5;text-decoration:none;color:#1a1a1a}}
+.ov-zip-icon{{font-size:26px;flex-shrink:0}}
+.ov-zip-text{{flex:1}}
+.ov-zip-title{{font-size:13px;font-weight:600;color:#1a1a1a}}
+.ov-zip-sub{{font-size:11px;color:#888;margin-top:1px}}
+.ov-zip-arrow{{font-size:14px;font-weight:700;color:#c1121f;flex-shrink:0;white-space:nowrap}}
+.ov-qr-wrap{{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0}}
+.ov-qr-frame{{position:relative;display:inline-block;line-height:0;border-radius:10px;overflow:hidden;border:1.5px solid #e4e4e7;background:#fff;padding:6px}}
+.ov-qr-img{{width:130px;height:130px;display:block}}
+.ov-qr-logo{{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:32px;height:32px;object-fit:contain;background:#fff;padding:3px;border-radius:5px;box-shadow:0 0 0 2px #fff}}
+.ov-qr-logo-fb{{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:32px;height:32px;background:#c1121f;border-radius:5px;color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px #fff}}
+.ov-qr-label{{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888}}
+.ov-qr-no{{font-size:10px;color:#aaa;font-family:monospace;letter-spacing:.2px}}
+
 /* ── Responsive ──────────────────── */
 @media(max-width:520px){{
   body{{padding-top:120px}}
@@ -625,6 +682,8 @@ a{{color:#c1121f;text-decoration:none}}a:hover{{text-decoration:underline}}
       </thead>
       <tbody>{overview_rows}</tbody>
     </table>
+
+    {ov_actions_html}
   </div>
 
   <!-- ── 2. Leasing (optional) ──────────────────────────────────────────── -->
